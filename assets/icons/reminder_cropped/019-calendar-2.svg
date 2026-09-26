@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="512" height="512" x="0" y="0" viewBox="0.833331778 42.083351447 681.000324726 598.500285387" style="enable-background:new 0 0 512 512" xml:space="preserve">
+  <g>
+    <defs stroke-width="28" style="stroke-width: 28;">
+      <clipPath id="a" stroke-width="28" style="stroke-width: 28;">
+        <path d="M0 512h512V0H0Z" fill="#000000" opacity="1" data-original="#000000" stroke-width="28" style="stroke-width: 28;"/>
+      </clipPath>
+    </defs>
+    <g clip-path="url(#a)" transform="matrix(1.33333 0 0 -1.33333 0 682.667)" stroke-width="28" style="stroke-width: 28;">
+      <path d="M0 0v-60h392v390H0v-90h392" style="stroke-width: 28; stroke-linecap: round; stroke-linejoin: round; stroke-miterlimit: 10; stroke-dasharray: none; stroke-opacity: 1;" transform="translate(105 106)" fill="none" stroke="#000000" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" stroke-dasharray="none" stroke-opacity="1" data-original="#000000"/>
+      <path d="M0 0v-60" style="stroke-width: 28; stroke-linecap: round; stroke-linejoin: round; stroke-miterlimit: 10; stroke-dasharray: none; stroke-opacity: 1;" transform="translate(196 466)" fill="none" stroke="#000000" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" stroke-dasharray="none" stroke-opacity="1" data-original="#000000"/>
+      <path d="M0 0v-60" style="stroke-width: 28; stroke-linecap: round; stroke-linejoin: round; stroke-miterlimit: 10; stroke-dasharray: none; stroke-opacity: 1;" transform="translate(407 466)" fill="none" stroke="#000000" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" stroke-dasharray="none" stroke-opacity="1" data-original="#000000"/>
+      <path d="M0 0v-60" style="stroke-width: 28; stroke-linecap: round; stroke-linejoin: round; stroke-miterlimit: 10; stroke-dasharray: none; stroke-opacity: 1;" transform="translate(301 466)" fill="none" stroke="#000000" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" stroke-dasharray="none" stroke-opacity="1" data-original="#000000"/>
+      <path d="M0 0c0-165-90-240-90-240h392s90 75 90 240" style="stroke-width: 28; stroke-linecap: round; stroke-linejoin: round; stroke-miterlimit: 10; stroke-dasharray: none; stroke-opacity: 1;" transform="translate(105 346)" fill="none" stroke="#000000" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" stroke-dasharray="none" stroke-opacity="1" data-original="#000000"/>
+    </g>
+  </g>
+</svg>

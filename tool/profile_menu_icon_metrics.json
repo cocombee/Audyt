@@ -1,0 +1,50 @@
+{
+  "056-user-outline.svg": {
+    "source": "assets/icons/056-user-outline.svg",
+    "reference": "assets/icons/001-home.svg",
+    "targetLineWeight": 1.1741705906501947,
+    "resultLineWeight": 1.1741705906530444,
+    "paintedExtent": 20.0,
+    "contourOffset": -0.43836768968312756
+  },
+  "062-swap.svg": {
+    "source": "assets/icons/062-swap.svg",
+    "reference": "assets/icons/001-home.svg",
+    "targetLineWeight": 1.1741705906501947,
+    "resultLineWeight": 1.17417059064883,
+    "paintedExtent": 20.0,
+    "contourOffset": -0.49985107396687456
+  },
+  "089-sign-out.svg": {
+    "source": "assets/icons/089-sign-out.svg",
+    "reference": "assets/icons/001-home.svg",
+    "targetLineWeight": 1.1741705906501947,
+    "resultLineWeight": 1.174170590652015,
+    "paintedExtent": 20.0,
+    "contourOffset": -0.18866835662827275
+  },
+  "023-add.svg": {
+    "source": "assets/icons/023-add.svg",
+    "reference": "assets/icons/001-home.svg",
+    "targetLineWeight": 1.1741705906501947,
+    "resultLineWeight": 1.1741705906486375,
+    "paintedExtent": 20.0,
+    "contourOffset": -0.5010384428013822
+  },
+  "015-letter.svg": {
+    "source": "assets/icons/reminder_originals/015-letter.svg",
+    "reference": "assets/icons/001-home.svg",
+    "targetLineWeight": 1.1741705906501947,
+    "resultLineWeight": 1.1741705906514586,
+    "paintedExtent": 20.0,
+    "contourOffset": 0.1232450852688316
+  },
+  "top-bar-avatar.svg": {
+    "source": "assets/icons/top-bar-avatar.svg",
+    "reference": "assets/icons/001-home.svg",
+    "targetLineWeight": 1.1741705906501947,
+    "resultLineWeight": 1.1741705906517315,
+    "paintedExtent": 20.0,
+    "contourOffset": -0.05613160857653843
+  }
+}

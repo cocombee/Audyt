@@ -1,0 +1,21 @@
+{
+  "name": "audyt/membership-service",
+  "type": "project",
+  "require": {
+    "php": "^8.3",
+    "ext-pdo": "*",
+    "ext-pdo_mysql": "*",
+    "ext-openssl": "*",
+    "ext-curl": "*",
+    "ext-mbstring": "*",
+    "google/auth": "^1.52",
+    "phpseclib/phpseclib": "^3.0.35"
+  },
+  "autoload": {
+    "psr-4": { "Audyt\\": "src/" }
+  },
+  "config": {
+    "allow-plugins": false,
+    "sort-packages": true
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "assets/icons/016-document.svg": {
+    "source": "tool/user_icon_originals/folder.svg",
+    "paintedExtent": 20,
+    "targetLineWeight": 1.3943355119825709,
+    "resultLineWeight": 1.3943355119830592,
+    "contourOffset": 3.0799471908403575,
+    "sourceLineWidth": 30,
+    "paintedBounds": [
+      -3.0799474716186523,
+      -3.0799472332000732,
+      515.08251953125,
+      400.1072998046875
+    ]
+  },
+  "assets/icons/small/016-document.svg": {
+    "source": "tool/user_icon_originals/folder.svg",
+    "paintedExtent": 14.5,
+    "targetLineWeight": 1.4748932461873638,
+    "resultLineWeight": 1.4748932461872946,
+    "contourOffset": 12.319395173849443,
+    "sourceLineWidth": 30,
+    "paintedBounds": [
+      -12.319395065307617,
+      -12.319395065307617,
+      524.322509765625,
+      409.34674072265625
+    ]
+  },
+  "assets/icons/small/settings-016-document.svg": {
+    "source": "tool/user_icon_originals/folder.svg",
+    "paintedExtent": 14.5,
+    "targetLineWeight": 1.0846753246753247,
+    "resultLineWeight": 1.0846753246751821,
+    "contourOffset": 4.506359571419125,
+    "sourceLineWidth": 30,
+    "paintedBounds": [
+      -4.506359577178955,
+      -4.506359577178955,
+      516.509033203125,
+      401.53369140625
+    ]
+  }
+}

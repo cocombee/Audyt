@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="512" height="512" x="0" y="0" viewBox="0 0 512 512" style="enable-background:new 0 0 512 512" xml:space="preserve" class="">
+  <g>
+    <path d="M332 492h-30V372h30c22.091 0 40 17.909 40 40v40c0 22.091-17.909 40-40 40M432 372v120M432 372h60M472 432h-40M172 492V372M212 372h-40v60h40c16.569 0 30-13.431 30-30v0c0-16.569-13.431-30-30-30M200 180v120M160 260l40 40 40-40M380 300V139.999" style="stroke-width: 28; stroke-linecap: round; stroke-linejoin: round; stroke-miterlimit: 10;" fill="none" stroke="#000000" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" data-original="#000000"/>
+    <path d="M260 20H60c-22.091 0-40 17.909-40 40v392c0 22.091 17.909 40 40 40h40M380 140h-80c-22.091 0-40-17.909-40-40V20z" style="stroke-width: 28; stroke-linecap: round; stroke-linejoin: round; stroke-miterlimit: 10;" fill="none" stroke="#000000" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" data-original="#000000"/>
+  </g>
+</svg>

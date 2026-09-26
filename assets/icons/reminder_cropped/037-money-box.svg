@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="512" height="512" x="0" y="0" viewBox="0.833331778 22.083341910 681.000324726 638.500304461" style="enable-background:new 0 0 512 512" xml:space="preserve" class="">
+  <g>
+    <defs stroke-width="28" style="stroke-width: 28;">
+      <clipPath id="a" stroke-width="28" style="stroke-width: 28;">
+        <path d="M0 512h512V0H0Z" fill="#000000" opacity="1" data-original="#000000" stroke-width="28" style="stroke-width: 28;"/>
+      </clipPath>
+    </defs>
+    <g clip-path="url(#a)" transform="matrix(1.33333 0 0 -1.33333 0 682.667)" stroke-width="28" style="stroke-width: 28;">
+      <path d="M0 0c-16.568 0-30 13.431-30 30s13.432 30 30 30c12.368 0 23.063-7.497 27.643-18.323M0 0c16.569 0 30-13.431 30-30S16.569-60 0-60c-12.392 0-23.073 7.52-27.643 18.323" style="stroke-width: 28; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; stroke-dasharray: none; stroke-opacity: 1;" transform="translate(377.001 361)" fill="none" stroke="#000000" stroke-width="28" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="10" stroke-dasharray="none" stroke-opacity="1" data-original="#000000" class=""/>
+      <path d="M0 0c0-66.274-53.726-120-120-120-66.273 0-120 53.726-120 120s53.727 120 120 120C-53.726 120 0 66.274 0 0Z" style="stroke-width: 28; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; stroke-dasharray: none; stroke-opacity: 1;" transform="translate(497.001 361)" fill="none" stroke="#000000" stroke-width="28" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="10" stroke-dasharray="none" stroke-opacity="1" data-original="#000000" class=""/>
+      <path d="M0 0h-78.781c-22.017 0-42.733-5.305-61.007-14.692C-154.041-5.444-170.822 0-188.649 0h-25.132l21.282-63.849c-5.13-8.242-9.713-16.859-13.017-26.151h-39.265v-90h39.265a134.5 134.5 0 0 1 53.648-67.887c17.472-11.311 28.087-30.784 28.087-51.598V-300h60v30h105c5.138 0 10.01.954 15 1.512V-300h60a121.94 121.94 0 0 0 28.515 78.397c21.764 25.958 33.946 60.21 31.068 97.357a127.1 127.1 0 0 1-11.644 44.204" style="stroke-width: 28; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; stroke-dasharray: none; stroke-opacity: 1;" transform="translate(259.782 331)" fill="none" stroke="#000000" stroke-width="28" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="10" stroke-dasharray="none" stroke-opacity="1" data-original="#000000" class=""/>
+      <path d="M0 0v30" style="stroke-width: 28; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; stroke-dasharray: none; stroke-opacity: 1;" transform="translate(136.001 226)" fill="none" stroke="#000000" stroke-width="28" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="10" stroke-dasharray="none" stroke-opacity="1" data-original="#000000" class=""/>
+    </g>
+  </g>
+</svg>

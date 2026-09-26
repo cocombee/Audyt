@@ -1,0 +1,78 @@
+{
+  "notifications": {
+    "003-shopping-bag.svg": {
+      "paintedExtent": 20,
+      "lineWeight": 1.2448132780082988,
+      "contourOffset": 0.0,
+      "sourceLineWidth": 30
+    },
+    "009-wallet.svg": {
+      "paintedExtent": 20,
+      "lineWeight": 1.2448132780337158,
+      "contourOffset": 0.9955764382757479,
+      "sourceLineWidth": 30
+    },
+    "056-user-outline.svg": {
+      "paintedExtent": 20,
+      "lineWeight": 1.244813277993484,
+      "contourOffset": -0.40233496957516773,
+      "sourceLineWidth": 2
+    },
+    "046-voucher.svg": {
+      "paintedExtent": 20,
+      "lineWeight": 1.2448132779786782,
+      "contourOffset": -0.4026548610330793,
+      "sourceLineWidth": 2
+    },
+    "006-bank.svg": {
+      "paintedExtent": 20,
+      "lineWeight": 1.2448132779930576,
+      "contourOffset": 0.9931990230252268,
+      "sourceLineWidth": 30
+    }
+  },
+  "newButtonMembers": {
+    "090-posted.svg": {
+      "paintedExtent": 14.5,
+      "lineWeight": 1.2051948051589279,
+      "contourOffset": -4.140226765938858,
+      "sourceLineWidth": 43,
+      "codepoint": "0xf134"
+    },
+    "091-drafts.svg": {
+      "paintedExtent": 14.5,
+      "lineWeight": 1.2051948051743004,
+      "contourOffset": -5.907931716986058,
+      "sourceLineWidth": 43,
+      "codepoint": "0xf05f0"
+    },
+    "092-clear.svg": {
+      "paintedExtent": 14.5,
+      "lineWeight": 1.2051948051893144,
+      "contourOffset": -4.488522378577909,
+      "sourceLineWidth": 43,
+      "codepoint": "0xf05fa"
+    },
+    "093-review.svg": {
+      "paintedExtent": 14.5,
+      "lineWeight": 1.2051948051589279,
+      "contourOffset": -4.140226765938858,
+      "sourceLineWidth": 43,
+      "codepoint": "0xf2ea"
+    },
+    "094-savings.svg": {
+      "paintedExtent": 14.5,
+      "lineWeight": 1.2051948051589279,
+      "contourOffset": -4.140226765938858,
+      "sourceLineWidth": 43,
+      "codepoint": "0xf336"
+    },
+    "095-sync.svg": {
+      "paintedExtent": 14.5,
+      "lineWeight": 1.2051948052238277,
+      "contourOffset": -2.4666098057510686,
+      "sourceLineWidth": 43,
+      "codepoint": "0xe62f"
+    }
+  }
+}

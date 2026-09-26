@@ -1,0 +1,2 @@
+# Preserve user-supplied vector originals byte-for-byte; generated assets are separate.
+tool/user_icon_originals/*.svg -text -diff

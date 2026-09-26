@@ -1,0 +1,24 @@
+{
+  "reference": "assets/icons/small/051-restore.svg",
+  "referenceLineWeightPx": 1.2389852784623687,
+  "variants": {
+    "080-sync.svg": {
+      "source": "tool/user_icon_originals/sync.svg",
+      "contourSourceUnits": -0.15238648450758774,
+      "paintedSidePx": 14.5,
+      "straightLineWeightPx": 1.2389852784670703
+    },
+    "082-banking-setting.svg": {
+      "source": "assets/icons/small/017-setting.svg",
+      "contourSourceUnits": 0.31082312084618025,
+      "paintedSidePx": 14.5,
+      "straightLineWeightPx": 1.2389852784584943
+    },
+    "086-change-account-normalized.svg": {
+      "source": "assets/icons/small/076-change-account.svg",
+      "contourSourceUnits": -0.13860189593106043,
+      "paintedSidePx": 14.5,
+      "straightLineWeightPx": 1.2389852784730986
+    }
+  }
+}

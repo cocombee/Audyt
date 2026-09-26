@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="512" height="512" x="0" y="0" viewBox="0 0 512 512" style="enable-background:new 0 0 512 512" xml:space="preserve">
+  <g>
+    <circle cx="307.003" cy="147.639" r="132.638" style="stroke-width: 28; stroke-linecap: round; stroke-linejoin: round; stroke-miterlimit: 10;" fill="none" stroke="#000000" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" data-original="#000000"/>
+    <path d="M329.593 93.775c-3.804-2.844-16.035-10.385-33.232-5.204-19.204 5.785-23.973 32.061-10.923 42.297 7.493 5.877 18.768 10.71 33.964 16.081 34.01 12.022 21.438 59.984-13.158 60.215-13.501.09-19.812-.767-31.672-8.525M306.244 214.27v10.401M306.244 70.607v11.292M254.317 421.931h102.877v0-28.138c0-20.173-16.326-36.54-36.499-36.591l-46.849-.143-8.413-7.931c-33.61-31.682-83.278-37.995-123.363-16.943-8.039 4.222-16.956 6.501-26.036 6.501h-40.84v124.008h56.084l99.591 32.888a28.1 28.1 0 0 0 8.818 1.418h111.771a28.12 28.12 0 0 0 19.884-8.236L486.876 373.23c13.499-13.499 13.499-35.386 0-48.886h0c-13.499-13.499-35.386-13.499-48.886 0l-79.277 77.932" style="stroke-width: 28; stroke-linecap: round; stroke-linejoin: round; stroke-miterlimit: 10;" fill="none" stroke="#000000" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" data-original="#000000"/>
+    <path d="M15 324.213h60.194v152.296H15z" style="stroke-width: 28; stroke-linecap: round; stroke-linejoin: round; stroke-miterlimit: 10;" fill="none" stroke="#000000" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" data-original="#000000"/>
+  </g>
+</svg>

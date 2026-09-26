@@ -1,0 +1,92 @@
+{
+  "002-office.svg": {
+    "source": "assets/icons/002-office.svg",
+    "paintedExtent": 14.5,
+    "referenceLineWeight": 1.2051948051948052,
+    "targetLineWeight": 1.0846753246753247,
+    "sourceLineWidth": 2,
+    "offset": 0.06841637564939451,
+    "resultLineWeight": 1.0846752273329896,
+    "originalExtent": 28.384079456329346
+  },
+  "005-calculator.svg": {
+    "source": "assets/icons/005-calculator.svg",
+    "paintedExtent": 14.5,
+    "referenceLineWeight": 1.2051948051948052,
+    "targetLineWeight": 1.0846753246753247,
+    "sourceLineWidth": 1.5,
+    "offset": 0.16056149079086035,
+    "resultLineWeight": 1.0846753246975445,
+    "originalExtent": 24.0
+  },
+  "006-bank.svg": {
+    "source": "assets/icons/006-bank.svg",
+    "paintedExtent": 14.5,
+    "referenceLineWeight": 1.2051948051948052,
+    "targetLineWeight": 1.0846753246753247,
+    "sourceLineWidth": 30,
+    "offset": 4.503735737846,
+    "resultLineWeight": 1.0846753246723608,
+    "originalExtent": 511.8559892177582
+  },
+  "019-bill.svg": {
+    "source": "assets/icons/019-bill.svg",
+    "paintedExtent": 14.5,
+    "referenceLineWeight": 1.2051948051948052,
+    "targetLineWeight": 1.0846753246753247,
+    "sourceLineWidth": 2,
+    "offset": 0.13192905908799735,
+    "resultLineWeight": 1.0846753246853937,
+    "originalExtent": 29.969999313354492
+  },
+  "003-shopping-bag.svg": {
+    "source": "assets/icons/003-shopping-bag.svg",
+    "paintedExtent": 14.5,
+    "referenceLineWeight": 1.2051948051948052,
+    "targetLineWeight": 1.2051948051948052,
+    "sourceLineWidth": 30,
+    "offset": 5.509074682515347,
+    "resultLineWeight": 1.2051948051934058,
+    "originalExtent": 482.0
+  },
+  "021-upload.svg": {
+    "source": "assets/icons/021-upload.svg",
+    "paintedExtent": 14.5,
+    "referenceLineWeight": 1.2051948051948052,
+    "targetLineWeight": 1.2051948051948052,
+    "sourceLineWidth": 2,
+    "offset": -0.22864100495935413,
+    "resultLineWeight": 1.2051948052064982,
+    "originalExtent": 19.00000023841858
+  },
+  "013-bell.svg": {
+    "source": "assets/icons/013-bell.svg",
+    "paintedExtent": 14.5,
+    "referenceLineWeight": 1.2051948051948052,
+    "targetLineWeight": 1.2051948051948052,
+    "sourceLineWidth": 32,
+    "offset": 5.779548150207848,
+    "resultLineWeight": 1.20519480521214,
+    "originalExtent": 512.0
+  },
+  "004-tax.svg": {
+    "source": "assets/icons/004-tax.svg",
+    "paintedExtent": 14.5,
+    "referenceLineWeight": 1.2051948051948052,
+    "targetLineWeight": 1.2051948051948052,
+    "sourceLineWidth": 2,
+    "offset": 0.17972654771874663,
+    "resultLineWeight": 1.2051948051700154,
+    "originalExtent": 28.000016689300537
+  },
+  "015-police.svg": {
+    "source": "assets/icons/015-police.svg",
+    "paintedExtent": 14.5,
+    "referenceLineWeight": 1.2051948051948052,
+    "targetLineWeight": 1.0846753246753247,
+    "sourceLineWidth": 2,
+    "offset": 0.21408198789577004,
+    "resultLineWeight": 1.084675324687414,
+    "originalExtent": 32.0
+  }
+}

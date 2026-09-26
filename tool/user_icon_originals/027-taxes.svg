@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="512" height="512" x="0" y="0" viewBox="0 0 512 512" style="enable-background:new 0 0 512 512" xml:space="preserve">
+  <g>
+    <path d="M165 75V15h332v422h-60" style="stroke-width: 28; stroke-miterlimit: 10;" fill="none" stroke="#000000" stroke-width="28" stroke-miterlimit="10" data-original="#000000"/>
+    <path d="M392 497H60c-24.853 0-45-20.147-45-45v-15h332v15c0 24.853 20.147 45 45 45s45-20.147 45-45V75H105v362" style="stroke-width: 28; stroke-miterlimit: 10;" fill="none" stroke="#000000" stroke-width="28" stroke-miterlimit="10" data-original="#000000"/>
+    <circle cx="210" cy="187.5" r="30" style="stroke-width: 28; stroke-miterlimit: 10;" fill="none" stroke="#000000" stroke-width="28" stroke-miterlimit="10" data-original="#000000"/>
+    <circle cx="332" cy="324.5" r="30" style="stroke-width: 28; stroke-miterlimit: 10;" fill="none" stroke="#000000" stroke-width="28" stroke-miterlimit="10" data-original="#000000"/>
+    <path d="M345.953 181.047 196.047 330.953" style="stroke-width: 28; stroke-miterlimit: 10;" fill="none" stroke="#000000" stroke-width="28" stroke-miterlimit="10" data-original="#000000"/>
+  </g>
+</svg>
