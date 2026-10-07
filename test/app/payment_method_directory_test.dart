@@ -1,4 +1,5 @@
 import 'package:audyt/app/accounting_components.dart';
+import 'package:audyt/app/accounting_theme.dart';
 import 'package:audyt/app/accounting_description_field.dart';
 import 'package:audyt/app/accounting_icons.dart';
 import 'package:audyt/app/responsive.dart';
@@ -2082,6 +2083,138 @@ void main() {
             .onPressed,
         isNull,
       );
+      expect(tables(w), before);
+      expect(t.takeException(), isNull);
+      await t.pumpWidget(const SizedBox.shrink());
+    });
+  }
+
+  for (final width in [720.0, 1162.0]) {
+    testWidgets('report popout labels follow painted field frames at $width', (
+      t,
+    ) async {
+      await prepare(t, width);
+      t.view.physicalSize = Size(width, 809);
+      final w = await AccountingWorkspace.open(':memory:');
+      addTearDown(w.dispose);
+      final before = tables(w);
+      await t.pumpWidget(
+        RepaintBoundary(
+          key: const ValueKey('workspace-capture'),
+          child: AudytApp(workspace: w, showInitialSetup: false),
+        ),
+      );
+      await t.pumpAndSettle();
+      Finder key(String id) => find.byKey(ValueKey(id)).last;
+      Future<void> aligned(String label, String id) async {
+        final frame = key(id);
+        await t.ensureVisible(frame);
+        await t.pumpAndSettle();
+        expect(
+          t
+              .getTopLeft(
+                find
+                    .byWidgetPredicate(
+                      (widget) =>
+                          widget is Text &&
+                          widget.data == label &&
+                          widget.style?.fontWeight == FontWeight.w600,
+                    )
+                    .last,
+              )
+              .dx,
+          closeTo(t.getTopLeft(frame).dx, .1),
+          reason: '$label follows its field frame',
+        );
+      }
+
+      await tap(t, key('accounting-settings'));
+      await tap(t, key('settings-editor-Payment Methods'));
+      await tap(t, key('settings-manage-payment-methods'));
+      await tap(t, key('payment-method-report'));
+      await tap(t, key('payment-method-report-customise'));
+      await aligned(
+        'Report Title',
+        'payment-method-report-heading-Report Title',
+      );
+      await capture(t, 'Report Labels Customise Top ${width.toInt()}');
+      await tap(t, key('payment-method-report-filter-Company Name'));
+      await aligned(
+        'Company Name',
+        'payment-method-report-heading-Company Name',
+      );
+      await aligned(
+        'Report Title',
+        'payment-method-report-heading-Report Title',
+      );
+      for (final label in [
+        'Header Alignment',
+        'Footer Alignment',
+        'Sort By',
+        'Sort Order',
+      ]) {
+        await aligned(label, 'payment-method-report-$label');
+      }
+      await capture(t, 'Report Labels Customise Lower ${width.toInt()}');
+      final ordinaryTitle = find
+          .byWidgetPredicate(
+            (widget) =>
+                widget is Text &&
+                widget.data == 'Sort Order' &&
+                widget.style?.fontWeight == FontWeight.w600,
+          )
+          .last;
+      final ordinaryTitleGap =
+          t.getTopLeft(key('payment-method-report-Sort Order')).dy -
+          t.getBottomLeft(ordinaryTitle).dy;
+      await tap(t, key('payment-method-report-columns-back'));
+      await tap(t, key('payment-method-report-save-customisation'));
+      await aligned('Custom Report Name', 'payment-method-saved-report-name');
+      await aligned(
+        'Add This Report To A Group',
+        'payment-method-saved-report-group',
+      );
+      await aligned('Share With', 'payment-method-saved-report-share');
+      await capture(t, 'Report Labels Saved Customisation ${width.toInt()}');
+      await tap(t, key('payment-method-saved-report-close'));
+      await tap(t, key('payment-method-report-print'));
+      await aligned('Orientation', 'payment-method-report-print-orientation');
+      await capture(t, 'Report Labels Print ${width.toInt()}');
+      await tap(t, key('payment-method-report-print-email'));
+      for (final label in ['To', 'CC', 'Subject', 'Body', 'Report']) {
+        await aligned(label, 'payment-method-report-email-$label');
+      }
+      await capture(t, 'Report Labels Email ${width.toInt()}');
+      await tap(t, key('payment-method-report-email-close'));
+      await tap(t, key('payment-method-report-export'));
+      await tap(
+        t,
+        key('payment-method-report-export-Add To Management Reports'),
+      );
+      await aligned('Action', 'payment-method-management-action');
+      await aligned('Management Report Name', 'payment-method-management-name');
+      await capture(t, 'Report Labels Management ${width.toInt()}');
+      await tap(t, key('payment-method-management-close'));
+      await tap(t, key('payment-method-report-notes'));
+      await aligned('Notes', 'payment-method-report-note-editor');
+      final notesTitle = find
+          .byWidgetPredicate(
+            (widget) =>
+                widget is Text &&
+                widget.data == 'Notes' &&
+                widget.style?.fontWeight == FontWeight.w600,
+          )
+          .last;
+      expect(
+        t.getTopLeft(key('payment-method-report-note-editor')).dy -
+            t.getBottomLeft(notesTitle).dy,
+        closeTo(ordinaryTitleGap, .1),
+      );
+      expect(
+        t.getSize(key('payment-method-report-close-notes')).height,
+        accountingControlHeight,
+      );
+      await capture(t, 'Report Labels Notes ${width.toInt()}');
       expect(tables(w), before);
       expect(t.takeException(), isNull);
       await t.pumpWidget(const SizedBox.shrink());

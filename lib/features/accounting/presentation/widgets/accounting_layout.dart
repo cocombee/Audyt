@@ -12,6 +12,38 @@ import '../../../../app/responsive.dart';
 const double accountingPageTitleOuterGap =
     AccountingResponsive.pageTitleOuterGap;
 
+/// Shared outer bounds for desktop page chrome and its content body.
+/// The title's inner content inset remains owned by AccountingPageHeader.
+class AccountingPageAlignment extends StatelessWidget {
+  const AccountingPageAlignment({
+    required this.child,
+    super.key,
+    this.maxWidth = AccountingResponsive.pageMaxWidth,
+  });
+
+  final Widget child;
+  final double maxWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final inset = AccountingResponsive.pageInsetFor(media.size.width);
+    return Padding(
+      padding: EdgeInsets.only(
+        left: inset + media.viewPadding.left,
+        right: inset + media.viewPadding.right,
+      ),
+      child: Center(
+        heightFactor: 1,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxWidth),
+          child: SizedBox(width: double.infinity, child: child),
+        ),
+      ),
+    );
+  }
+}
+
 class AccountingPageShell extends StatefulWidget {
   const AccountingPageShell({
     required this.child,
@@ -81,18 +113,8 @@ class _AccountingPageShellState extends State<AccountingPageShell> {
     final tokens = AccountingTheme.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
-        final availableWidth = constraints.hasBoundedWidth
-            ? constraints.maxWidth
-            : MediaQuery.sizeOf(context).width;
         final mediaQuery = MediaQuery.of(context);
-        final viewportWidth = mediaQuery.size.width;
-        final responsiveWidth = viewportWidth.isFinite && viewportWidth > 0
-            ? viewportWidth
-            : availableWidth;
         final safeArea = mediaQuery.viewPadding;
-        final horizontalInset = AccountingResponsive.pageInsetFor(
-          responsiveWidth,
-        );
         final bottomInset =
             AccountingResponsive.groupGap +
             _menuSpace +
@@ -116,23 +138,14 @@ class _AccountingPageShellState extends State<AccountingPageShell> {
                     key: const ValueKey('accounting-main-scroll'),
                     primary: true,
                     padding: EdgeInsets.only(
-                      left: horizontalInset + safeArea.left,
-                      right: horizontalInset + safeArea.right,
                       top:
                           widget.topInset +
                           (widget.includeTopSafeArea ? safeArea.top : 0),
                       bottom: bottomInset,
                     ),
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: widget.maxWidth),
-                        child: AccountingPageControlScope(
-                          child: SizedBox(
-                            width: double.infinity,
-                            child: widget.child,
-                          ),
-                        ),
-                      ),
+                    child: AccountingPageAlignment(
+                      maxWidth: widget.maxWidth,
+                      child: AccountingPageControlScope(child: widget.child),
                     ),
                   ),
                 ),

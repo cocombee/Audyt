@@ -141,8 +141,9 @@ fixture(int openingCount, {String path = ':memory:'}) async {
 Future<void> host(
   WidgetTester tester,
   AccountingWorkspace w,
-  EntityId statement,
-) async {
+  EntityId statement, {
+  String currency = 'MYR',
+}) async {
   await tester.pumpWidget(
     RepaintBoundary(
       key: const ValueKey('workspace-capture'),
@@ -160,7 +161,7 @@ Future<void> host(
                     builder: (_) => StatementReconciliationDialog(
                       workspace: w,
                       statementId: statement,
-                      currency: 'MYR',
+                      currency: currency,
                     ),
                   ),
                   child: const Text('Review statement'),

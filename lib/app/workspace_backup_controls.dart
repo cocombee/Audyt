@@ -2,14 +2,22 @@ import 'package:flutter/material.dart';
 
 import '../features/accounting/application/workspace_backup.dart';
 import 'accounting_components.dart';
+import 'accounting_theme.dart';
+import 'field_row_trial.dart';
 
 class WorkspaceBackupControls extends StatefulWidget {
   const WorkspaceBackupControls({
     super.key,
     required this.backup,
     required this.onOpenRestored,
+    this.preferenceFields,
+    this.preferenceFieldsWidth,
+    this.leadingContent,
   });
   final WorkspaceBackup backup;
+  final List<AccountingOrdinaryFieldSlot>? preferenceFields;
+  final double? preferenceFieldsWidth;
+  final Widget? leadingContent;
   final Future<void> Function(String) onOpenRestored;
   @override
   State<WorkspaceBackupControls> createState() =>
@@ -57,33 +65,67 @@ class _WorkspaceBackupControlsState extends State<WorkspaceBackupControls> {
     }
   }
 
+  Widget _destination(BuildContext context) => Column(
+    key: const ValueKey('backup-destination-slot'),
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      accountingFieldLabel(context, 'Backup Destination', alignToField: true),
+      const SizedBox(height: accountingFieldLabelGap),
+      Align(
+        alignment: Alignment.centerLeft,
+        child: AccountingButton.outline(
+          context,
+          key: const ValueKey('backup-destination'),
+          leadingIcon: Icons.folder_open_outlined,
+          onPressed: _busy
+              ? null
+              : () => _run(() async {
+                  final folder = await widget.backup.chooseFolder();
+                  if (folder != null && mounted) {
+                    setState(() => _folder = folder);
+                  }
+                }),
+          child: Text(
+            _folder ?? 'Choose Folder',
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ),
+    ],
+  );
+
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      const SizedBox(height: 20),
-      accountingFieldLabel(context, 'Backup Destination', alignToField: true),
-      const SizedBox(height: 8),
-      AccountingButton.outline(
-        context,
-        key: const ValueKey('backup-destination'),
-        leadingIcon: Icons.folder_open_outlined,
-        onPressed: _busy
-            ? null
-            : () => _run(() async {
-                final folder = await widget.backup.chooseFolder();
-                if (folder != null && mounted) setState(() => _folder = folder);
-              }),
-        child: Text(
-          _folder ?? 'Choose Folder',
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
-      const SizedBox(height: 20),
-      accountingHelperText(
-        context,
-        'Scheduled backups run while Audyt is open and catch up next launch. Data archives retain accounting records and file references; original documents remain in their folders. CSV exports posted ledger rows; JSON imports create a separate copy that you can reopen from the company selector. Each restored copy needs its own backup destination.',
-      ),
+      if (widget.leadingContent != null) ...[
+        widget.leadingContent!,
+        const SizedBox(height: accountingContentInset),
+      ],
+      if (widget.preferenceFields != null)
+        Align(
+          alignment: Alignment.centerLeft,
+          child: SizedBox(
+            width: widget.preferenceFieldsWidth,
+            child: AccountingOrdinaryFields(
+              fields: [
+                ...widget.preferenceFields!,
+                AccountingOrdinaryFieldSlot(
+                  label: 'Backup Destination',
+                  hasGuidance: true,
+                  minimumControlWidth: AccountingButton.normalIconLabelWidth(
+                    context,
+                    _folder ?? 'Choose Folder',
+                    icon: Icons.folder_open_outlined,
+                  ),
+                  builder: (_) => _destination(context),
+                ),
+              ],
+            ),
+          ),
+        )
+      else
+        _destination(context),
       if (_message != null) ...[
         const SizedBox(height: 20),
         Text(_message!, style: AccountingTypography.helper(context)),

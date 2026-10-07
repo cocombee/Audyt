@@ -50,11 +50,11 @@ Map<String, dynamic> tables(AccountingWorkspace workspace) {
 }
 
 void main() {
-  for (final width in [720.0, 1224.0]) {
+  for (final width in [720.0, 1162.0, 1224.0, 2056.0]) {
     testWidgets('every reachable tab uses restored company data at $width', (
       tester,
     ) async {
-      tester.view.physicalSize = Size(width, 1000);
+      tester.view.physicalSize = Size(width, 809);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
@@ -187,7 +187,11 @@ void main() {
       for (final feature in FeatureRegistry.navigationGroups.expand(
         (g) => g.features,
       )) {
-        await tester.tap(find.byKey(ValueKey('navigation-item-${feature.id}')));
+        final navigationItem = find.byKey(
+          ValueKey('navigation-item-${feature.id}'),
+        );
+        await tester.ensureVisible(navigationItem);
+        await tester.tap(navigationItem);
         await tester.pumpAndSettle();
         if (feature.id == 'home') {
           expect(

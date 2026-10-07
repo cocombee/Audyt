@@ -19,6 +19,8 @@ final class AccountingResponsive {
   static const navigationDividerWidth = 1.0;
   static const navigationDividerDragWidth = 8.0;
   static const drawerMaxWidth = 320.0;
+  // The date row, tab viewport and page body share this content column.
+  // Popout and individual control widths belong to their separate owners.
   static const pageMaxWidth = 1280.0;
   static const recordExpenseMaxWidth = 720.0;
   static const cardMinWidth = 220.0;

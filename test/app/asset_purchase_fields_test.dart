@@ -87,6 +87,42 @@ void main() {
           await tester.tap(find.text('Split Expense / Asset').last);
           await tester.pumpAndSettle();
           final fields = find.byType(AssetPurchaseFields);
+          expect(
+            find.textContaining('Link this purchase to Fixed Assets.'),
+            findsNothing,
+          );
+          expect(
+            find.textContaining('Use Supporting Documents below'),
+            findsNothing,
+          );
+          for (final label in [
+            'Purchase Treatment',
+            'Acquisition Cost ($symbol)',
+            'Tax Policy',
+          ]) {
+            final help = find.descendant(
+              of: fields,
+              matching: find.byWidgetPredicate(
+                (widget) =>
+                    widget is AccountingFieldHelp && widget.label == label,
+              ),
+            );
+            final message = tester.widget<AccountingFieldHelp>(help).message;
+            expect(find.text(message), findsNothing);
+            await tester.ensureVisible(help);
+            await tester.tap(help);
+            await tester.pumpAndSettle();
+            expect(find.text(message), findsOneWidget);
+            if (currency == 'MYR') {
+              await captureUi(
+                tester,
+                'Asset Purchase $label Helper ${width.toInt()}',
+              );
+            }
+            Tooltip.dismissAllToolTips();
+            await tester.pumpAndSettle();
+            expect(find.text(message), findsNothing);
+          }
           final cost = find.byKey(
             const ValueKey('asset-purchase-field-Acquisition Cost'),
           );

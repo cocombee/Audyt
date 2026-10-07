@@ -174,6 +174,7 @@ final class AccountingOrdinaryFieldSlot {
     this.headerActionLabel,
     this.hasGuidance = false,
     this.minimumRowFraction = 0,
+    this.minimumControlWidth,
   });
   final String label;
   final List<String> choices;
@@ -181,6 +182,10 @@ final class AccountingOrdinaryFieldSlot {
   final bool date;
   final bool hasGuidance;
   final double minimumRowFraction;
+
+  /// Explicit intrinsic control floor for a labelled action slot. It does not
+  /// assign the containing track width to its button or alter field defaults.
+  final double? minimumControlWidth;
   // Only an existing compact Add header action contributes this extra width.
   final String? headerActionLabel;
   final Widget Function(double assignedWidth) builder;
@@ -221,7 +226,7 @@ final class AccountingOrdinaryFieldSlot {
                 AccountingTypography.button(context)
                     .copyWith(fontSize: accountingSmallControlFontSize),
               );
-    return math.max(headerWidth, controlWidth);
+    return math.max(headerWidth, minimumControlWidth ?? controlWidth);
   }
 }
 

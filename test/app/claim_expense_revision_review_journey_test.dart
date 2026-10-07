@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:audyt/app/accounting_components.dart';
+import 'package:audyt/app/accounting_icons.dart';
 import 'package:audyt/core/ids/entity_id.dart';
 import 'package:audyt/core/money/money.dart';
 import 'package:audyt/core/storage/record_metadata.dart';
@@ -12,6 +13,7 @@ import 'package:audyt/features/accounting/domain/journal_entry.dart';
 import 'package:audyt/features/accounting/domain/account.dart';
 import 'package:audyt/features/purchases/presentation/claim_receipt_approval_dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../features/accounting/data/approved_claim_expense_test.dart'
@@ -23,6 +25,7 @@ import '../features/accounting/data/claim_expense_revision_posting_test.dart'
 import '../support/fixed_popout_host.dart';
 import 'claim_receipts_proposal_test.dart' show prepare, tap, capture;
 import 'expense_revision_editor_journey_test.dart' show host, keyed;
+import 'restored_page_routes_test.dart' show tables;
 
 Future<void> namedAccounts(Fixture f) async {
   const names = {
@@ -152,6 +155,7 @@ Future<void> edit(
 void main() {
   for (final scenario in [
     (720.0, false, false),
+    (1162.0, false, false),
     (1224.0, true, false),
     (720.0, true, true),
   ]) {
@@ -160,6 +164,7 @@ void main() {
       '${paid ? 'paid' : 'current'} mixed Claim Expense ${saveAndReview ? 'Save And Review' : 'Review Saved Posting'} approves exact rows and survives restart at $width',
       (tester) async {
         await prepare(tester, width);
+        tester.view.physicalSize = Size(width, 809);
         installFixedPopoutHost(tester);
         final dir = Directory.systemTemp.createTempSync(
           'claim-expense-review-',
@@ -208,6 +213,42 @@ void main() {
           tester.widget<FilledButton>(keyed('claim-receipt-approve')).onPressed,
           isNull,
         );
+        final current = (await f.w.expense(root))!.draft;
+        final firstAccount = (await f.w.accounts())
+            .singleWhere((a) => a.account.id == f.accounts['5000'])
+            .account;
+        await tap(
+          tester,
+          keyed('claim-expense-account-${current.lines.first.id}'),
+        );
+        await tap(tester, find.text(firstAccount.displayName).last);
+        final partial = tables(f.w);
+        for (final dismissal in ['Close', 'Escape', 'Backdrop']) {
+          if (dismissal == 'Close') {
+            await tap(tester, find.byType(AccountingCloseIcon).last);
+          } else if (dismissal == 'Escape') {
+            await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+            await tester.pumpAndSettle();
+          } else {
+            await tester.tapAt(const Offset(8, 200));
+            await tester.pumpAndSettle();
+          }
+          expect(find.text('Discard Unsaved Changes?'), findsOneWidget);
+          await capture(
+            tester,
+            '${paid ? 'Paid ' : ''}Current Claim Account Guard $dismissal ${width.toInt()}',
+          );
+          await tap(tester, find.text('Keep Editing'));
+          expect(tables(f.w), partial);
+          final payable = tester.widget<AccountingSelector<EntityId>>(
+            find.ancestor(
+              of: keyed('claim-receipt-payable'),
+              matching: find.byType(AccountingSelector<EntityId>),
+            ),
+          );
+          expect(payable.enabled, isFalse);
+          expect(payable.value, f.accounts['2100']);
+        }
         await selectRows(tester, f, root);
         await capture(
           tester,

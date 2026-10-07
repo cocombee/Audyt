@@ -1,4 +1,3 @@
-
 import 'package:audyt/features/accounting/data/accounting_database.dart';
 import 'package:audyt/app/accounting_theme.dart';
 import 'package:audyt/features/accounting/application/accounting_workspace.dart';
@@ -6,6 +5,11 @@ import 'package:audyt/features/accounting/presentation/banking_page.dart';
 import 'package:audyt/features/accounting/presentation/reconciliation_history_dialog.dart';
 import 'package:audyt/features/accounting/presentation/statement_reconciliation_dialog.dart';
 import 'package:audyt/features/accounting/presentation/receipt_attachment_picker.dart';
+import 'package:audyt/core/money/money.dart';
+import 'package:audyt/core/money/currency_presentation.dart';
+import 'package:audyt/core/ids/entity_id.dart';
+import 'package:audyt/features/accounting/domain/bank_statement_import.dart';
+import 'package:audyt/features/accounting/domain/payment_account.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -95,6 +99,202 @@ Future<void> directHost(WidgetTester tester, Fixture f) async {
 }
 
 void main() {
+  for (final (currency, displayed) in [
+    ('JPY', '123,456'),
+    ('MYR', '1,234.56'),
+    ('KWD', '123.456'),
+  ]) {
+    testWidgets('PDF balance initialization retains $currency precision', (
+      tester,
+    ) async {
+      await prepare(tester, 1162);
+      tester.view.physicalSize = const Size(1162, 809);
+      final w = await AccountingWorkspace.open(':memory:');
+      addTearDown(w.dispose);
+      w.savePaymentAccount(
+        PaymentAccount.create(
+          id: 'currency-bank',
+          name: 'Fictional Currency Bank',
+          type: PaymentAccountType.bank,
+          currencyCode: currency,
+        ),
+      );
+      final amount = Money.fromMinor(123456, currency);
+      final statement = w.database.importBankStatement(
+        id: EntityId.random(),
+        businessId: w.identity.businessId,
+        paymentAccountId: 'currency-bank',
+        importedAt: DateTime.now(),
+        statement: BankStatementImport.parsedPdf(
+          filename: 'Fictional Currency.pdf',
+          currency: currency,
+          bytes: Uint8List.fromList('%PDF-'.codeUnits),
+          rows: [
+            BankStatementRow(
+              sourceRow: 1,
+              sourcePage: 1,
+              date: DateTime.utc(2026, 9, 2),
+              description: 'Fictional movement',
+              amount: amount,
+              reference: '',
+            ),
+          ],
+          statementDate: DateTime.utc(2026, 9, 30),
+          accountHolderName: 'Fictional Holder',
+          accountNumber: 'Fictional Account',
+          openingBalance: amount,
+          closingBalance: Money.fromMinor(-123456, currency),
+        ),
+      );
+      final before = tables(w);
+      await imported.host(tester, w, statement, currency: currency);
+      await tap(tester, keyed('open-form'));
+      expect(
+        find.text(
+          'Opening Balance (${CurrencyPresentation.fromCode(currency).amountSymbol})',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<TextField>(keyed('reconciliation-opening'))
+            .controller!
+            .text,
+        displayed,
+      );
+      expect(
+        tester
+            .widget<TextField>(keyed('reconciliation-closing'))
+            .controller!
+            .text,
+        '-$displayed',
+      );
+      await capture(tester, 'Statement PDF Balance $currency 1162');
+      await tap(tester, keyed('reconciliation-editor-close'));
+      expect(find.text('Discard Unsaved Changes?'), findsNothing);
+      expect(tables(w), before);
+      expect(
+        w.database
+            .bankStatement(w.identity.businessId, statement)!
+            .openingBalance,
+        amount,
+      );
+    });
+  }
+  for (final width in [720.0, 1162.0]) {
+    for (final accountMode in [true, false]) {
+      final title = accountMode ? 'Account' : 'Statement';
+      testWidgets(
+        '$title loaded balance display retains exact money at $width',
+        (tester) async {
+          await prepare(tester, width);
+          tester.view.physicalSize = Size(width, 809);
+          final f = await imported.fixture(1);
+          addTearDown(f.w.dispose);
+          Future<void> host() async {
+            await tester.pumpWidget(
+              RepaintBoundary(
+                key: const ValueKey('workspace-capture'),
+                child: MaterialApp(
+                  debugShowCheckedModeBanner: false,
+                  theme: AccountingTheme.light(),
+                  home: Scaffold(
+                    body: Builder(
+                      builder: (context) => TextButton(
+                        key: const ValueKey('open-balance-display'),
+                        onPressed: () => showDialog<void>(
+                          context: context,
+                          builder: (_) => accountMode
+                              ? StatementReconciliationDialog.account(
+                                  workspace: f.w,
+                                  paymentAccountId: 'bank',
+                                  currency: 'MYR',
+                                  sourceLabel: 'Fictional Bank',
+                                )
+                              : StatementReconciliationDialog(
+                                  workspace: f.w,
+                                  statementId: f.statement,
+                                  currency: 'MYR',
+                                ),
+                        ),
+                        child: const Text('Open Reconciliation'),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+            await tester.pumpAndSettle();
+            await tap(tester, keyed('open-balance-display'));
+          }
+
+          final beforeEmpty = tables(f.w);
+          await host();
+          TextField field(String name) => tester.widget<TextField>(keyed(name));
+          expect(field('reconciliation-closing').controller!.text, isEmpty);
+          expect(field('reconciliation-closing').decoration!.hintText, '0.00');
+          expect(
+            field('reconciliation-start').decoration!.hintText,
+            'DD-MM-YYYY',
+          );
+          await capture(tester, '$title Balance Empty ${width.toInt()}');
+          await tap(tester, keyed('reconciliation-editor-close'));
+          expect(find.text('Discard Unsaved Changes?'), findsNothing);
+          expect(tables(f.w), beforeEmpty);
+
+          final business = f.w.identity.businessId;
+          final opening = Money.fromMinor(-123456, 'MYR');
+          final closing = Money.fromMinor(-124456, 'MYR');
+          if (accountMode) {
+            f.w.database.saveAccountReconciliationDraft(
+              businessId: business,
+              paymentAccountId: 'bank',
+              actorId: f.w.identity.ownerId,
+              expectedRevision: 0,
+              expectedPreviousId: null,
+              startsOn: DateTime.utc(2026, 9, 1),
+              endsOn: DateTime.utc(2026, 9, 30),
+              openingBalance: opening,
+              closingBalance: closing,
+              savedAt: DateTime.now(),
+            );
+          } else {
+            f.w.database.saveReconciliationDraft(
+              businessId: business,
+              statementId: f.statement,
+              actorId: f.w.identity.ownerId,
+              expectedRevision: 0,
+              startsOn: DateTime.utc(2026, 9, 1),
+              endsOn: DateTime.utc(2026, 9, 30),
+              openingBalance: opening,
+              closingBalance: closing,
+              savedAt: DateTime.now(),
+            );
+          }
+          final beforeLoaded = tables(f.w);
+          await host();
+          expect(field('reconciliation-opening').controller!.text, '-1,234.56');
+          expect(field('reconciliation-closing').controller!.text, '-1,244.56');
+          final left = tester.getRect(keyed('reconciliation-opening'));
+          final right = tester.getRect(keyed('reconciliation-closing'));
+          expect(left.top, right.top);
+          expect(left.width, closeTo(right.width, 0.01));
+          await capture(tester, '$title Balance Loaded ${width.toInt()}');
+          await tap(tester, keyed('review-reconciliation'));
+          expect(
+            find.text('Enter balances as exact decimal amounts.'),
+            findsNothing,
+          );
+          expect(find.text('Balance Check Target'), findsOneWidget);
+          expect(field('reconciliation-opening').controller!.text, '-1,234.56');
+          await capture(tester, '$title Balance Review ${width.toInt()}');
+          await tap(tester, keyed('reconciliation-editor-close'));
+          expect(find.text('Discard Unsaved Changes?'), findsNothing);
+          expect(tables(f.w), beforeLoaded);
+        },
+      );
+    }
+  }
   for (final width in [720.0, 1224.0]) {
     for (final accountMode in [true, false]) {
       final title = accountMode ? 'Account' : 'Statement';

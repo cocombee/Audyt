@@ -77,7 +77,7 @@ void main() {
     },
   );
 
-  for (final width in [720.0, 1224.0]) {
+  for (final width in [720.0, 1162.0, 1224.0]) {
     testWidgets(
       'live Claims claimant balances and journal trace are read-only at $width',
       (tester) async {
@@ -104,6 +104,16 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('claims-balances')));
         await tester.pumpAndSettle();
         expect(find.byType(ClaimantStatementsDialog), findsOneWidget);
+        for (final field in [
+          ('From', 'claimant-from'),
+          ('Through', 'claimant-through'),
+        ]) {
+          expectPopupFieldTitleAligned(
+            tester,
+            field.$1,
+            find.byKey(ValueKey(field.$2)),
+          );
+        }
         await tester.enterText(
           find.byKey(const ValueKey('claimant-from')),
           '01-09-2026',

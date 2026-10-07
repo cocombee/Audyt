@@ -1,4 +1,5 @@
 import '../support/accounting_text_input.dart';
+import '../support/accounting_test_finders.dart';
 
 import 'package:audyt/app/app.dart';
 import 'package:audyt/app/accounting_color_library.dart';
@@ -20,6 +21,8 @@ import 'restored_page_routes_test.dart' show tables;
 
 void main() {
   for (final (width, height) in [
+    (720.0, 809.0),
+    (1162.0, 809.0),
     (720.0, 1000.0),
     (1224.0, 1000.0),
     (720.0, 580.0),
@@ -118,6 +121,15 @@ void main() {
                 .fixedLines,
             2,
           );
+          for (final (label, key) in [
+            ('Reversal Date', 'claim-reversal-date'),
+            ('Reason', 'claim-reversal-reason'),
+          ]) {
+            final frame = find.byKey(ValueKey(key));
+            await tester.ensureVisible(frame);
+            await tester.pumpAndSettle();
+            expectPopupFieldTitleAligned(tester, label, frame);
+          }
           final sizeLabel = '${width.toInt()}x${height.toInt()}';
           await captureUi(tester, 'Approved Claim $action Facts $sizeLabel');
           await tap(find.byKey(const ValueKey('claim-reversal-confirm')));
@@ -143,6 +155,35 @@ void main() {
           await tap(find.byKey(const ValueKey('claim-reversal-cancel')));
           expect(tables(w), baseline);
           expect(tester.takeException(), isNull);
+          await review();
+          final reasonField = find.byKey(
+            const ValueKey('claim-reversal-reason'),
+          );
+          await tester.ensureVisible(reasonField);
+          await tester.pumpAndSettle();
+          await enterAccountingText(
+            tester,
+            reasonField,
+            'Unsaved correction explanation',
+          );
+          await tester.sendKeyDownEvent(LogicalKeyboardKey.escape);
+          await tester.sendKeyUpEvent(LogicalKeyboardKey.escape);
+          await tester.pumpAndSettle();
+          expect(find.text('Discard Unsaved Changes?'), findsOneWidget);
+          expect(tables(w), baseline);
+          await captureUi(tester, 'Approved Claim $action Dirty $sizeLabel');
+          await tap(find.text('Keep Editing'));
+          expect(
+            tester
+                .widget<AccountingDescriptionField>(reasonField)
+                .controller!
+                .text,
+            'Unsaved correction explanation',
+          );
+          await tap(find.byKey(const ValueKey('claim-reversal-cancel')));
+          await tap(find.text('Discard'));
+          expect(find.text('$action Approved Claim'), findsNothing);
+          expect(tables(w), baseline);
           await review();
           await tester.ensureVisible(
             find.byKey(const ValueKey('claim-reversal-date')),

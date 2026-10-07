@@ -1,16 +1,94 @@
 import 'dart:io';
 
 import 'package:audyt/app/app.dart';
+import 'package:audyt/app/accounting_components.dart';
 import 'package:audyt/app/responsive.dart';
+import 'package:audyt/app/demo_company.dart';
 import 'package:audyt/core/money/money.dart';
 import 'package:audyt/features/accounting/application/accounting_workspace.dart';
 import 'package:audyt/features/accounting/presentation/accounting_home_page.dart';
+import 'package:audyt/features/accounting/presentation/widgets/accounting_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'claim_receipts_proposal_test.dart' show prepare, capture;
+
 void main() {
+  for (final width in [720.0, 1162.0, 1224.0, 2056.0]) {
+    for (final path in [
+      '/home',
+      '/expenses-vendors',
+      '/banking',
+      '/accounting',
+      '/reports',
+    ]) {
+      testWidgets('actual $path keeps date tabs and body together at $width', (
+        t,
+      ) async {
+        await prepare(t, width);
+        t.view.physicalSize = Size(width, 809);
+        final workspace = await createDemoWorkspace();
+        addTearDown(workspace.dispose);
+        await t.pumpWidget(
+          RepaintBoundary(
+            key: const ValueKey('workspace-capture'),
+            child: AudytApp(initialPath: path, workspace: workspace),
+          ),
+        );
+        await t.pumpAndSettle();
+        final shell = t.widget<AccountingPageShell>(
+          find.byType(AccountingPageShell),
+        );
+        final viewport = t.getRect(
+          find.byKey(const ValueKey('accounting-main-scroll')),
+        );
+        final content = t.getRect(find.byWidget(shell.child));
+        final inset = AccountingResponsive.pageInsetFor(width);
+        final expectedWidth = (viewport.width - inset * 2).clamp(
+          0.0,
+          AccountingResponsive.pageMaxWidth,
+        );
+        expect(content.width, closeTo(expectedWidth, .1));
+        expect(
+          content.left - viewport.left,
+          closeTo(viewport.right - content.right, .1),
+        );
+        final date = t.getRect(find.byKey(const ValueKey('global-date-box')));
+        final topBar = t.getRect(find.byKey(const ValueKey('global-top-bar')));
+        expect(date.left, closeTo(content.left, .1));
+        expect(topBar.left, closeTo(content.left, .1));
+        expect(topBar.right, closeTo(content.right, .1));
+        final header = t.widget<AccountingPageHeader>(
+          find.byType(AccountingPageHeader).first,
+        );
+        if (header.action != null) {
+          final action = t.getRect(find.byWidget(header.action!));
+          expect(action.right, closeTo(content.right, .1));
+          final tabs = find.byType(AccountingTabs);
+          if (tabs.evaluate().isNotEmpty) {
+            final band = t.getRect(tabs.first);
+            expect(band.left, closeTo(content.left, .1));
+            expect(band.right, lessThanOrEqualTo(action.right + .1));
+            if (width == 2056 && path == '/expenses-vendors') {
+              expect(
+                band.right,
+                lessThan(action.right - 1),
+                reason: 'A short grey band must not stretch to the right limit',
+              );
+            }
+          }
+        }
+        expect(t.takeException(), isNull);
+        await capture(
+          t,
+          'Shared Page Alignment ${path.substring(1)} ${width.toInt()}',
+        );
+      });
+    }
+  }
+
   testWidgets('navigation destinations preserve the expanded sidebar', (
     tester,
   ) async {

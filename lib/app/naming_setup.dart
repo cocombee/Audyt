@@ -4,6 +4,8 @@ import '../features/accounting/presentation/record_expense_page.dart';
 import '../features/accounting/application/workspace_backup.dart';
 import '../features/accounting/presentation/payment_method_directory_dialog.dart';
 import '../features/accounting/presentation/payment_terms_directory_dialog.dart';
+import '../features/sales/statement_settings_dialog.dart';
+import '../features/sales/sales_email_settings_dialog.dart';
 import 'workspace_backup_controls.dart';
 
 import 'package:audyt/core/documents/folder_placement_plan.dart';
@@ -199,6 +201,92 @@ Future<void> openAccountingSettings(
   ),
 );
 
+/// Verified Accounting Settings subset using the existing catalogue and form
+/// owner. Local preview choices have no preference, reporting or posting command.
+Future<void> showAccountingPreferencesPreview(BuildContext context) {
+  final original = settingsForms.firstWhere(
+    (form) => form.title == 'Accounting Preferences',
+  );
+  final fields = <DesignField>[
+    original.fields.firstWhere(
+      (field) => field.label == 'Financial Year Starts',
+    ),
+    const DesignField(
+      'Tax Year Starts',
+      options: ['January', 'Same As Financial Year'],
+    ),
+    original.fields.firstWhere((field) => field.label == 'Reporting Basis'),
+    const DesignField(
+      'Date Format',
+      options: [
+        'MM/DD/YYYY',
+        'DD/MM/YYYY',
+        'DD-MM-YYYY',
+        'YYYY-MM-DD',
+        'YYYY/MM/DD',
+        'MM-DD-YYYY',
+        'DD.MM.YYYY',
+        'MM.DD.YYYY',
+        'YYYY.MM.DD',
+      ],
+    ),
+    const DesignField(
+      'Currency Format',
+      options: [
+        r'$123,456.00',
+        r'123.456,00 $',
+        r'123 456,00 $',
+        r'$1,23,456.00',
+        r'$ 123.456,00',
+      ],
+    ),
+    const DesignField('Duplicate Cheque Warning', toggle: true),
+    const DesignField('Duplicate Supplier Bill Warning', toggle: true),
+    const DesignField('Duplicate Journal Warning', toggle: true),
+  ];
+  return AccountingDialog.showFixed<void>(
+    context: context,
+    contentWidth: 600,
+    builder: (_) => FrontendFormDialog(
+      contentWidth: 600,
+      previewConfirmationEnabled: false,
+      initial: const {
+        'Duplicate Cheque Warning': false,
+        'Duplicate Supplier Bill Warning': false,
+        'Duplicate Journal Warning': false,
+      },
+      leadingContentBuilder: (context, values, reviewing) => Padding(
+        padding: const EdgeInsets.only(bottom: accountingContentInset),
+        child: accountingHelperText(
+          context,
+          'Saving accounting preferences is not connected yet. '
+          'Preview choices do not change company settings, reports or posting rules.',
+        ),
+      ),
+      form: DesignForm(
+        original.title,
+        fields,
+        description:
+            'Accounting preferences preview. Saving is not connected yet.',
+        actionLabel: 'Save Accounting Preferences',
+      ),
+      reviewInformationRowsBuilder: (values) => [
+        for (final field in fields)
+          (
+            field.label,
+            field.toggle
+                ? values[field.label] == true
+                      ? 'Yes'
+                      : 'No'
+                : '${values[field.label] ?? ''}'.isEmpty
+                ? 'Not Set'
+                : '${values[field.label]}',
+          ),
+      ],
+    ),
+  );
+}
+
 class _AccountingSettingsDialog extends StatefulWidget {
   const _AccountingSettingsDialog({
     this.onAuditLog,
@@ -335,7 +423,10 @@ class _AccountingSettingsDialogState extends State<_AccountingSettingsDialog> {
     'Sales Preferences': Icons.receipt_outlined,
     'Purchase Preferences': Icons.shopping_bag_outlined,
     'Payment Methods': Icons.payment_outlined,
-    'Terms': Icons.event_note_outlined,
+    'Terms': Icons.calendar_today_outlined,
+    'Statements': Icons.receipt_outlined,
+    'Messages': Icons.fact_check_outlined,
+    'Online Delivery': Icons.fact_check_outlined,
     'Numbering & Document Appearance': Icons.description_outlined,
     'Document & Upload Preferences': Icons.file_upload_outlined,
     'Reminders & Approvals': Icons.notifications_none,
@@ -368,6 +459,7 @@ class _AccountingSettingsDialogState extends State<_AccountingSettingsDialog> {
                 for (final group in const <String, List<String>>{
                   'Business & Accounting': [
                     'Business Profile',
+                    'Accounting Preferences',
                     'Default Accounts',
                   ],
                   'Transactions': [
@@ -375,6 +467,9 @@ class _AccountingSettingsDialogState extends State<_AccountingSettingsDialog> {
                     'Purchase Preferences',
                     'Payment Methods',
                     'Terms',
+                    'Statements',
+                    'Messages',
+                    'Online Delivery',
                   ],
                   'Documents & Automation': [
                     'Numbering & Document Appearance',
@@ -436,87 +531,87 @@ class _AccountingSettingsDialogState extends State<_AccountingSettingsDialog> {
                                   );
                                 },
                               )
+                            : title == 'Accounting Preferences'
+                            ? AccountingSettingsActionBody(
+                                description: 'Configure financial periods and report presentation.',
+                                actionLabel: 'Manage Accounting Preferences',
+                                actionKey: const ValueKey(
+                                  'settings-manage-accounting-preferences',
+                                ),
+                                onPressed: () =>
+                                    showAccountingPreferencesPreview(context),
+                              )
                             : title == 'Payment Methods'
-                            ? Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  accountingHelperText(
-                                    context,
-                                    'Manage reusable payment methods.',
-                                  ),
-                                  const SizedBox(
-                                    height: accountingContentInset,
-                                  ),
-                                  AccountingButton.primary(
-                                    context,
-                                    key: const ValueKey(
-                                      'settings-manage-payment-methods',
+                            ? AccountingSettingsActionBody(
+                                description: 'Manage reusable payment methods.',
+                                actionLabel: 'Manage Payment Methods',
+                                actionKey: const ValueKey(
+                                  'settings-manage-payment-methods',
+                                ),
+                                onPressed: () =>
+                                    showPaymentMethodDirectoryPreview(
+                                      context,
+                                      demo: widget.demo,
+                                      currencyCode:
+                                          widget.workspace?.identity.currency ??
+                                          'MYR',
                                     ),
-                                    onPressed: () =>
-                                        showPaymentMethodDirectoryPreview(
-                                          context,
-                                          demo: widget.demo,
-                                          currencyCode:
-                                              widget
-                                                  .workspace
-                                                  ?.identity
-                                                  .currency ??
-                                              'MYR',
-                                        ),
-                                    child: const Text('Manage Payment Methods'),
-                                  ),
-                                ],
                               )
                             : title == 'Terms'
-                            ? Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  accountingHelperText(
-                                    context,
-                                    'Manage named payment terms.',
-                                  ),
-                                  const SizedBox(
-                                    height: accountingContentInset,
-                                  ),
-                                  AccountingButton.primary(
-                                    context,
-                                    key: const ValueKey(
-                                      'settings-manage-terms',
+                            ? AccountingSettingsActionBody(
+                                description: 'Manage named payment terms.',
+                                actionLabel: 'Manage Terms',
+                                actionKey: const ValueKey(
+                                  'settings-manage-terms',
+                                ),
+                                onPressed: () =>
+                                    showPaymentTermsDirectoryPreview(
+                                      context,
+                                      demo: widget.demo,
                                     ),
-                                    onPressed: () =>
-                                        showPaymentTermsDirectoryPreview(
-                                          context,
-                                          demo: widget.demo,
-                                        ),
-                                    child: const Text('Manage Terms'),
-                                  ),
-                                ],
+                              )
+                            : title == 'Statements'
+                            ? AccountingSettingsActionBody(
+                                description: 'Configure transaction detail and the ageing table.',
+                                actionLabel: 'Manage Statements',
+                                actionKey: const ValueKey(
+                                  'settings-manage-statements',
+                                ),
+                                onPressed: () =>
+                                    showStatementSettingsPreview(context),
+                              )
+                            : title == 'Messages' || title == 'Online Delivery'
+                            ? AccountingSettingsActionBody(
+                                description: title == 'Messages'
+                                    ? 'Configure email greetings and messages.'
+                                    : 'Configure sales email content and PDF attachments.',
+                                actionLabel: title == 'Messages'
+                                    ? 'Manage Messages'
+                                    : 'Manage Online Delivery',
+                                actionKey: ValueKey(
+                                  title == 'Messages'
+                                      ? 'settings-manage-messages'
+                                      : 'settings-manage-online-delivery',
+                                ),
+                                onPressed: () => title == 'Messages'
+                                    ? showSalesMessagesPreview(context)
+                                    : showOnlineDeliveryPreview(context),
                               )
                             : title == 'Users & Accountant Access'
-                            ? Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  accountingHelperText(
-                                    context,
-                                    'Manage invitations, approvals and roles on the Users page.',
-                                  ),
-                                  const SizedBox(height: 20),
-                                  AccountingButton.primary(
-                                    context,
-                                    key: const ValueKey(
-                                      'settings-manage-users',
-                                    ),
-                                    onPressed:
-                                        widget.proposalOnly ||
-                                            widget.onManageUsers == null
-                                        ? null
-                                        : () {
-                                            Navigator.pop(context);
-                                            widget.onManageUsers!();
-                                          },
-                                    child: const Text('Manage Users'),
-                                  ),
-                                ],
+                            ? AccountingSettingsActionBody(
+                                description: 'Manage invitations, approvals and roles on the Users page.',
+                                actionLabel: 'Manage Users',
+                                actionKey: const ValueKey(
+                                  'settings-manage-users',
+                                ),
+                                onPressed:
+                                    widget.proposalOnly ||
+                                        widget.onManageUsers == null
+                                    ? null
+                                    : () {
+                                        Navigator.pop(context);
+                                        widget.onManageUsers!();
+                                      },
                               )
                             : widget.workspace == null
                             ? accountingHelperText(
@@ -599,18 +694,25 @@ class _AccountingSettingsDialogState extends State<_AccountingSettingsDialog> {
                                             );
                                           }
                                         : null,
-                                    footerContent:
+                                    embeddedContentBuilder:
                                         title ==
                                                 'Backup & Export Preferences' &&
                                             !widget.proposalOnly
-                                        ? WorkspaceBackupControls(
-                                            backup: WorkspaceBackup(
-                                              widget.workspace!,
-                                            ),
-                                            onOpenRestored:
-                                                widget.onOpenRestored ??
-                                                (_) async {},
-                                          )
+                                        ? (content, fields, fieldWidth) =>
+                                              WorkspaceBackupControls(
+                                                preferenceFields: fields,
+                                                preferenceFieldsWidth:
+                                                    fieldWidth,
+                                                leadingContent: fields == null
+                                                    ? content
+                                                    : null,
+                                                backup: WorkspaceBackup(
+                                                  widget.workspace!,
+                                                ),
+                                                onOpenRestored:
+                                                    widget.onOpenRestored ??
+                                                    (_) async {},
+                                              )
                                         : null,
                                     accountOptions: _accountNames,
                                     embedded: true,

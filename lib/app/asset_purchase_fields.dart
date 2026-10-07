@@ -41,13 +41,25 @@ class _AssetPurchaseFieldsState extends State<AssetPurchaseFields> {
       'Residual Value',
     }.contains(name);
     final currency = CurrencyPresentation.fromCode(widget.currencyCode);
+    final label = monetary ? '$name (${currency.amountSymbol})' : name;
+    final guidance = switch (name) {
+      'Purchase Treatment' => 'Link this purchase to Fixed Assets. The original purchase remains linked; do not post it twice.',
+      'Tax Policy' => 'Book depreciation and tax capital allowances are separate policies; no tax rate is assumed.',
+      'Acquisition Cost' => 'Support the cost with the invoice and any ownership evidence in the purchase receipts.',
+      _ => null,
+    };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          monetary ? '$name (${currency.amountSymbol})' : name,
-          style: AccountingTypography.fieldLabel(context),
-        ),
+        if (guidance != null)
+          accountingFieldLabel(
+            context,
+            label,
+            alignToField: true,
+            guidance: guidance,
+          )
+        else
+          Text(label, style: AccountingTypography.fieldLabel(context)),
         const SizedBox(height: accountingFieldLabelGap),
         if (options.isNotEmpty)
           LayoutBuilder(
@@ -102,6 +114,7 @@ class _AssetPurchaseFieldsState extends State<AssetPurchaseFields> {
       fields: [
         AccountingOrdinaryFieldSlot(
           label: 'Purchase Treatment',
+          hasGuidance: true,
           choices: choices,
           builder: (_) => field('Purchase Treatment', options: choices),
         ),
@@ -116,10 +129,6 @@ class _AssetPurchaseFieldsState extends State<AssetPurchaseFields> {
       const Divider(height: 32),
       purchaseTreatment(),
       if (values['Purchase Treatment'] != 'Expense') ...[
-        const SizedBox(height: 12),
-        const Text(
-          'Link this purchase to Fixed Assets. Book depreciation and tax capital allowances are separate policies; no tax rate is assumed.',
-        ),
         const SizedBox(height: 16),
         LayoutBuilder(
           builder: (context, c) {
@@ -193,10 +202,6 @@ class _AssetPurchaseFieldsState extends State<AssetPurchaseFields> {
               ],
             );
           },
-        ),
-        const SizedBox(height: 12),
-        const Text(
-          'Use Supporting Documents below for the invoice and any ownership evidence. The original purchase will remain linked; it must not be posted twice.',
         ),
       ],
       const SizedBox(height: 16),

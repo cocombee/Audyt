@@ -1,4 +1,5 @@
 import 'package:audyt/features/accounting/application/accounting_workspace.dart';
+import 'package:audyt/features/accounting/application/workspace_backup.dart';
 
 import 'dart:io';
 import 'dart:ui' show PointerDeviceKind;
@@ -15,13 +16,24 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'journal_workspace_integration_test.dart' show captureUi;
+import 'sales_email_settings_dialog_test.dart' show host, keyed;
+import 'claim_receipts_proposal_test.dart' show tap;
+import 'restored_page_routes_test.dart' show tables;
+import '../support/accounting_test_finders.dart' show accountingCloseIcon;
 
 void main() {
   setUp(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(WorkspaceBackup.channel, (call) async {
+          if (call.method == 'info') return <String, Object?>{};
+          throw StateError('Unexpected backup mutation: ${call.method}');
+        });
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(namingSettingsChannel, (call) async => null);
   });
   tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(WorkspaceBackup.channel, null);
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(namingSettingsChannel, null);
   });
@@ -42,6 +54,116 @@ void main() {
           ),
         ))
         .load();
+  }
+
+  for (final width in [720.0, 1162.0]) {
+    testWidgets('actual Settings section family alignment at $width', (
+      t,
+    ) async {
+      const dedicated = [
+        (
+          'Payment Methods',
+          'Manage reusable payment methods.',
+          'settings-manage-payment-methods',
+          'payment-method-new',
+        ),
+        (
+          'Terms',
+          'Manage named payment terms.',
+          'settings-manage-terms',
+          'terms-new',
+        ),
+        (
+          'Statements',
+          'Configure transaction detail and the ageing table.',
+          'settings-manage-statements',
+          'design-field-Transaction Detail',
+        ),
+        (
+          'Messages',
+          'Configure email greetings and messages.',
+          'settings-manage-messages',
+          'design-field-Sales Form',
+        ),
+        (
+          'Online Delivery',
+          'Configure sales email content and PDF attachments.',
+          'settings-manage-online-delivery',
+          'design-field-Email Options',
+        ),
+        (
+          'Users & Accountant Access',
+          'Manage invitations, approvals and roles on the Users page.',
+          'settings-manage-users',
+          '',
+        ),
+      ];
+      for (final (title, help, buttonKey, routeKey) in dedicated) {
+        final w = await host(t, width);
+        final before = tables(w);
+        final section = keyed('settings-editor-$title');
+        await tap(t, section);
+        final helper = find.text(help);
+        await t.ensureVisible(find.text(title));
+        await t.pumpAndSettle();
+        final left = t.getRect(section).left + accountingContentInset;
+        expect(
+          find.descendant(
+            of: section,
+            matching: find.byType(AccountingSettingsActionBody),
+          ),
+          findsOneWidget,
+        );
+        expect(t.getRect(helper).left, closeTo(left, 0.01));
+        final button = keyed(buttonKey);
+        expect(t.getRect(button).left, closeTo(left, 0.01));
+        expect(t.getSize(button).width, lessThan(t.getSize(section).width / 2));
+        await captureUi(t, 'Settings $title Left Body ${width.toInt()}');
+        if (t.widget<ButtonStyleButton>(button).onPressed != null) {
+          await tap(t, button);
+          expect(keyed(routeKey), findsOneWidget);
+          await tap(t, accountingCloseIcon().last);
+          expect(find.text('Discard Unsaved Changes?'), findsNothing);
+        }
+        expect(tables(w), before);
+        expect(t.takeException(), isNull);
+        await t.pumpWidget(const SizedBox.shrink());
+      }
+      // Full-width editors and setup bodies retain their own internal field,
+      // switch, checkbox and footer layouts inside this shared section owner.
+      for (final title in [
+        'Business Profile',
+        'Default Accounts',
+        'Sales Preferences',
+        'Purchase Preferences',
+        'Numbering & Document Appearance',
+        'Reminders & Approvals',
+        'Backup & Export Preferences',
+        'Sign-In & Sessions',
+      ]) {
+        final w = await host(t, width);
+        final before = tables(w);
+        await tap(t, keyed('settings-editor-$title'));
+        await captureUi(t, 'Settings $title Existing Body ${width.toInt()}');
+        expect(tables(w), before);
+        expect(t.takeException(), isNull);
+        await t.pumpWidget(const SizedBox.shrink());
+      }
+      for (final (id, title) in [
+        ('expense', 'Expense Setup'),
+        ('invoice', 'Invoice Setup'),
+        ('voucher', 'Payment Voucher Setup'),
+        ('claims', 'Claims Setup'),
+      ]) {
+        final w = await host(t, width);
+        final before = tables(w);
+        await tap(t, keyed('settings-section-$id'));
+        await captureUi(t, 'Settings $title Existing Body ${width.toInt()}');
+        expect(tables(w), before);
+        expect(t.takeException(), isNull);
+        await t.pumpWidget(const SizedBox.shrink());
+      }
+    });
   }
 
   test('all catalog fields have brief guidance', () {
@@ -223,7 +345,7 @@ void main() {
   testWidgets('render the complete settings-only small icon family', (
     tester,
   ) async {
-    await tester.binding.setSurfaceSize(const Size(720, 1000));
+    await tester.binding.setSurfaceSize(const Size(720, 1200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await fonts();
     await tester.pumpWidget(
@@ -258,6 +380,9 @@ void main() {
                     Icons.assignment_turned_in_outlined,
                     Icons.checklist_outlined,
                     Icons.chevron_right,
+                    Icons.payment_outlined,
+                    Icons.calendar_today_outlined,
+                    Icons.fact_check_outlined,
                   ])
                     SizedBox(
                       height: 50,

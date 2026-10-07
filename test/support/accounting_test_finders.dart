@@ -5,6 +5,27 @@ import 'package:flutter_test/flutter_test.dart';
 Finder accountingCloseIcon() =>
     find.byWidgetPredicate((widget) => widget is AccountingCloseIcon);
 
+/// A framed popup control's title follows its painted frame's left edge.
+void expectPopupFieldTitleAligned(
+  WidgetTester tester,
+  String label,
+  Finder frame,
+) {
+  final title = find
+      .byWidgetPredicate(
+        (widget) =>
+            widget is Text &&
+            widget.data == label &&
+            widget.style?.fontWeight == FontWeight.w600,
+      )
+      .last;
+  expect(
+    tester.getTopLeft(title).dx,
+    closeTo(tester.getTopLeft(frame).dx, .1),
+    reason: '$label follows its field frame',
+  );
+}
+
 /// A page's first action stays content-fit on the title's right, not in filters.
 void expectHeaderPrimaryAction(WidgetTester tester, String actionKey) {
   final action = find.byKey(ValueKey(actionKey));

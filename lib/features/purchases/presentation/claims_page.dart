@@ -794,88 +794,122 @@ class _ClaimsPageState extends State<ClaimsPage> {
         .toList();
     if (!mounted) return null;
     final selected = List<EntityId?>.filled(fields.length, null);
+    var closing = false;
+    Future<void> closeReview(BuildContext dialogContext) async {
+      if (closing) return;
+      closing = true;
+      try {
+        final discard =
+            selected.every((id) => id == null) ||
+            await AccountingDialog.confirmDiscardChanges(dialogContext);
+        if (dialogContext.mounted && discard) {
+          Navigator.of(dialogContext).pop();
+        }
+      } finally {
+        closing = false;
+      }
+    }
+
     return showDialog<List<EntityId>>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
-        builder: (context, refresh) => AccountingDialog.alert(
-          context,
-          title: title,
-          formFooter: true,
-          content: SizedBox(
-            width: 440,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  AccountingOrdinaryFields(
-                    key: const ValueKey('claim-posting-ordinary-fields'),
-                    fields: [
-                      for (var i = 0; i < fields.length; i++)
-                        AccountingOrdinaryFieldSlot(
-                          label: fields[i].$1,
-                          hasGuidance: true,
-                          choices: [
-                            if (selected[i] == null) 'Select ${fields[i].$1}',
-                            for (final account in accounts.where(
-                              (a) => a.type == fields[i].$2,
-                            ))
-                              account.displayName,
-                          ],
-                          builder: (width) => Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              accountingFieldLabel(
-                                context,
-                                fields[i].$1,
-                                guidance: 'Review the ledger account before posting. Create missing accounts in Chart of Accounts.',
-                              ),
-                              const SizedBox(height: accountingFieldLabelGap),
-                              AccountingSelector<EntityId>(
-                                controlKey: ValueKey(
-                                  'claim-posting-account-$i',
-                                ),
-                                assignedWidth: width,
-                                options: [
-                                  for (final account in accounts.where(
-                                    (a) => a.type == fields[i].$2,
-                                  ))
-                                    AccountingSelectorOption(
-                                      value: account.id,
-                                      label: account.displayName,
+        builder: (context, refresh) => CallbackShortcuts(
+          bindings: {
+            const SingleActivator(LogicalKeyboardKey.escape): () =>
+                closeReview(context),
+          },
+          child: PopScope<List<EntityId>>(
+            canPop: false,
+            onPopInvokedWithResult: (didPop, _) {
+              if (!didPop) closeReview(context);
+            },
+            child: AccountingDialog.alert(
+              context,
+              title: title,
+              formFooter: true,
+              content: SizedBox(
+                width: 440,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AccountingOrdinaryFields(
+                        key: const ValueKey('claim-posting-ordinary-fields'),
+                        fields: [
+                          for (var i = 0; i < fields.length; i++)
+                            AccountingOrdinaryFieldSlot(
+                              label: fields[i].$1,
+                              hasGuidance: true,
+                              choices: [
+                                if (selected[i] == null)
+                                  'Select ${fields[i].$1}',
+                                for (final account in accounts.where(
+                                  (a) => a.type == fields[i].$2,
+                                ))
+                                  account.displayName,
+                              ],
+                              builder: (width) => Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  accountingFieldLabel(
+                                    context,
+                                    fields[i].$1,
+                                    alignToField: true,
+                                    guidance: 'Review the ledger account before posting. Create missing accounts in Chart of Accounts.',
+                                  ),
+                                  const SizedBox(
+                                    height: accountingFieldLabelGap,
+                                  ),
+                                  AccountingSelector<EntityId>(
+                                    controlKey: ValueKey(
+                                      'claim-posting-account-$i',
                                     ),
+                                    assignedWidth: width,
+                                    options: [
+                                      for (final account in accounts.where(
+                                        (a) => a.type == fields[i].$2,
+                                      ))
+                                        AccountingSelectorOption(
+                                          value: account.id,
+                                          label: account.displayName,
+                                        ),
+                                    ],
+                                    value: selected[i],
+                                    hintText: 'Select ${fields[i].$1}',
+                                    onChanged: (value) =>
+                                        refresh(() => selected[i] = value),
+                                  ),
                                 ],
-                                value: selected[i],
-                                hintText: 'Select ${fields[i].$1}',
-                                onChanged: (value) =>
-                                    refresh(() => selected[i] = value),
                               ),
-                            ],
-                          ),
-                        ),
+                            ),
+                        ],
+                      ),
                     ],
                   ),
-                ],
+                ),
               ),
+              actions: [
+                AccountingButton.outline(
+                  context,
+                  key: null,
+                  onPressed: () => closeReview(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+                AccountingButton.primary(
+                  context,
+                  key: null,
+                  onPressed: selected.any((v) => v == null)
+                      ? null
+                      : () => Navigator.pop(
+                          dialogContext,
+                          selected.cast<EntityId>(),
+                        ),
+                  child: const Text('Continue'),
+                ),
+              ],
             ),
           ),
-          actions: [
-            AccountingButton.outline(
-              context,
-              key: null,
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            AccountingButton.primary(
-              context,
-              key: null,
-              onPressed: selected.any((v) => v == null)
-                  ? null
-                  : () =>
-                        Navigator.pop(dialogContext, selected.cast<EntityId>()),
-              child: const Text('Continue'),
-            ),
-          ],
         ),
       ),
     );
@@ -985,6 +1019,24 @@ class _ClaimsPageState extends State<ClaimsPage> {
     final requestId = EntityId.random();
     String? error;
     var committing = false;
+    var closing = false;
+    final openingDate = date.text;
+    Future<void> closeCorrection(BuildContext dialogContext) async {
+      if (committing || closing) return;
+      closing = true;
+      try {
+        final dirty = date.text != openingDate || reason.text.isNotEmpty;
+        final discard =
+            !dirty ||
+            await AccountingDialog.confirmDiscardChanges(dialogContext);
+        if (dialogContext.mounted && discard) {
+          Navigator.of(dialogContext).pop(false);
+        }
+      } finally {
+        closing = false;
+      }
+    }
+
     DialogRoute<bool>? route;
     try {
       final original = await workspace.database.getJournal(recognition);
@@ -1007,67 +1059,85 @@ class _ClaimsPageState extends State<ClaimsPage> {
       route = DialogRoute<bool>(
         context: context,
         builder: (dialogContext) => StatefulBuilder(
-          builder: (context, refresh) => AccountingDialog.alert(
-            context,
-            key: ValueKey('claim-recognition-correction-${claim.id}'),
-            title: returning ? 'Return Approved Claim' : 'Void Approved Claim',
-            formFooter: true,
-            content: SizedBox(
-              width: 480,
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SelectionArea(
-                      child: AccountingInformationRows(
-                        rows: [
-                          ('Claimant', claim.claimantName),
-                          ('Payee', claim.vendorName),
-                          (
-                            'Claim Amount',
-                            formatAccountingMoney(context, claim.amount),
-                          ),
-                          ('Business Purpose', claim.businessPurpose),
-                          ('Original Journal', recognition.value),
-                          (
-                            'Original Posting Date',
-                            formatAccountingInputDate(original.entry.date),
-                          ),
-                          for (final line in original.entry.lines)
-                            (
-                              'Reversal ${line.isDebit ? 'Credit' : 'Debit'} · ${accounts[line.accountId]!.displayName}',
-                              formatAccountingMoney(context, line.amount),
-                            ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    AccountingOrdinaryFields(
-                      key: const ValueKey('claim-reversal-ordinary-fields'),
-                      fields: [
-                        AccountingOrdinaryFieldSlot(
-                          label: 'Reversal Date',
-                          contentSample: date.text,
-                          date: true,
-                          hasGuidance: true,
-                          builder: (_) => Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              accountingFieldLabel(
-                                context,
-                                'Reversal Date',
-                                guidance: 'Reverse the posted expense and unpaid liability on this date. The original posting stays in history.',
+          builder: (context, refresh) => CallbackShortcuts(
+            bindings: {
+              const SingleActivator(LogicalKeyboardKey.escape): () =>
+                  closeCorrection(context),
+            },
+            child: PopScope<bool>(
+              canPop: false,
+              onPopInvokedWithResult: (didPop, _) {
+                if (!didPop) closeCorrection(context);
+              },
+              child: AccountingDialog.alert(
+                context,
+                key: ValueKey('claim-recognition-correction-${claim.id}'),
+                title: returning
+                    ? 'Return Approved Claim'
+                    : 'Void Approved Claim',
+                formFooter: true,
+                content: SizedBox(
+                  width: 480,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SelectionArea(
+                          child: AccountingInformationRows(
+                            rows: [
+                              ('Claimant', claim.claimantName),
+                              ('Payee', claim.vendorName),
+                              (
+                                'Claim Amount',
+                                formatAccountingMoney(context, claim.amount),
                               ),
-                              const SizedBox(height: accountingFieldLabelGap),
-                              TextField(
-                                key: const ValueKey('claim-reversal-date'),
-                                controller: date,
-                                enabled: !committing,
-                                inputFormatters: const [DateInputFormatter()],
-                                decoration:
-                                    accountingSingleLineInputDecoration(context)
-                                        .copyWith(
+                              ('Business Purpose', claim.businessPurpose),
+                              ('Original Journal', recognition.value),
+                              (
+                                'Original Posting Date',
+                                formatAccountingInputDate(original.entry.date),
+                              ),
+                              for (final line in original.entry.lines)
+                                (
+                                  'Reversal ${line.isDebit ? 'Credit' : 'Debit'} · ${accounts[line.accountId]!.displayName}',
+                                  formatAccountingMoney(context, line.amount),
+                                ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        AccountingOrdinaryFields(
+                          key: const ValueKey('claim-reversal-ordinary-fields'),
+                          fields: [
+                            AccountingOrdinaryFieldSlot(
+                              label: 'Reversal Date',
+                              contentSample: date.text,
+                              date: true,
+                              hasGuidance: true,
+                              builder: (_) => Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  accountingFieldLabel(
+                                    context,
+                                    'Reversal Date',
+                                    alignToField: true,
+                                    guidance: 'Reverse the posted expense and unpaid liability on this date. The original posting stays in history.',
+                                  ),
+                                  const SizedBox(
+                                    height: accountingFieldLabelGap,
+                                  ),
+                                  TextField(
+                                    key: const ValueKey('claim-reversal-date'),
+                                    controller: date,
+                                    enabled: !committing,
+                                    inputFormatters: const [
+                                      DateInputFormatter(),
+                                    ],
+                                    decoration:
+                                        accountingSingleLineInputDecoration(
+                                          context,
+                                        ).copyWith(
                                           suffixIcon: accountingCalendarButton(
                                             context,
                                             controller: date,
@@ -1083,91 +1153,97 @@ class _ClaimsPageState extends State<ClaimsPage> {
                                                 refresh(() => error = null),
                                           ),
                                         ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
+                        const SizedBox(height: AccountingResponsive.groupGap),
+                        accountingFieldLabel(
+                          context,
+                          'Reason',
+                          alignToField: true,
+                          guidance: returning
+                              ? 'Explain the correction before returning this claim. Its expense and unpaid liability will be reversed; the original posting stays in history.'
+                              : 'Explain why this claim is void. Its expense and unpaid liability will be reversed, and it cannot be reimbursed. The original posting stays in history.',
+                        ),
+                        const SizedBox(height: accountingFieldLabelGap),
+                        AccountingDescriptionField(
+                          key: const ValueKey('claim-reversal-reason'),
+                          controller: reason,
+                          onEscape: () => closeCorrection(context),
+                          enabled: !committing,
+                          maxLength: 500,
+                          fixedLines: 2,
+                          decoration: accountingSingleLineInputDecoration(
+                            context,
+                          ).copyWith(counterText: ''),
+                        ),
+                        if (error != null) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            error!,
+                            style: TextStyle(
+                              color: AccountingTheme.of(context).destructive,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
-                    const SizedBox(height: AccountingResponsive.groupGap),
-                    accountingFieldLabel(
-                      context,
-                      'Reason',
-                      guidance: returning
-                          ? 'Explain the correction before returning this claim. Its expense and unpaid liability will be reversed; the original posting stays in history.'
-                          : 'Explain why this claim is void. Its expense and unpaid liability will be reversed, and it cannot be reimbursed. The original posting stays in history.',
-                    ),
-                    const SizedBox(height: accountingFieldLabelGap),
-                    AccountingDescriptionField(
-                      key: const ValueKey('claim-reversal-reason'),
-                      controller: reason,
-                      enabled: !committing,
-                      maxLength: 500,
-                      fixedLines: 2,
-                      decoration: accountingSingleLineInputDecoration(context)
-                          .copyWith(counterText: ''),
-                    ),
-                    if (error != null) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        error!,
-                        style: TextStyle(
-                          color: AccountingTheme.of(context).destructive,
-                        ),
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
+                actions: [
+                  AccountingButton.ghost(
+                    context,
+                    key: const ValueKey('claim-reversal-cancel'),
+                    onPressed: committing
+                        ? null
+                        : () => closeCorrection(dialogContext),
+                    child: const Text('Cancel'),
+                  ),
+                  AccountingButton.destructive(
+                    context,
+                    key: const ValueKey('claim-reversal-confirm'),
+                    onPressed: committing
+                        ? null
+                        : () {
+                            final parsed = parseAccountingInputDate(date.text);
+                            if (parsed == null || reason.text.trim().isEmpty) {
+                              refresh(
+                                () => error =
+                                    'Enter a valid reversal date and a reason.',
+                              );
+                              return;
+                            }
+                            refresh(() {
+                              committing = true;
+                              error = null;
+                            });
+                            try {
+                              workspace.reverseClaimRecognition(
+                                reviewedClaim: claim,
+                                requestId: requestId,
+                                expectedRecognitionJournalId: recognition,
+                                decision: decision,
+                                reversedOn: accountingCalendarDate(parsed),
+                                reason: reason.text,
+                                changedAt: DateTime.now().toUtc(),
+                              );
+                              Navigator.pop(dialogContext, true);
+                            } on Object catch (exception) {
+                              refresh(() {
+                                committing = false;
+                                error =
+                                    'Claim could not be corrected: $exception';
+                              });
+                            }
+                          },
+                    child: Text(returning ? 'Return Claim' : 'Void Claim'),
+                  ),
+                ],
               ),
             ),
-            actions: [
-              AccountingButton.ghost(
-                context,
-                key: const ValueKey('claim-reversal-cancel'),
-                onPressed: committing
-                    ? null
-                    : () => Navigator.pop(dialogContext, false),
-                child: const Text('Cancel'),
-              ),
-              AccountingButton.destructive(
-                context,
-                key: const ValueKey('claim-reversal-confirm'),
-                onPressed: committing
-                    ? null
-                    : () {
-                        final parsed = parseAccountingInputDate(date.text);
-                        if (parsed == null || reason.text.trim().isEmpty) {
-                          refresh(
-                            () => error =
-                                'Enter a valid reversal date and a reason.',
-                          );
-                          return;
-                        }
-                        refresh(() {
-                          committing = true;
-                          error = null;
-                        });
-                        try {
-                          workspace.reverseClaimRecognition(
-                            reviewedClaim: claim,
-                            requestId: requestId,
-                            expectedRecognitionJournalId: recognition,
-                            decision: decision,
-                            reversedOn: accountingCalendarDate(parsed),
-                            reason: reason.text,
-                            changedAt: DateTime.now().toUtc(),
-                          );
-                          Navigator.pop(dialogContext, true);
-                        } on Object catch (exception) {
-                          refresh(() {
-                            committing = false;
-                            error = 'Claim could not be corrected: $exception';
-                          });
-                        }
-                      },
-                child: Text(returning ? 'Return Claim' : 'Void Claim'),
-              ),
-            ],
           ),
         ),
       );
@@ -1297,86 +1373,122 @@ class _ClaimsPageState extends State<ClaimsPage> {
             .toList();
         if (!mounted) return;
         String? selected;
+        var closingAccount = false;
+        Future<void> closeAccount(BuildContext dialogContext) async {
+          if (closingAccount) return;
+          closingAccount = true;
+          try {
+            final discard =
+                selected == null ||
+                await AccountingDialog.confirmDiscardChanges(dialogContext);
+            if (dialogContext.mounted && discard) {
+              Navigator.of(dialogContext).pop();
+            }
+          } finally {
+            closingAccount = false;
+          }
+        }
+
         paymentAccountId = await showDialog<String>(
           context: context,
           builder: (dialogContext) => StatefulBuilder(
-            builder: (context, refresh) => AccountingDialog.alert(
-              context,
-              title: 'Claim Payment Account',
-              formFooter: true,
-              content: payments.isEmpty
-                  ? const Text(
-                      'In Banking, link a bank or cash payment account to an active ledger account in the claim currency.',
-                    )
-                  : SizedBox(
-                      width: accountingSelectorMinimumWidth(context, [
-                        if (selected == null)
-                          accountingSelectorHintText('Select Payment Account'),
-                        for (final p in payments) p.displayLabel,
-                      ]),
-                      child: AccountingOrdinaryFields(
-                        key: const ValueKey('claim-payment-ordinary-fields'),
-                        fields: [
-                          AccountingOrdinaryFieldSlot(
-                            label: 'Payment Account',
-                            hasGuidance: true,
-                            choices: [
-                              if (selected == null)
-                                accountingSelectorHintText(
-                                  'Select Payment Account',
-                                ),
-                              for (final p in payments) p.displayLabel,
-                            ],
-                            builder: (width) => Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                accountingFieldLabel(
-                                  context,
-                                  'Payment Account',
-                                  guidance: 'Choose a bank or cash account in the claim currency, linked to an active ledger account in Banking. Card accounts are excluded.',
-                                ),
-                                const SizedBox(height: accountingFieldLabelGap),
-                                AccountingSelector<String>(
-                                  controlKey: const ValueKey(
-                                    'claim-payment-account',
-                                  ),
-                                  assignedWidth: width,
-                                  options: [
-                                    for (final p in payments)
-                                      AccountingSelectorOption(
-                                        value: p.id,
-                                        label: p.displayLabel,
-                                      ),
-                                  ],
-                                  value: selected,
-                                  hintText: accountingSelectorHintText(
-                                    'Select Payment Account',
-                                  ),
-                                  onChanged: (value) =>
-                                      refresh(() => selected = value),
-                                ),
-                              ],
+            builder: (context, refresh) => CallbackShortcuts(
+              bindings: {
+                const SingleActivator(LogicalKeyboardKey.escape): () =>
+                    closeAccount(context),
+              },
+              child: PopScope<String>(
+                canPop: false,
+                onPopInvokedWithResult: (didPop, _) {
+                  if (!didPop) closeAccount(context);
+                },
+                child: AccountingDialog.alert(
+                  context,
+                  title: 'Claim Payment Account',
+                  formFooter: true,
+                  content: payments.isEmpty
+                      ? const Text(
+                          'In Banking, link a bank or cash payment account to an active ledger account in the claim currency.',
+                        )
+                      : SizedBox(
+                          width: accountingSelectorMinimumWidth(context, [
+                            if (selected == null)
+                              accountingSelectorHintText(
+                                'Select Payment Account',
+                              ),
+                            for (final p in payments) p.displayLabel,
+                          ]),
+                          child: AccountingOrdinaryFields(
+                            key: const ValueKey(
+                              'claim-payment-ordinary-fields',
                             ),
+                            fields: [
+                              AccountingOrdinaryFieldSlot(
+                                label: 'Payment Account',
+                                hasGuidance: true,
+                                choices: [
+                                  if (selected == null)
+                                    accountingSelectorHintText(
+                                      'Select Payment Account',
+                                    ),
+                                  for (final p in payments) p.displayLabel,
+                                ],
+                                builder: (width) => Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    accountingFieldLabel(
+                                      context,
+                                      'Payment Account',
+                                      alignToField: true,
+                                      guidance: 'Choose a bank or cash account in the claim currency, linked to an active ledger account in Banking. Card accounts are excluded.',
+                                    ),
+                                    const SizedBox(
+                                      height: accountingFieldLabelGap,
+                                    ),
+                                    AccountingSelector<String>(
+                                      controlKey: const ValueKey(
+                                        'claim-payment-account',
+                                      ),
+                                      assignedWidth: width,
+                                      options: [
+                                        for (final p in payments)
+                                          AccountingSelectorOption(
+                                            value: p.id,
+                                            label: p.displayLabel,
+                                          ),
+                                      ],
+                                      value: selected,
+                                      hintText: accountingSelectorHintText(
+                                        'Select Payment Account',
+                                      ),
+                                      onChanged: (value) =>
+                                          refresh(() => selected = value),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                  actions: [
+                    AccountingButton.secondary(
+                      context,
+                      key: const ValueKey('cancel-claim-account'),
+                      child: const Text('Cancel'),
+                      onPressed: () => closeAccount(dialogContext),
                     ),
-              actions: [
-                AccountingButton.secondary(
-                  context,
-                  key: const ValueKey('cancel-claim-account'),
-                  child: const Text('Cancel'),
-                  onPressed: () => Navigator.pop(dialogContext),
+                    AccountingButton.primary(
+                      context,
+                      key: const ValueKey('confirm-claim-account'),
+                      child: const Text('Continue'),
+                      onPressed: selected == null
+                          ? null
+                          : () => Navigator.pop(dialogContext, selected),
+                    ),
+                  ],
                 ),
-                AccountingButton.primary(
-                  context,
-                  key: const ValueKey('confirm-claim-account'),
-                  child: const Text('Continue'),
-                  onPressed: selected == null
-                      ? null
-                      : () => Navigator.pop(dialogContext, selected),
-                ),
-              ],
+              ),
             ),
           ),
         );
@@ -1389,92 +1501,125 @@ class _ClaimsPageState extends State<ClaimsPage> {
           throw StateError('The payment account needs a ledger link.');
         }
       }
+      var closingReference = false;
+      Future<void> closeReference(BuildContext dialogContext) async {
+        if (closingReference) return;
+        closingReference = true;
+        try {
+          final discard =
+              reference.isEmpty ||
+              await AccountingDialog.confirmDiscardChanges(dialogContext);
+          if (dialogContext.mounted && discard) {
+            Navigator.of(dialogContext).pop(false);
+          }
+        } finally {
+          closingReference = false;
+        }
+      }
+
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => StatefulBuilder(
-          builder: (context, refresh) => AccountingDialog.alert(
-            context,
-            key: const ValueKey('claims-batch-confirmation'),
-            title: 'Record selected claim payments',
-            formFooter: true,
-            content: SizedBox(
-              width: 480,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${claims.length} claims · ${formatAccountingMoney(context, total)}',
-                    ),
-                    const SizedBox(height: 12),
-                    for (final claim in claims)
-                      AccountingRecordRow(
-                        key: ValueKey('claim-allocation-${claim.id.value}'),
-                        topRightInfo: true,
-                        title: claim.claimantName,
-                        details: Text(
-                          '${claim.vendorName} · ${claim.category}${claim.businessPurpose.isEmpty ? '' : '\n${claim.businessPurpose}'}',
-                          style: AccountingTypography.helper(context),
+          builder: (context, refresh) => CallbackShortcuts(
+            bindings: {
+              const SingleActivator(LogicalKeyboardKey.escape): () =>
+                  closeReference(context),
+            },
+            child: PopScope<bool>(
+              canPop: false,
+              onPopInvokedWithResult: (didPop, _) {
+                if (!didPop) closeReference(context);
+              },
+              child: AccountingDialog.alert(
+                context,
+                key: const ValueKey('claims-batch-confirmation'),
+                title: 'Record selected claim payments',
+                formFooter: true,
+                content: SizedBox(
+                  width: 480,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${claims.length} claims · ${formatAccountingMoney(context, total)}',
                         ),
-                        trailing: Text(
-                          formatAccountingMoney(context, claim.amount),
-                        ),
-                      ),
-                    const SizedBox(height: 12),
-                    AccountingOrdinaryFields(
-                      key: const ValueKey('claims-batch-ordinary-fields'),
-                      fields: [
-                        AccountingOrdinaryFieldSlot(
-                          label: 'Payment Reference',
-                          hasGuidance: true,
-                          contentSample: reference.isEmpty
-                              ? '0000000000'
-                              : reference,
-                          builder: (_) => Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              accountingFieldLabel(
-                                context,
-                                'Payment Reference *',
-                                guidance: 'Record reimbursements already made. Each claim retains its category and receipt. Different recipients remain separate; no bank transfer is sent.',
-                              ),
-                              const SizedBox(height: accountingFieldLabelGap),
-                              TextField(
-                                key: const ValueKey('claims-batch-reference'),
-                                maxLength: 120,
-                                decoration: accountingInputDecoration(
-                                  context,
-                                  hintText: 'Payment Reference',
-                                ).copyWith(counterText: ''),
-                                onChanged: (value) =>
-                                    refresh(() => reference = value),
-                              ),
-                            ],
+                        const SizedBox(height: 12),
+                        for (final claim in claims)
+                          AccountingRecordRow(
+                            key: ValueKey('claim-allocation-${claim.id.value}'),
+                            topRightInfo: true,
+                            title: claim.claimantName,
+                            details: Text(
+                              '${claim.vendorName} · ${claim.category}${claim.businessPurpose.isEmpty ? '' : '\n${claim.businessPurpose}'}',
+                              style: AccountingTypography.helper(context),
+                            ),
+                            trailing: Text(
+                              formatAccountingMoney(context, claim.amount),
+                            ),
                           ),
+                        const SizedBox(height: 12),
+                        AccountingOrdinaryFields(
+                          key: const ValueKey('claims-batch-ordinary-fields'),
+                          fields: [
+                            AccountingOrdinaryFieldSlot(
+                              label: 'Payment Reference',
+                              hasGuidance: true,
+                              contentSample: reference.isEmpty
+                                  ? '0000000000'
+                                  : reference,
+                              builder: (_) => Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  accountingFieldLabel(
+                                    context,
+                                    'Payment Reference *',
+                                    alignToField: true,
+                                    guidance: 'Record reimbursements already made. Each claim retains its category and receipt. Different recipients remain separate; no bank transfer is sent.',
+                                  ),
+                                  const SizedBox(
+                                    height: accountingFieldLabelGap,
+                                  ),
+                                  TextField(
+                                    key: const ValueKey(
+                                      'claims-batch-reference',
+                                    ),
+                                    maxLength: 120,
+                                    decoration: accountingInputDecoration(
+                                      context,
+                                      hintText: 'Payment Reference',
+                                    ).copyWith(counterText: ''),
+                                    onChanged: (value) =>
+                                        refresh(() => reference = value),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
+                actions: [
+                  AccountingButton.outline(
+                    context,
+                    key: null,
+                    onPressed: () => closeReference(dialogContext),
+                    child: const Text('Cancel'),
+                  ),
+                  AccountingButton.primary(
+                    context,
+                    key: const ValueKey('claims-batch-confirm'),
+                    onPressed: reference.trim().isEmpty
+                        ? null
+                        : () => Navigator.pop(dialogContext, true),
+                    child: const Text('Record Payments'),
+                  ),
+                ],
               ),
             ),
-            actions: [
-              AccountingButton.outline(
-                context,
-                key: null,
-                onPressed: () => Navigator.pop(dialogContext, false),
-                child: const Text('Cancel'),
-              ),
-              AccountingButton.primary(
-                context,
-                key: const ValueKey('claims-batch-confirm'),
-                onPressed: reference.trim().isEmpty
-                    ? null
-                    : () => Navigator.pop(dialogContext, true),
-                child: const Text('Record Payments'),
-              ),
-            ],
           ),
         ),
       );

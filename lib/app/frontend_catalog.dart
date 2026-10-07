@@ -1030,7 +1030,7 @@ const frontendAreas = <String, List<DesignForm>>{
       ],
       evidence: true,
       actionLabel: 'Record Cheque',
-      description: 'Track physical cheques and link their payments. A cheque copy records the instrument; bank evidence confirms clearance. Issue, deposit or stop a cheque through your bank.',
+      description: 'Track physical cheques and link their payments.',
     ),
   ],
   'reports': [

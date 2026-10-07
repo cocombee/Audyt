@@ -85,7 +85,8 @@ void main() {
     expect(bell.left - search.right, greaterThanOrEqualTo(20));
     expect(profile.left - badge.right, greaterThanOrEqualTo(20));
     expect(profile.left - bellButton.right, closeTo(24, 0.1));
-    expect(topBar.right - profile.right, closeTo(24, 0.1));
+    // The shared page container now owns the outer inset.
+    expect(topBar.right - profile.right, closeTo(0, 0.1));
     expect(find.byTooltip('Notifications'), findsNothing);
     expect(
       (bellBadge.decoration! as BoxDecoration).color,
@@ -114,7 +115,7 @@ void main() {
               .getRect(find.byKey(const ValueKey('profile-menu-profile')))
               .right,
       // Profile choices use the shared selector's 4px popup inset.
-      closeTo(28, 0.1),
+      closeTo(4, 0.1),
     );
     expect(find.byKey(const ValueKey('profile-menu-google')), findsOneWidget);
     expect(

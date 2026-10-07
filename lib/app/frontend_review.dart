@@ -1,4 +1,5 @@
 import 'field_row_trial.dart';
+import 'field_guidance.dart';
 import '../features/purchases/domain/bill_tax_selection.dart';
 import '../features/accounting/domain/company_tax_rate.dart';
 import 'accounting_description_field.dart';
@@ -1223,6 +1224,7 @@ class FrontendFormDialog extends StatefulWidget {
     this.onCommit,
     this.lineDefaults = const {},
     this.footerContent,
+    this.embeddedContentBuilder,
     this.additionalContentBuilder,
     this.leadingContentBuilder,
     this.informationRows = const [],
@@ -1255,6 +1257,16 @@ class FrontendFormDialog extends StatefulWidget {
   final bool previewConfirmationEnabled;
   final Map<String, String> lineDefaults;
   final Widget? footerContent;
+
+  /// An embedded owner may compose its ordinary fields with a labelled external
+  /// control. Null slots mean read-only review; original content stays available.
+  /// No opt-in is inferred for other fields, buttons, popouts or page owners.
+  final Widget Function(
+    Widget content,
+    List<AccountingOrdinaryFieldSlot>? fields,
+    double fieldWidth,
+  )?
+  embeddedContentBuilder;
 
   /// Explicit staged content belonging to this form. Review is read-only;
   /// exact facts must be included by reviewInformationRowsBuilder.
@@ -1355,6 +1367,29 @@ class _FrontendFormDialogState extends State<FrontendFormDialog> {
   final _editingFocus = FocusScopeNode();
   late final String _openingInput;
   bool _closePromptOpen = false;
+  String? _requiredReviewWarning;
+
+  // Presence warnings follow the edited fields. Other command/validation errors
+  // retain their own lifecycle and must never be cleared by an unrelated edit.
+  void _refreshRequiredReviewWarning() {
+    if (_requiredReviewWarning == null) return;
+    if (_error != _requiredReviewWarning) {
+      _requiredReviewWarning = null;
+      return;
+    }
+    final missing = _transferFields(_form.fields)
+        .where(
+          (field) =>
+              field.required && '${_values[field.label] ?? ''}'.trim().isEmpty,
+        )
+        .map((field) => field.label)
+        .toList();
+    _requiredReviewWarning = missing.isEmpty
+        ? null
+        : 'Complete ${missing.join(', ')} before reviewing.';
+    _error = _requiredReviewWarning;
+  }
+
   bool get _ordinaryPopupLayout =>
       (widget.fieldLayoutOwner ??
           (widget.embedded
@@ -2575,6 +2610,7 @@ class _FrontendFormDialogState extends State<FrontendFormDialog> {
                 _values['State / Region'] = '';
                 _controllers.remove('State / Region')?.dispose();
               }
+              _refreshRequiredReviewWarning();
             }),
             hintText: 'Select ${_displayLabel(label)}',
             alwaysSearchable: label == 'Payee' && widget.onSearchPayees != null,
@@ -2602,6 +2638,7 @@ class _FrontendFormDialogState extends State<FrontendFormDialog> {
                   onChanged: (value) => setState(() {
                     _values[label] = value;
                     _savedSettings = false;
+                    _refreshRequiredReviewWarning();
                   }),
                 );
               }
@@ -2651,6 +2688,7 @@ class _FrontendFormDialogState extends State<FrontendFormDialog> {
                     if (label == 'Date') _syncQuotationExpiry();
                   }
                   _savedSettings = false;
+                  _refreshRequiredReviewWarning();
                 }),
                 decoration:
                     accountingSingleLineInputDecoration(
@@ -2678,6 +2716,7 @@ class _FrontendFormDialogState extends State<FrontendFormDialog> {
                                   if (label == 'Date') _syncQuotationExpiry();
                                 }
                                 _savedSettings = false;
+                                _refreshRequiredReviewWarning();
                               }),
                             )
                           : null,
@@ -5341,9 +5380,10 @@ class _FrontendFormDialogState extends State<FrontendFormDialog> {
             }
             setState(() {
               _preparingReview = false;
-              _error = missing.isEmpty
+              _requiredReviewWarning = missing.isEmpty
                   ? null
                   : 'Complete ${missing.join(', ')} before reviewing.';
+              _error = _requiredReviewWarning;
               _review = missing.isEmpty;
               _resolvedReviewRows = resolvedRows;
               _resolvedReviewDocuments = resolvedDocuments;
@@ -5475,7 +5515,28 @@ class _FrontendFormDialogState extends State<FrontendFormDialog> {
                 : 'Save changes to apply them to this company.',
           ),
           const SizedBox(height: 16),
-          content,
+          widget.embeddedContentBuilder == null
+              ? content
+              : widget.embeddedContentBuilder!(
+                  content,
+                  _review
+                      ? null
+                      : [
+                          for (final field in _form.fields)
+                            AccountingOrdinaryFieldSlot(
+                              label: field.label,
+                              choices: _selectorOptions(field)
+                                  .map((option) => option.label)
+                                  .toList(),
+                              hasGuidance:
+                                  accountingFieldGuidance(field.label) != null,
+                              minimumControlWidth: _minimumFieldWidth(field),
+                              builder: (assigned) =>
+                                  _field(field, assignedWidth: assigned),
+                            ),
+                        ],
+                  width,
+                ),
           if (widget.footerContent != null) widget.footerContent!,
           const SizedBox(height: accountingContentInset),
           if ((widget.embedded && _ordinaryPopupLayout))
@@ -6210,27 +6271,26 @@ class _FrontendAreaPageState extends State<FrontendAreaPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            24,
-            AccountingResponsive.tabStripTopInset,
-            24,
-            0,
-          ),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: AccountingTheme.of(context).muted,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: AccountingTabs(
-                key: ValueKey('area-tabs-${widget.area}'),
-                labels: labels,
-                notificationCounts: widget.notificationCounts,
-                selectedIndex: _selected,
-                keyPrefix: 'preview-tab-${widget.area}',
-                onChanged: (index) => setState(() => _selected = index),
+        AccountingPageAlignment(
+          child: Padding(
+            padding: const EdgeInsets.only(
+              top: AccountingResponsive.tabStripTopInset,
+            ),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AccountingTheme.of(context).muted,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: AccountingTabs(
+                  key: ValueKey('area-tabs-${widget.area}'),
+                  labels: labels,
+                  notificationCounts: widget.notificationCounts,
+                  selectedIndex: _selected,
+                  keyPrefix: 'preview-tab-${widget.area}',
+                  onChanged: (index) => setState(() => _selected = index),
+                ),
               ),
             ),
           ),

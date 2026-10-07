@@ -139,10 +139,18 @@ class _LinkedRecordReviewState extends State<LinkedRecordReview> {
                     'Example sale is fully paid. An unpaid invoice needs a credit adjustment, not a cash refund.',
                   ),
                 const SizedBox(height: 16),
-                Text(
-                  '$_verb Amount (${CurrencyPresentation.fromCode('MYR').amountSymbol})',
-                  style: AccountingTypography.fieldLabel(context),
-                ),
+                if (_credit)
+                  accountingFieldLabel(
+                    context,
+                    '$_verb Amount (${CurrencyPresentation.fromCode('MYR').amountSymbol})',
+                    alignToField: true,
+                    guidance: 'Credit reduces the source balance. It does not itself return money. Source line and tax allocations must be reviewed before posting.',
+                  )
+                else
+                  Text(
+                    '$_verb Amount (${CurrencyPresentation.fromCode('MYR').amountSymbol})',
+                    style: AccountingTypography.fieldLabel(context),
+                  ),
                 const SizedBox(height: 8),
                 TextField(
                   key: const ValueKey('linked-amount'),
@@ -169,16 +177,26 @@ class _LinkedRecordReviewState extends State<LinkedRecordReview> {
                   onChanged: (_) => setState(() => _reviewed = false),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Existing Evidence',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Existing Evidence',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    SizedBox(width: 4),
+                    AccountingFieldHelp(
+                      label: 'Existing Evidence',
+                      message: 'Production uses the original record’s document links.',
+                    ),
+                  ],
                 ),
                 Text(
-                  'Source document: $_source · Example only; no file is attached. Production uses the original record’s document links.',
+                  'Source document: $_source · Example only; no file is attached.',
                 ),
                 if (_credit)
                   const Text(
-                    'Credit reduces the source balance. It does not itself return money. Source line and tax allocations must be reviewed before posting.',
+                    'Credit adjusts the source balance; no cash is refunded.',
                   ),
                 if (!_credit)
                   const Text(

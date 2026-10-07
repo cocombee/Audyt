@@ -29,7 +29,8 @@ const _fieldGuidance = <String, String>{
   'Cash Back Amount': 'Cash retained from the funds rather than deposited.',
   'This Is A Credit Card': 'Identify this payment method as a credit card.',
   'Due Rule': 'Choose a fixed number of days after issue or a monthly due day.',
-  'Due In Days': 'Enter the whole number of days after issue; zero is due on receipt.',
+  'Due In Days':
+      'Enter the whole number of days after issue; zero is due on receipt.',
   'This Is A Credit Or Debit Card':
       'Identify this payment method as a credit or debit card.',
   'Credit Card Account': 'Choose the company credit card account affected by this payment or credit.',
@@ -99,7 +100,7 @@ const _fieldGuidance = <String, String>{
       'Who receives an issued cheque or provides a received cheque.',
   'Linked Payment Or Receipt':
       'Existing accounting record settled by this cheque.',
-  'Cheque Status': 'Record the external cheque lifecycle. A scan does not establish clearance.',
+  'Cheque Status': 'Record the external cheque lifecycle. Issue, deposit or stop a cheque through your bank. A cheque copy records the instrument; bank evidence confirms clearance.',
   'Cleared Date':
       'Date bank evidence confirms clearance; leave empty until confirmed.',
 
@@ -143,6 +144,11 @@ const _fieldGuidance = <String, String>{
   "Telephone": "Enter a contact number, including its country code.",
   "Website": "Enter your business website address.",
   "Business Logo": "Choose an image to represent your business on documents.",
+  "Tax Year Starts": "Preview the first month of the tax year, or follow the financial year. Saving is not connected yet.",
+  "Currency Format": "Preview the grouping, decimal separator and currency-symbol placement. Numeric storage is unchanged.",
+  "Duplicate Cheque Warning": "Preview a warning when a cheque number is reused. Checking and saving are not connected yet.",
+  "Duplicate Supplier Bill Warning": "Preview a warning when a bill number is reused for the same supplier. Internal document-number uniqueness remains separate.",
+  "Duplicate Journal Warning": "Preview a warning when a journal number is reused. Checking and saving are not connected yet.",
   "Financial Year Starts": "Choose the first month of your financial year.",
   "Reporting Basis": "Choose whether reports recognise transactions when earned or incurred, or when cash moves.",
   "Basis": "Choose the accounting basis used for this report.",
@@ -213,6 +219,25 @@ const _fieldGuidance = <String, String>{
   "Show Class": "Show an optional Class tag on new transactions. Saved or entered tags stay editable when this is off.",
   "Customer Message": "Enter the message customers should see on invoices.",
   "Statement Message": "Enter the message customers should see on statements.",
+  "Transaction Detail":
+      "Choose one line per transaction or include its detail lines.",
+  "Show Ageing Table":
+      "Show the ageing of outstanding balances at the bottom of statements.",
+  "Use Greeting": "Include a greeting in the email message preview.",
+  "Salutation":
+      "Choose the greeting prefix, including an intentionally blank prefix.",
+  "Name Format": "Choose how the recipient's name appears in a greeting.",
+  "Sales Form": "Choose the kind of sales document for this email preview.",
+  "Email Subject Line": "Enter the subject of the email message.",
+  "Email Message":
+      "Enter the email body. This is separate from the PDF customer message.",
+  "Email Me A Copy": "Include a copy to the sender in the email preview.",
+  "Copy (Cc)": "Enter copy recipients, separated by commas. Preview only; no email is sent.",
+  "Blind Copy (Bcc)": "Enter blind-copy recipients, separated by commas. Preview only; no email is sent.",
+  "Email Options": "Choose a short summary or full sales details in the email.",
+  "PDF Attached": "Include the sales document PDF with the email preview.",
+  "Additional Email Options For Invoices":
+      "Choose an online invoice or a plain-text invoice email.",
   "Apply Customer Credits": "Choose whether customer credits are proposed for approval or selected manually.",
   "Track Items": "Record products or services separately on purchase lines.",
   "Link To Customer": "Link a cost to the customer it relates to.",
@@ -281,10 +306,10 @@ const _fieldGuidance = <String, String>{
   "Active": "Keep this record available for new transactions.",
   "Backup Frequency": "Choose how often Audyt backs up while open, with catch-up at the next launch.",
   "Backup Destination":
-      "Specify the folder where accounting backups should be stored.",
+      "Choose the folder for accounting backups. Original documents stay in their folders. Each restored company copy needs its own backup destination.",
   "Include Original Documents":
       "Include unchanged supporting files in the backup or export.",
-  "Export Format": "Choose the file format for the exported records.",
+  "Export Format": "Data archives retain accounting records and file references. CSV exports posted ledger rows. JSON imports create a separate company copy, available in the company selector.",
   "Export": "Choose the file format for this report export.",
   "Date Range": "Choose the period of records to include.",
   "From Date": "Enter the first date to include, in DD-MM-YYYY.",

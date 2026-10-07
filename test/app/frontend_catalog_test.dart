@@ -893,6 +893,24 @@ void main() {
         findsOneWidget,
       );
       await captureUi(tester, 'Cheque Bank Caller Empty ${width.toInt()}');
+      expect(
+        find.text('Track physical cheques and link their payments.'),
+        findsOneWidget,
+      );
+      final statusHelp = find.byWidgetPredicate(
+        (widget) =>
+            widget is AccountingFieldHelp && widget.label == 'Cheque Status',
+      );
+      final statusMessage = tester
+          .widget<AccountingFieldHelp>(statusHelp)
+          .message;
+      expect(find.text(statusMessage), findsNothing);
+      await tap(statusHelp);
+      expect(find.text(statusMessage), findsOneWidget);
+      await captureUi(tester, 'Cheque Status Field Helper ${width.toInt()}');
+      Tooltip.dismissAllToolTips();
+      await tester.pumpAndSettle();
+      expect(find.text(statusMessage), findsNothing);
       await tester.enterText(
         find.byKey(const ValueKey('design-field-Cheque Number')),
         'INSPECTION-1',
@@ -1492,6 +1510,8 @@ void main() {
         await tester.ensureVisible(terms);
         await tester.tap(terms);
         await tester.pumpAndSettle();
+        await tester.ensureVisible(find.text('Days After Issue').last);
+        await tester.pumpAndSettle();
         await tester.tap(find.text('Days After Issue').last);
         await tester.pumpAndSettle();
         final days = find.byKey(const ValueKey('design-field-Number Of Days'));
@@ -1507,6 +1527,8 @@ void main() {
         );
         await tester.ensureVisible(terms);
         await tester.tap(terms);
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.text('Net 30').last);
         await tester.pumpAndSettle();
         await tester.tap(find.text('Net 30').last);
         await tester.pumpAndSettle();

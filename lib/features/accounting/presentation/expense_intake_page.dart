@@ -460,9 +460,12 @@ class _ExpenseIntakePageState extends State<ExpenseIntakePage> {
           builder: (context, updateScheduleView) => AccountingDialog.alert(
             context,
             title: 'Recurring Expenses',
-            description: 'Due suggestions are prepared for review. Nothing is paid or posted.',
+            description: templates.isEmpty ? null : 'Due suggestions are prepared for review. Nothing is paid or posted.',
+            titleGuidance: templates.isEmpty
+                ? 'Due suggestions are prepared for review. Nothing is paid or posted.'
+                : null,
             content: SizedBox(
-              width: 728,
+              width: templates.isEmpty ? 400 : 728,
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -508,336 +511,345 @@ class _ExpenseIntakePageState extends State<ExpenseIntakePage> {
                     ),
                     const SizedBox(height: accountingContentInset),
                     if (templates.isEmpty)
-                      const Text(
+                      accountingHelperText(
+                        context,
                         'Set recurrence when recording an expense to add a schedule.',
                       ),
-                    AccountingRecordList(
-                      paginationKey: 'recurring-expenses',
-                      children: [
-                        for (final template in templates)
-                          Column(
-                            key: ValueKey(
-                              'recurring-expense-row-${template.id}',
-                            ),
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              AccountingRecordRow(
-                                title: template.payee.isEmpty
-                                    ? 'Unnamed Payee'
-                                    : template.payee,
-                                status: AccountingBadge.build(
-                                  context,
-                                  label: template.paused ? 'Paused' : 'Active',
-                                ),
-                                details: Text(
-                                  'Starts ${formatAccountingInputDate(template.schedule.startsOn)} · Every ${template.schedule.every} ${template.schedule.unit.name}',
-                                ),
-                                trailing: AccountingRecordActions(
-                                  trailing: [
-                                    AccountingButton.iconOnly(
-                                      context,
-                                      key: ValueKey(
-                                        'recurring-edit-${template.id}',
+                    if (templates.isNotEmpty)
+                      AccountingRecordList(
+                        paginationKey: 'recurring-expenses',
+                        children: [
+                          for (final template in templates)
+                            Column(
+                              key: ValueKey(
+                                'recurring-expense-row-${template.id}',
+                              ),
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                AccountingRecordRow(
+                                  title: template.payee.isEmpty
+                                      ? 'Unnamed Payee'
+                                      : template.payee,
+                                  status: AccountingBadge.build(
+                                    context,
+                                    label: template.paused
+                                        ? 'Paused'
+                                        : 'Active',
+                                  ),
+                                  details: Text(
+                                    'Starts ${formatAccountingInputDate(template.schedule.startsOn)} · Every ${template.schedule.every} ${template.schedule.unit.name}',
+                                  ),
+                                  trailing: AccountingRecordActions(
+                                    trailing: [
+                                      AccountingButton.iconOnly(
+                                        context,
+                                        key: ValueKey(
+                                          'recurring-edit-${template.id}',
+                                        ),
+                                        onPressed: () async {
+                                          final schedule =
+                                              await showExpenseRecurrenceDialog(
+                                                context,
+                                                startsOn:
+                                                    template.schedule.startsOn,
+                                                initial: template.schedule,
+                                              );
+                                          if (schedule == null ||
+                                              !context.mounted) {
+                                            return;
+                                          }
+                                          try {
+                                            final revised =
+                                                RecurringExpenseTemplate.fromJson(
+                                                  {
+                                                    ...template.toJson(),
+                                                    'revision':
+                                                        template.revision + 1,
+                                                    'schedule': schedule
+                                                        .toJson(),
+                                                  },
+                                                );
+                                            widget.workspace.database
+                                                .saveRecurringExpenseTemplate(
+                                                  widget
+                                                      .workspace
+                                                      .identity
+                                                      .businessId,
+                                                  revised,
+                                                );
+                                            final refreshed = widget
+                                                .workspace
+                                                .database
+                                                .recurringExpenseTemplates(
+                                                  widget
+                                                      .workspace
+                                                      .identity
+                                                      .businessId,
+                                                );
+                                            updateScheduleView(() {
+                                              templates = refreshed;
+                                              offsets[template.id] = 0;
+                                            });
+                                          } catch (_) {
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text(
+                                                        'Schedule could not be saved. Reopen it and try again.',
+                                                      ),
+                                                    ),
+                                                  );
+                                            }
+                                          }
+                                        },
+                                        icon: Icons.edit_outlined,
+                                        tooltip: 'Edit Schedule',
                                       ),
-                                      onPressed: () async {
-                                        final schedule =
-                                            await showExpenseRecurrenceDialog(
-                                              context,
-                                              startsOn:
-                                                  template.schedule.startsOn,
-                                              initial: template.schedule,
+
+                                      AccountingButton.iconOnly(
+                                        context,
+                                        key: ValueKey(
+                                          'recurring-toggle-${template.id}',
+                                        ),
+                                        onPressed: () {
+                                          try {
+                                            widget.workspace.database
+                                                .saveRecurringExpenseTemplate(
+                                                  widget
+                                                      .workspace
+                                                      .identity
+                                                      .businessId,
+                                                  template.withPaused(
+                                                    !template.paused,
+                                                  ),
+                                                );
+                                            final refreshed = widget
+                                                .workspace
+                                                .database
+                                                .recurringExpenseTemplates(
+                                                  widget
+                                                      .workspace
+                                                      .identity
+                                                      .businessId,
+                                                );
+                                            updateScheduleView(
+                                              () => templates = refreshed,
                                             );
-                                        if (schedule == null ||
-                                            !context.mounted) {
-                                          return;
-                                        }
-                                        try {
-                                          final revised =
-                                              RecurringExpenseTemplate.fromJson(
-                                                {
-                                                  ...template.toJson(),
-                                                  'revision':
-                                                      template.revision + 1,
-                                                  'schedule': schedule.toJson(),
-                                                },
-                                              );
-                                          widget.workspace.database
-                                              .saveRecurringExpenseTemplate(
-                                                widget
-                                                    .workspace
-                                                    .identity
-                                                    .businessId,
-                                                revised,
-                                              );
-                                          final refreshed = widget
-                                              .workspace
-                                              .database
-                                              .recurringExpenseTemplates(
-                                                widget
-                                                    .workspace
-                                                    .identity
-                                                    .businessId,
-                                              );
-                                          updateScheduleView(() {
-                                            templates = refreshed;
-                                            offsets[template.id] = 0;
-                                          });
-                                        } catch (_) {
-                                          if (context.mounted) {
+                                          } catch (_) {
                                             ScaffoldMessenger.of(context)
                                                 .showSnackBar(
                                                   const SnackBar(
                                                     content: Text(
-                                                      'Schedule could not be saved. Reopen it and try again.',
+                                                      'Schedule could not be changed. Reopen it and try again.',
                                                     ),
                                                   ),
                                                 );
                                           }
-                                        }
-                                      },
-                                      icon: Icons.edit_outlined,
-                                      tooltip: 'Edit Schedule',
-                                    ),
-
-                                    AccountingButton.iconOnly(
-                                      context,
-                                      key: ValueKey(
-                                        'recurring-toggle-${template.id}',
+                                        },
+                                        icon: template.paused
+                                            ? Icons.play_arrow_outlined
+                                            : Icons.pause_outlined,
+                                        tooltip: template.paused
+                                            ? 'Resume Schedule'
+                                            : 'Pause Schedule',
                                       ),
-                                      onPressed: () {
-                                        try {
-                                          widget.workspace.database
-                                              .saveRecurringExpenseTemplate(
-                                                widget
-                                                    .workspace
-                                                    .identity
-                                                    .businessId,
-                                                template.withPaused(
-                                                  !template.paused,
-                                                ),
-                                              );
-                                          final refreshed = widget
-                                              .workspace
-                                              .database
-                                              .recurringExpenseTemplates(
-                                                widget
-                                                    .workspace
-                                                    .identity
-                                                    .businessId,
-                                              );
-                                          updateScheduleView(
-                                            () => templates = refreshed,
-                                          );
-                                        } catch (_) {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                                const SnackBar(
-                                                  content: Text(
-                                                    'Schedule could not be changed. Reopen it and try again.',
-                                                  ),
-                                                ),
-                                              );
-                                        }
-                                      },
-                                      icon: template.paused
-                                          ? Icons.play_arrow_outlined
-                                          : Icons.pause_outlined,
-                                      tooltip: template.paused
-                                          ? 'Resume Schedule'
-                                          : 'Pause Schedule',
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  accountingContentInset,
-                                  0,
-                                  accountingContentInset,
-                                  accountingContentInset,
-                                ),
-                                child: AccountingButtonSizeScope(
-                                  child: AccountingControlFlow(
-                                    children: [
-                                      if (template.paused)
-                                        const Text(
-                                          'Existing suggestions are preserved. Resume to review dates individually.',
-                                        ),
-                                      if (!template.paused)
-                                        for (
-                                          var index = offsets[template.id] ?? 0;
-                                          index <
-                                              (offsets[template.id] ?? 0) + 6;
-                                          index++
-                                        )
-                                          if (template.schedule.occurrenceAt(
-                                                index,
-                                              )
-                                              case final date?)
-                                            if (!_expenses!.any(
-                                              (expense) =>
-                                                  expense.id.value ==
-                                                      template
-                                                          .sourceExpenseId &&
-                                                  expense.occurredOn.year ==
-                                                      date.year &&
-                                                  expense.occurredOn.month ==
-                                                      date.month &&
-                                                  expense.occurredOn.day ==
-                                                      date.day,
-                                            ))
-                                              AccountingButton.outline(
-                                                context,
-                                                key: ValueKey(
-                                                  'prepare-recurring-${template.id}-$index',
-                                                ),
-                                                onPressed: () async {
-                                                  try {
-                                                    final suggestion = widget
-                                                        .workspace
-                                                        .database
-                                                        .prepareRecurringExpenseOccurrence(
-                                                          widget
-                                                              .workspace
-                                                              .identity
-                                                              .businessId,
-                                                          template.id,
-                                                          expectedRevision:
-                                                              template.revision,
-                                                          index: index,
-                                                        );
-                                                    if (!context.mounted) {
-                                                      return;
-                                                    }
-                                                    await showDialog<void>(
-                                                      context: context,
-                                                      builder: (reviewContext) =>
-                                                          AccountingDialog.alert(
-                                                            reviewContext,
-                                                            title: 'Recurring Suggestion',
-                                                            description: 'Saved for review. This is not a recorded expense or payment.',
-                                                            content: Column(
-                                                              mainAxisSize:
-                                                                  MainAxisSize
-                                                                      .min,
-                                                              crossAxisAlignment:
-                                                                  CrossAxisAlignment
-                                                                      .stretch,
-                                                              children: [
-                                                                _detail(
-                                                                  reviewContext,
-                                                                  'Date',
-                                                                  suggestion
-                                                                      .date,
-                                                                ),
-                                                                _detail(
-                                                                  reviewContext,
-                                                                  'Payee',
-                                                                  suggestion
-                                                                      .payee,
-                                                                ),
-                                                                _detail(
-                                                                  reviewContext,
-                                                                  'Amount',
-                                                                  currencyAmountLabel(
-                                                                    suggestion
-                                                                        .currencyCode,
-                                                                    suggestion
-                                                                        .amount,
-                                                                  ),
-                                                                ),
-                                                                _detail(
-                                                                  reviewContext,
-                                                                  'Tax',
-                                                                  suggestion
-                                                                      .tax,
-                                                                ),
-                                                                const Text(
-                                                                  'Open Saved Suggestions to review the amount, category, payment and new receipt evidence before recording.',
-                                                                ),
-                                                              ],
-                                                            ),
-                                                            actions: [],
-                                                          ),
-                                                    );
-                                                  } catch (_) {
-                                                    if (context.mounted) {
-                                                      ScaffoldMessenger.of(
-                                                        context,
-                                                      ).showSnackBar(
-                                                        const SnackBar(
-                                                          content: Text(
-                                                            'The suggestion could not be prepared. Reopen the schedule and try again.',
-                                                          ),
-                                                        ),
-                                                      );
-                                                    }
-                                                  }
-                                                },
-                                                child: Text(
-                                                  'Prepare ${formatAccountingInputDate(date)}',
-                                                ),
-                                              ),
-                                      if (!template.paused)
-                                        AccountingControlFlow(
-                                          children: [
-                                            AccountingButton.outline(
-                                              context,
-                                              key: ValueKey(
-                                                'recurring-earlier-${template.id}',
-                                              ),
-                                              onPressed:
-                                                  (offsets[template.id] ?? 0) ==
-                                                      0
-                                                  ? null
-                                                  : () => updateScheduleView(
-                                                      () =>
-                                                          offsets[template.id] =
-                                                              (offsets[template
-                                                                      .id] ??
-                                                                  0) -
-                                                              6,
-                                                    ),
-                                              child: const Text(
-                                                'Earlier Dates',
-                                              ),
-                                            ),
-                                            AccountingButton.outline(
-                                              context,
-                                              key: ValueKey(
-                                                'recurring-later-${template.id}',
-                                              ),
-                                              onPressed:
-                                                  template.schedule
-                                                          .occurrenceAt(
-                                                            (offsets[template
-                                                                        .id] ??
-                                                                    0) +
-                                                                6,
-                                                          ) ==
-                                                      null
-                                                  ? null
-                                                  : () => updateScheduleView(
-                                                      () =>
-                                                          offsets[template.id] =
-                                                              (offsets[template
-                                                                      .id] ??
-                                                                  0) +
-                                                              6,
-                                                    ),
-                                              child: const Text('Later Dates'),
-                                            ),
-                                          ],
-                                        ),
                                     ],
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                      ],
-                    ),
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    accountingContentInset,
+                                    0,
+                                    accountingContentInset,
+                                    accountingContentInset,
+                                  ),
+                                  child: AccountingButtonSizeScope(
+                                    child: AccountingControlFlow(
+                                      children: [
+                                        if (template.paused)
+                                          const Text(
+                                            'Existing suggestions are preserved. Resume to review dates individually.',
+                                          ),
+                                        if (!template.paused)
+                                          for (
+                                            var index =
+                                                offsets[template.id] ?? 0;
+                                            index <
+                                                (offsets[template.id] ?? 0) + 6;
+                                            index++
+                                          )
+                                            if (template.schedule.occurrenceAt(
+                                                  index,
+                                                )
+                                                case final date?)
+                                              if (!_expenses!.any(
+                                                (expense) =>
+                                                    expense.id.value ==
+                                                        template
+                                                            .sourceExpenseId &&
+                                                    expense.occurredOn.year ==
+                                                        date.year &&
+                                                    expense.occurredOn.month ==
+                                                        date.month &&
+                                                    expense.occurredOn.day ==
+                                                        date.day,
+                                              ))
+                                                AccountingButton.outline(
+                                                  context,
+                                                  key: ValueKey(
+                                                    'prepare-recurring-${template.id}-$index',
+                                                  ),
+                                                  onPressed: () async {
+                                                    try {
+                                                      final suggestion = widget
+                                                          .workspace
+                                                          .database
+                                                          .prepareRecurringExpenseOccurrence(
+                                                            widget
+                                                                .workspace
+                                                                .identity
+                                                                .businessId,
+                                                            template.id,
+                                                            expectedRevision:
+                                                                template
+                                                                    .revision,
+                                                            index: index,
+                                                          );
+                                                      if (!context.mounted) {
+                                                        return;
+                                                      }
+                                                      await showDialog<void>(
+                                                        context: context,
+                                                        builder: (reviewContext) => AccountingDialog.alert(
+                                                          reviewContext,
+                                                          title: 'Recurring Suggestion',
+                                                          description: 'Saved for review. This is not a recorded expense or payment.',
+                                                          content: Column(
+                                                            mainAxisSize:
+                                                                MainAxisSize
+                                                                    .min,
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment
+                                                                    .stretch,
+                                                            children: [
+                                                              _detail(
+                                                                reviewContext,
+                                                                'Date',
+                                                                suggestion.date,
+                                                              ),
+                                                              _detail(
+                                                                reviewContext,
+                                                                'Payee',
+                                                                suggestion
+                                                                    .payee,
+                                                              ),
+                                                              _detail(
+                                                                reviewContext,
+                                                                'Amount',
+                                                                currencyAmountLabel(
+                                                                  suggestion
+                                                                      .currencyCode,
+                                                                  suggestion
+                                                                      .amount,
+                                                                ),
+                                                              ),
+                                                              _detail(
+                                                                reviewContext,
+                                                                'Tax',
+                                                                suggestion.tax,
+                                                              ),
+                                                              const Text(
+                                                                'Open Saved Suggestions to review the amount, category, payment and new receipt evidence before recording.',
+                                                              ),
+                                                            ],
+                                                          ),
+                                                          actions: [],
+                                                        ),
+                                                      );
+                                                    } catch (_) {
+                                                      if (context.mounted) {
+                                                        ScaffoldMessenger.of(
+                                                          context,
+                                                        ).showSnackBar(
+                                                          const SnackBar(
+                                                            content: Text(
+                                                              'The suggestion could not be prepared. Reopen the schedule and try again.',
+                                                            ),
+                                                          ),
+                                                        );
+                                                      }
+                                                    }
+                                                  },
+                                                  child: Text(
+                                                    'Prepare ${formatAccountingInputDate(date)}',
+                                                  ),
+                                                ),
+                                        if (!template.paused)
+                                          AccountingControlFlow(
+                                            children: [
+                                              AccountingButton.outline(
+                                                context,
+                                                key: ValueKey(
+                                                  'recurring-earlier-${template.id}',
+                                                ),
+                                                onPressed:
+                                                    (offsets[template.id] ??
+                                                            0) ==
+                                                        0
+                                                    ? null
+                                                    : () => updateScheduleView(
+                                                        () =>
+                                                            offsets[template
+                                                                    .id] =
+                                                                (offsets[template
+                                                                        .id] ??
+                                                                    0) -
+                                                                6,
+                                                      ),
+                                                child: const Text(
+                                                  'Earlier Dates',
+                                                ),
+                                              ),
+                                              AccountingButton.outline(
+                                                context,
+                                                key: ValueKey(
+                                                  'recurring-later-${template.id}',
+                                                ),
+                                                onPressed:
+                                                    template.schedule
+                                                            .occurrenceAt(
+                                                              (offsets[template
+                                                                          .id] ??
+                                                                      0) +
+                                                                  6,
+                                                            ) ==
+                                                        null
+                                                    ? null
+                                                    : () => updateScheduleView(
+                                                        () =>
+                                                            offsets[template
+                                                                    .id] =
+                                                                (offsets[template
+                                                                        .id] ??
+                                                                    0) +
+                                                                6,
+                                                      ),
+                                                child: const Text(
+                                                  'Later Dates',
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
                   ],
                 ),
               ),

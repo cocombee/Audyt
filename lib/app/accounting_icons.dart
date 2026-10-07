@@ -324,6 +324,9 @@ class AccountingSettingsIcon extends StatelessWidget {
   // These already appear in small record, chart or navigation controls.
   // Reuse their artwork and optical sizes instead of normalizing them again.
   static const reusedSmallIcons = <IconData>[
+    Icons.payment_outlined,
+    Icons.calendar_today_outlined,
+    Icons.fact_check_outlined,
     Icons.note_add_outlined,
     Icons.download_outlined,
     Icons.person_outline,

@@ -25,6 +25,10 @@ cd "$wiring_project"
   test/app/customer_owner_audit_test.dart \
   test/app/payment_method_directory_test.dart \
   test/app/payment_terms_directory_test.dart \
+  test/app/statement_settings_dialog_test.dart \
+  test/app/sales_email_settings_dialog_test.dart \
+  test/app/accounting_preferences_dialog_test.dart \
+  test/app/backup_inline_layout_test.dart \
   test/app/customer_form_test.dart \
   test/app/restored_customer_payment_journey_test.dart \
   test/app/tax_proposal_routes_test.dart \
@@ -70,6 +74,7 @@ cd "$wiring_project"
   test/app/recurring_transactions_journey_test.dart \
   test/app/permanent_field_guidance_audit_test.dart \
   test/app/recurring_expense_rows_test.dart \
+  test/app/responsive_shell_test.dart \
   test/features/accounting/data/recurring_occurrence_test.dart \
   test/features/accounting/application/company_tax_rates_test.dart \
   test/features/accounting/application/recurring_document_test.dart \
@@ -95,6 +100,8 @@ cd "$wiring_project"
   test/app/standard_terms_due_trial_test.dart \
   test/app/expense_live_layout_journey_test.dart \
   test/app/asset_purchase_fields_test.dart \
+  test/app/frontend_catalog_test.dart \
+  test/app/linked_record_review_test.dart \
   test/app/saved_expense_view_regression_test.dart \
   test/app/approved_claim_expense_view_test.dart \
   test/app/expense_revision_editor_journey_test.dart \

@@ -252,7 +252,11 @@ class _ClaimantStatementsDialogState extends State<ClaimantStatementsDialog> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      accountingFieldLabel(context, field.$1),
+                      accountingFieldLabel(
+                        context,
+                        field.$1,
+                        alignToField: true,
+                      ),
                       const SizedBox(height: accountingFieldLabelGap),
                       TextField(
                         controller: field.$2,

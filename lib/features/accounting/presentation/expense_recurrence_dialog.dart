@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:audyt/app/accounting_components.dart';
 import 'package:audyt/app/accounting_theme.dart';
 import 'package:audyt/app/field_row_trial.dart';
+import 'package:audyt/app/field_guidance.dart';
 import 'package:audyt/core/dates/accounting_date.dart';
 
 import 'widgets/accounting_formatters.dart';
@@ -45,6 +47,31 @@ class _RecurrenceDialogState extends State<_RecurrenceDialog> {
       : 'Never';
   late bool monthEnd = widget.initial?.preserveMonthEnd ?? true;
   String? error;
+  late final (RecurrenceUnit, String, String, String, String, bool) _opening;
+  bool _closing = false;
+
+  (RecurrenceUnit, String, String, String, String, bool) _snapshot() =>
+      (unit, every.text, end.text, count.text, ending, monthEnd);
+
+  @override
+  void initState() {
+    super.initState();
+    _opening = _snapshot();
+  }
+
+  Future<void> _close() async {
+    if (_closing) return;
+    _closing = true;
+    try {
+      final discard =
+          _snapshot() == _opening ||
+          await AccountingDialog.confirmDiscardChanges(context);
+      if (mounted && discard) Navigator.of(context).pop();
+    } finally {
+      _closing = false;
+    }
+  }
+
   @override
   void dispose() {
     every.dispose();
@@ -88,6 +115,7 @@ class _RecurrenceDialogState extends State<_RecurrenceDialog> {
           accountingFieldLabel(
             context,
             label,
+            alignToField: true,
             key: key == 'recurrence-end'
                 ? const ValueKey('recurrence-end-label')
                 : null,
@@ -136,154 +164,180 @@ class _RecurrenceDialogState extends State<_RecurrenceDialog> {
     } catch (_) {
       /* Validation is shown when applying. */
     }
-    return AccountingDialog.alert(
-      context,
-      title: 'Recurring Expense',
-      formFooter: true,
-      description:
-          'Choose when this expense repeats and review the next dates.',
-      content: SingleChildScrollView(
-        child: SizedBox(
-          width: 380,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Starts ${formatAccountingInputDate(widget.initial?.startsOn ?? widget.startsOn)}',
-              ),
-              const SizedBox(height: 12),
-              AccountingOrdinaryFields(
-                fields: [
-                  AccountingOrdinaryFieldSlot(
-                    label: 'Repeat Unit',
-                    choices: ['Days', 'Weeks', 'Months', 'Years'],
-                    builder: (width) => Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        accountingFieldLabel(context, 'Repeat Unit'),
-                        const SizedBox(height: accountingFieldLabelGap),
-                        AccountingSelector<RecurrenceUnit>(
-                          assignedWidth: width,
-                          hintText: 'Repeat Unit',
-                          options: [
-                            for (final value in RecurrenceUnit.values)
-                              AccountingSelectorOption(
-                                value: value,
-                                label: switch (value) {
-                                  RecurrenceUnit.days => 'Days',
-                                  RecurrenceUnit.weeks => 'Weeks',
-                                  RecurrenceUnit.months => 'Months',
-                                  RecurrenceUnit.years => 'Years',
-                                },
-                              ),
+    return CallbackShortcuts(
+      bindings: {const SingleActivator(LogicalKeyboardKey.escape): _close},
+      child: PopScope<RecurrenceRule>(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) _close();
+        },
+        child: AccountingDialog.alert(
+          context,
+          title: 'Recurring Expense',
+          formFooter: true,
+          description:
+              'Choose when this expense repeats and review the next dates.',
+          content: SingleChildScrollView(
+            child: SizedBox(
+              width: 380,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Starts ${formatAccountingInputDate(widget.initial?.startsOn ?? widget.startsOn)}',
+                  ),
+                  const SizedBox(height: 12),
+                  AccountingOrdinaryFields(
+                    fields: [
+                      AccountingOrdinaryFieldSlot(
+                        label: 'Repeat Unit',
+                        hasGuidance: true,
+                        choices: ['Days', 'Weeks', 'Months', 'Years'],
+                        builder: (width) => Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            accountingFieldLabel(
+                              context,
+                              'Repeat Unit',
+                              alignToField: true,
+                              guidance: accountingFieldGuidance('Repeat'),
+                            ),
+                            const SizedBox(height: accountingFieldLabelGap),
+                            AccountingSelector<RecurrenceUnit>(
+                              assignedWidth: width,
+                              hintText: 'Repeat Unit',
+                              options: [
+                                for (final value in RecurrenceUnit.values)
+                                  AccountingSelectorOption(
+                                    value: value,
+                                    label: switch (value) {
+                                      RecurrenceUnit.days => 'Days',
+                                      RecurrenceUnit.weeks => 'Weeks',
+                                      RecurrenceUnit.months => 'Months',
+                                      RecurrenceUnit.years => 'Years',
+                                    },
+                                  ),
+                              ],
+                              value: unit,
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setState(() => unit = value);
+                                }
+                              },
+                              semanticsLabel: 'Repeat Unit',
+                            ),
                           ],
-                          value: unit,
-                          onChanged: (value) {
-                            if (value != null) setState(() => unit = value);
-                          },
-                          semanticsLabel: 'Repeat Unit',
                         ),
-                      ],
-                    ),
-                  ),
-                  AccountingOrdinaryFieldSlot(
-                    label: 'Every',
-                    builder: (_) => input('Every', every, 'recurrence-every'),
-                  ),
-                  AccountingOrdinaryFieldSlot(
-                    label: 'Ends',
-                    choices: ['Never', 'On Date', 'After Occurrences'],
-                    builder: (width) => Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        accountingFieldLabel(context, 'Ends'),
-                        const SizedBox(height: accountingFieldLabelGap),
-                        AccountingSelector<String>(
-                          assignedWidth: width,
-                          hintText: 'Ends',
-                          options: [
-                            for (final value in [
-                              'Never',
-                              'On Date',
-                              'After Occurrences',
-                            ])
-                              AccountingSelectorOption(
-                                value: value,
-                                label: value,
-                              ),
+                      ),
+                      AccountingOrdinaryFieldSlot(
+                        label: 'Every',
+                        builder: (_) =>
+                            input('Every', every, 'recurrence-every'),
+                      ),
+                      AccountingOrdinaryFieldSlot(
+                        label: 'Ends',
+                        choices: ['Never', 'On Date', 'After Occurrences'],
+                        builder: (width) => Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            accountingFieldLabel(
+                              context,
+                              'Ends',
+                              alignToField: true,
+                            ),
+                            const SizedBox(height: accountingFieldLabelGap),
+                            AccountingSelector<String>(
+                              assignedWidth: width,
+                              hintText: 'Ends',
+                              options: [
+                                for (final value in [
+                                  'Never',
+                                  'On Date',
+                                  'After Occurrences',
+                                ])
+                                  AccountingSelectorOption(
+                                    value: value,
+                                    label: value,
+                                  ),
+                              ],
+                              value: ending,
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setState(() => ending = value);
+                                }
+                              },
+                              semanticsLabel: 'Ends',
+                            ),
                           ],
-                          value: ending,
-                          onChanged: (value) {
-                            if (value != null) setState(() => ending = value);
-                          },
-                          semanticsLabel: 'Ends',
                         ),
-                      ],
-                    ),
+                      ),
+                      if (ending == 'On Date')
+                        AccountingOrdinaryFieldSlot(
+                          label: 'End Date',
+                          date: true,
+                          contentSample: '00-00-0000',
+                          builder: (_) =>
+                              input('End Date', end, 'recurrence-end'),
+                        ),
+                      if (ending == 'After Occurrences')
+                        AccountingOrdinaryFieldSlot(
+                          label: 'Occurrences',
+                          builder: (_) =>
+                              input('Occurrences', count, 'recurrence-count'),
+                        ),
+                    ],
                   ),
-                  if (ending == 'On Date')
-                    AccountingOrdinaryFieldSlot(
-                      label: 'End Date',
-                      date: true,
-                      contentSample: '00-00-0000',
-                      builder: (_) => input('End Date', end, 'recurrence-end'),
+                  if (unit == RecurrenceUnit.months ||
+                      unit == RecurrenceUnit.years)
+                    Theme(
+                      data: Theme.of(context)
+                          .copyWith(hoverColor: Colors.transparent),
+                      child: CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Keep Month End'),
+                        value: monthEnd,
+                        onChanged: (value) =>
+                            setState(() => monthEnd = value ?? true),
+                      ),
                     ),
-                  if (ending == 'After Occurrences')
-                    AccountingOrdinaryFieldSlot(
-                      label: 'Occurrences',
-                      builder: (_) =>
-                          input('Occurrences', count, 'recurrence-count'),
-                    ),
+                  const SizedBox(height: 12),
+                  const Text('Schedule Preview'),
+                  Text(preview.map(formatAccountingInputDate).join(' · ')),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Saves the schedule with this expense. Open Recurring Expenses to review due suggestions.',
+                  ),
+                  if (error != null)
+                    Text(error!, key: const ValueKey('recurrence-error')),
                 ],
               ),
-              if (unit == RecurrenceUnit.months || unit == RecurrenceUnit.years)
-                Theme(
-                  data: Theme.of(context)
-                      .copyWith(hoverColor: Colors.transparent),
-                  child: CheckboxListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Keep Month End'),
-                    value: monthEnd,
-                    onChanged: (value) =>
-                        setState(() => monthEnd = value ?? true),
-                  ),
-                ),
-              const SizedBox(height: 12),
-              const Text('Schedule Preview'),
-              Text(preview.map(formatAccountingInputDate).join(' · ')),
-              const SizedBox(height: 12),
-              const Text(
-                'Saves the schedule with this expense. Open Recurring Expenses to review due suggestions.',
-              ),
-              if (error != null)
-                Text(error!, key: const ValueKey('recurrence-error')),
-            ],
+            ),
           ),
+          actions: [
+            AccountingButton.ghost(
+              context,
+              key: null,
+              onPressed: _close,
+              child: const Text('Cancel'),
+            ),
+            AccountingButton.primary(
+              context,
+              key: const ValueKey('recurrence-apply'),
+              onPressed: () {
+                try {
+                  Navigator.pop(context, rule());
+                } on FormatException catch (e) {
+                  setState(() => error = e.message);
+                } on ArgumentError catch (e) {
+                  setState(() => error = e.message.toString());
+                }
+              },
+              child: const Text('Apply Schedule'),
+            ),
+          ],
         ),
       ),
-      actions: [
-        AccountingButton.ghost(
-          context,
-          key: null,
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        AccountingButton.primary(
-          context,
-          key: const ValueKey('recurrence-apply'),
-          onPressed: () {
-            try {
-              Navigator.pop(context, rule());
-            } on FormatException catch (e) {
-              setState(() => error = e.message);
-            } on ArgumentError catch (e) {
-              setState(() => error = e.message.toString());
-            }
-          },
-          child: const Text('Apply Schedule'),
-        ),
-      ],
     );
   }
 }

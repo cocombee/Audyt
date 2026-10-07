@@ -166,7 +166,7 @@ class _PaymentVouchersPageState extends State<PaymentVouchersPage> {
             context,
             key: const ValueKey('payment-voucher-source-banner'),
             title: 'Source-linked payments',
-            description: 'Each voucher controls one source payment. Record Payment confirms its posted movement; Reconcile confirms the completed bank review. These actions do not create another payment or expense posting.',
+            description: 'Confirm the source payment and bank review without another payment or expense posting.',
           ),
           const SizedBox(height: 20),
           AccountingRecordControls(
@@ -1228,7 +1228,7 @@ class _PaymentVoucherEditorDialogState
           context,
           'Linked source type',
           required: true,
-          guidance: 'Links one existing expense, claim payment, or bill to this voucher.',
+          guidance: 'Links one existing expense, claim payment, or bill to this voucher. Record Payment confirms its posted movement; Reconcile confirms the completed bank review.',
         ),
         const SizedBox(height: 8),
         AccountingSelector<PaymentVoucherSourceType>(

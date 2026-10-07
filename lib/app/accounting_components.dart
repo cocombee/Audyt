@@ -170,6 +170,28 @@ class _ButtonGroupScope extends InheritedWidget {
 final class AccountingButton {
   const AccountingButton._();
 
+  static const contentIconSize = 16.0;
+  static const contentIconGap = 8.0;
+
+  /// Measures the existing normal icon/label action, without assigning width.
+  /// A containing labelled slot may wrap; the button keeps its intrinsic frame.
+  static double normalIconLabelWidth(
+    BuildContext context,
+    String label, {
+    required IconData icon,
+  }) => math.max(
+    accountingControlHeight,
+    AccountingResponsive.measuredTextWidth(
+          context,
+          label,
+          AccountingTypography.button(context)
+              .copyWith(fontSize: accountingControlFontSize),
+        ) +
+        accountingContentInset * 2 +
+        AccountingIcon.rowCanvasSize(icon) +
+        contentIconGap,
+  );
+
   /// App-wide Preview actions share the primary face and existing small eye.
   static Widget preview(
     BuildContext context, {
@@ -720,8 +742,8 @@ final class AccountingButton {
     Widget child, {
     IconData? leadingIcon,
     IconData? trailingIcon,
-    double iconSize = 16,
-    double iconGap = 8,
+    double iconSize = contentIconSize,
+    double iconGap = contentIconGap,
   }) {
     if (leadingIcon == null && trailingIcon == null) {
       return child;
@@ -4075,6 +4097,42 @@ class _AccountingSelectorState<T> extends State<AccountingSelector<T>> {
 }
 
 /// Settings editors expand in place with one shared compact disclosure arrow.
+abstract final class AccountingSettingsTokens {
+  static const bodyInset = accountingContentInset;
+  static const bodyGap = accountingContentInset;
+}
+
+/// One Settings-only helper/action pattern using the existing body-left inset.
+class AccountingSettingsActionBody extends StatelessWidget {
+  const AccountingSettingsActionBody({
+    super.key,
+    required this.description,
+    required this.actionLabel,
+    required this.onPressed,
+    this.actionKey,
+  });
+  final String description;
+  final String actionLabel;
+  final VoidCallback? onPressed;
+  final Key? actionKey;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      accountingHelperText(context, description),
+      const SizedBox(height: AccountingSettingsTokens.bodyGap),
+      AccountingButton.primary(
+        context,
+        key: actionKey,
+        onPressed: onPressed,
+        child: Text(actionLabel),
+      ),
+    ],
+  );
+}
+
 class AccountingSettingsSection extends StatefulWidget {
   const AccountingSettingsSection({
     super.key,
@@ -4115,9 +4173,9 @@ class _AccountingSettingsSectionState extends State<AccountingSettingsSection> {
       ),
       tilePadding: EdgeInsets.symmetric(horizontal: widget.inCard ? 20 : 12),
       childrenPadding: EdgeInsets.fromLTRB(
-        widget.inCard ? 20 : 12,
+        widget.inCard ? AccountingSettingsTokens.bodyInset : 12,
         12,
-        widget.inCard ? 20 : 12,
+        widget.inCard ? AccountingSettingsTokens.bodyInset : 12,
         20,
       ),
       trailing: AnimatedRotation(
@@ -4127,7 +4185,7 @@ class _AccountingSettingsSectionState extends State<AccountingSettingsSection> {
             : const Duration(milliseconds: 160),
         child: const AccountingSettingsIcon(Icons.chevron_right),
       ),
-      children: [widget.child],
+      children: [Align(alignment: Alignment.centerLeft, child: widget.child)],
     ),
   );
 }

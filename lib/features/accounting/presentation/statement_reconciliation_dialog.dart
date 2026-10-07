@@ -155,8 +155,8 @@ class _StatementReconciliationDialogState
         DateTime.utc(date.year, date.month),
       );
       _end.text = formatAccountingInputDate(date);
-      _opening.text = formatAccountingInputAmount(statement!.openingBalance!);
-      _closing.text = formatAccountingInputAmount(statement.closingBalance!);
+      _opening.text = _inputAmount(statement!.openingBalance!);
+      _closing.text = _inputAmount(statement.closingBalance!);
     }
     try {
       final draft = widget.workspace.database.readReconciliationDraft(
@@ -166,8 +166,8 @@ class _StatementReconciliationDialogState
       if (draft != null) {
         _start.text = formatAccountingInputDate(draft.startsOn);
         _end.text = formatAccountingInputDate(draft.endsOn);
-        _opening.text = formatAccountingInputAmount(draft.openingBalance);
-        _closing.text = formatAccountingInputAmount(draft.closingBalance);
+        _opening.text = _inputAmount(draft.openingBalance);
+        _closing.text = _inputAmount(draft.closingBalance);
         _evidence.text = draft.openingEvidence;
         _outstanding.addAll(draft.openingOutstandingIds);
         _draftRevision = draft.revision;
@@ -208,13 +208,13 @@ class _StatementReconciliationDialogState
         openingBalance: previous?.closingBalance ?? Money.zero(widget.currency),
         closingBalance: Money.zero(widget.currency),
       );
-      _opening.text = formatAccountingInputAmount(position.recordedOpening);
+      _opening.text = _inputAmount(position.recordedOpening);
       final draft = database.readAccountReconciliationDraft(business, account);
       if (draft != null) {
         _start.text = formatAccountingInputDate(draft.startsOn);
         _end.text = formatAccountingInputDate(draft.endsOn);
-        _opening.text = formatAccountingInputAmount(draft.openingBalance);
-        _closing.text = formatAccountingInputAmount(draft.closingBalance);
+        _opening.text = _inputAmount(draft.openingBalance);
+        _closing.text = _inputAmount(draft.closingBalance);
         _evidence.text = draft.openingEvidence;
         _outstanding.addAll(draft.openingOutstandingIds);
         _selected.addAll(draft.selectedIds);
@@ -290,6 +290,11 @@ class _StatementReconciliationDialogState
       return KeyEventResult.ignored;
     },
     child: child,
+  );
+
+  String _inputAmount(Money amount) => formatAccountingMoneyInputText(
+    formatAccountingInputAmount(amount),
+    Currency.parse(amount.currency).fractionDigits,
   );
 
   Money _amount(String value) {
@@ -666,7 +671,7 @@ class _StatementReconciliationDialogState
                   ? 'DD-MM-YYYY'
                   : evidence
                   ? 'Opening evidence and outstanding items'
-                  : null,
+                  : _inputAmount(Money.zero(widget.currency)),
             ),
             onChanged: (_) => setState(() {
               _draftSaved = false;

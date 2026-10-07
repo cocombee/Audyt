@@ -2203,97 +2203,96 @@ class _GlobalTopBar extends StatelessWidget {
       submitRegistration: submitRegistration,
       approvalStatus: approvalStatus,
     );
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Keep the search in the top row until its hint would shorten to
-        // "Search transactions..". Let it use the space freed by the icon
-        // rail before moving it beneath the date and actions.
-        final dateWidth =
-            24 +
-            17 +
-            8 +
-            AccountingResponsive.measuredTextWidth(
-              context,
-              dateLabel,
-              dateTextStyle,
-            );
-        final minimumSearchWidth =
-            55 +
-            20 +
-            AccountingResponsive.measuredTextWidth(
-              context,
-              'Search transactions..',
-              Theme.of(context).inputDecorationTheme.hintStyle ??
-                  Theme.of(context).textTheme.bodyMedium,
-            );
-        final preferredSearchWidth = minimumSearchWidth > 283
-            ? minimumSearchWidth
-            : 283.0;
-        final availableSearchWidth =
-            constraints.maxWidth -
-            48 -
-            dateWidth -
-            AccountingResponsive.groupGap * 2 -
-            24 -
-            48 -
-            36;
-        final stacked = availableSearchWidth < minimumSearchWidth;
-        final searchWidth = stacked
-            ? (constraints.maxWidth - 48)
-                  .clamp(0.0, preferredSearchWidth)
-                  .toDouble()
-            : availableSearchWidth
-                  .clamp(minimumSearchWidth, preferredSearchWidth)
-                  .toDouble();
-        final dateAndActions = Row(
-          children: [
-            Expanded(
-              child: Align(alignment: Alignment.centerLeft, child: date),
+    return AccountingPageAlignment(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Keep the search in the top row until its hint would shorten to
+          // "Search transactions..". Let it use the space freed by the icon
+          // rail before moving it beneath the date and actions.
+          final dateWidth =
+              24 +
+              17 +
+              8 +
+              AccountingResponsive.measuredTextWidth(
+                context,
+                dateLabel,
+                dateTextStyle,
+              );
+          final minimumSearchWidth =
+              55 +
+              20 +
+              AccountingResponsive.measuredTextWidth(
+                context,
+                'Search transactions..',
+                Theme.of(context).inputDecorationTheme.hintStyle ??
+                    Theme.of(context).textTheme.bodyMedium,
+              );
+          final preferredSearchWidth = minimumSearchWidth > 283
+              ? minimumSearchWidth
+              : 283.0;
+          final availableSearchWidth =
+              constraints.maxWidth -
+              dateWidth -
+              AccountingResponsive.groupGap * 2 -
+              24 -
+              48 -
+              36;
+          final stacked = availableSearchWidth < minimumSearchWidth;
+          final searchWidth = stacked
+              ? constraints.maxWidth.clamp(0.0, preferredSearchWidth).toDouble()
+              : availableSearchWidth
+                    .clamp(minimumSearchWidth, preferredSearchWidth)
+                    .toDouble();
+          final dateAndActions = Row(
+            children: [
+              Expanded(
+                child: Align(alignment: Alignment.centerLeft, child: date),
+              ),
+              notificationButton,
+              const SizedBox(width: 24),
+              profile,
+            ],
+          );
+          return Padding(
+            key: const ValueKey('global-top-bar'),
+            padding: EdgeInsets.fromLTRB(
+              0,
+              AccountingResponsive.topBarTopInset,
+              0,
+              AccountingResponsive.topBarBottomInset +
+                  (isHome ? AccountingResponsive.tabStripTopInset : 0),
             ),
-            notificationButton,
-            const SizedBox(width: 24),
-            profile,
-          ],
-        );
-        return Padding(
-          key: const ValueKey('global-top-bar'),
-          padding: EdgeInsets.fromLTRB(
-            24,
-            AccountingResponsive.topBarTopInset,
-            24,
-            AccountingResponsive.topBarBottomInset +
-                (isHome ? AccountingResponsive.tabStripTopInset : 0),
-          ),
-          child: stacked
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    dateAndActions,
-                    const SizedBox(height: AccountingResponsive.groupGap),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: SizedBox(width: searchWidth, child: search),
-                    ),
-                  ],
-                )
-              : Row(
-                  children: [
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: date,
+            child: stacked
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      dateAndActions,
+                      const SizedBox(height: AccountingResponsive.groupGap),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: SizedBox(width: searchWidth, child: search),
                       ),
-                    ),
-                    const SizedBox(width: AccountingResponsive.groupGap),
-                    SizedBox(width: searchWidth, child: search),
-                    const SizedBox(width: AccountingResponsive.groupGap),
-                    notificationButton,
-                    const SizedBox(width: 24),
-                    profile,
-                  ],
-                ),
-        );
-      },
+                    ],
+                  )
+                : Row(
+                    children: [
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: date,
+                        ),
+                      ),
+                      const SizedBox(width: AccountingResponsive.groupGap),
+                      SizedBox(width: searchWidth, child: search),
+                      const SizedBox(width: AccountingResponsive.groupGap),
+                      notificationButton,
+                      const SizedBox(width: 24),
+                      profile,
+                    ],
+                  ),
+          );
+        },
+      ),
     );
   }
 }

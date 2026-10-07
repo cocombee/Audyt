@@ -3,13 +3,17 @@ import 'package:audyt/features/accounting/domain/payment_account.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:audyt/app/accounting_theme.dart';
 import 'package:audyt/app/accounting_components.dart';
+import 'package:audyt/app/accounting_icons.dart';
 import 'package:audyt/app/field_row_trial.dart';
 
 import '../../app/claim_receipts_proposal_test.dart' show prepare;
+import '../../support/accounting_test_finders.dart';
 import '../../app/journal_workspace_integration_test.dart' show captureUi;
+import '../../app/restored_page_routes_test.dart' show tables;
 
 import 'package:audyt/features/accounting/application/accounting_workspace.dart';
 import 'package:audyt/features/accounting/domain/account.dart';
@@ -18,11 +22,12 @@ import 'package:audyt/features/purchases/domain/claim_store.dart';
 import 'package:audyt/features/purchases/presentation/claims_page.dart';
 
 void main() {
-  for (final width in [720.0, 1224.0]) {
+  for (final width in [720.0, 1162.0, 1224.0]) {
     testWidgets(
       'operational approval reviews accounts and posts a journal at $width',
       (tester) async {
         await prepare(tester, width);
+        tester.view.physicalSize = Size(width, 809);
         final dir = Directory.systemTemp.createTempSync('claim-ui-');
         final w = await AccountingWorkspace.open('${dir.path}/books.sqlite');
         addTearDown(() {
@@ -92,6 +97,47 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.text('5000 · Office Expense').last);
         await tester.pumpAndSettle();
+        final partialTables = tables(w);
+        for (final dismissal in ['Close', 'Escape', 'Backdrop']) {
+          if (dismissal == 'Close') {
+            await tester.tap(find.byType(AccountingCloseIcon).last);
+          } else if (dismissal == 'Escape') {
+            await tester.tap(
+              find.byKey(const ValueKey('claim-posting-account-0')),
+            );
+            await tester.pumpAndSettle();
+            await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+            await tester.pumpAndSettle();
+            // Escape first closes the open selector, preserving its choice.
+            await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+          } else {
+            await tester.tapAt(const Offset(8, 200));
+          }
+          await tester.pumpAndSettle();
+          expect(find.text('Discard Unsaved Changes?'), findsOneWidget);
+          await captureUi(
+            tester,
+            'Claim Account Guard $dismissal ${width.toInt()}',
+          );
+          await tester.tap(find.text('Keep Editing'));
+          await tester.pumpAndSettle();
+          expect(find.text('5000 · Office Expense'), findsOneWidget);
+          expect(tables(w), partialTables);
+        }
+        await tester.tap(find.byType(AccountingCloseIcon).last);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Discard'));
+        await tester.pumpAndSettle();
+        expect(tables(w), partialTables);
+        await tester.tap(find.byKey(ValueKey('claim-more-${claim.id}')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(ValueKey('claim-approve-${claim.id}')));
+        await tester.pumpAndSettle();
+        expect(find.text('5000 · Office Expense'), findsNothing);
+        await tester.tap(find.byKey(const ValueKey('claim-posting-account-0')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('5000 · Office Expense').last);
+        await tester.pumpAndSettle();
         await tester.tap(find.byKey(const ValueKey('claim-posting-account-1')));
         await tester.pumpAndSettle();
         await tester.tap(find.text('2100 · Claims Payable').last);
@@ -108,11 +154,25 @@ void main() {
           find.byKey(const ValueKey('claim-payment-ordinary-fields')),
           findsOneWidget,
         );
+        expectPopupFieldTitleAligned(
+          tester,
+          'Payment Account',
+          find.byKey(const ValueKey('claim-payment-account')),
+        );
         await captureUi(tester, 'Claim Payment Account ${width.toInt()}');
         await tester.tap(find.byKey(const ValueKey('claim-payment-account')));
         await tester.pumpAndSettle();
         await tester.tap(find.text('Bank · Bank · RM').last);
         await tester.pumpAndSettle();
+        final approvedTables = tables(w);
+        await tester.tapAt(const Offset(8, 200));
+        await tester.pumpAndSettle();
+        expect(find.text('Discard Unsaved Changes?'), findsOneWidget);
+        await captureUi(tester, 'Claim Payment Account Dirty ${width.toInt()}');
+        await tester.tap(find.text('Keep Editing'));
+        await tester.pumpAndSettle();
+        expect(find.text('Bank · Bank · RM'), findsOneWidget);
+        expect(tables(w), approvedTables);
         await tester.tap(find.text('Continue'));
         await tester.pumpAndSettle();
         expect(
@@ -130,6 +190,11 @@ void main() {
           findsNothing,
         );
         expect(find.byType(AccountingFieldHelp), findsOneWidget);
+        expectPopupFieldTitleAligned(
+          tester,
+          'Payment Reference',
+          find.byKey(const ValueKey('claims-batch-reference')),
+        );
         await captureUi(tester, 'Claim Payment Reference ${width.toInt()}');
         await tester.tap(
           find.descendant(
@@ -147,6 +212,38 @@ void main() {
           'Claim Payment Reference Help ${width.toInt()}',
         );
         Tooltip.dismissAllToolTips();
+        await tester.pumpAndSettle();
+        await tester.enterText(
+          find.byKey(const ValueKey('claims-batch-reference')),
+          'UI-PAYMENT-001',
+        );
+        await tester.pump();
+        await tester.sendKeyDownEvent(LogicalKeyboardKey.escape);
+        await tester.sendKeyUpEvent(LogicalKeyboardKey.escape);
+        await tester.pumpAndSettle();
+        expect(find.text('Discard Unsaved Changes?'), findsOneWidget);
+        await captureUi(
+          tester,
+          'Claim Payment Reference Dirty ${width.toInt()}',
+        );
+        await tester.tap(find.text('Keep Editing'));
+        await tester.pumpAndSettle();
+        expect(find.text('UI-PAYMENT-001'), findsOneWidget);
+        expect(tables(w), approvedTables);
+        await tester.tap(accountingCloseIcon().last);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Discard'));
+        await tester.pumpAndSettle();
+        expect(tables(w), approvedTables);
+        await tester.tap(find.byKey(ValueKey('claim-more-${claim.id}')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(ValueKey('claim-pay-${claim.id}')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('claim-payment-account')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Bank · Bank · RM').last);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Continue'));
         await tester.pumpAndSettle();
         await tester.enterText(
           find.byKey(const ValueKey('claims-batch-reference')),

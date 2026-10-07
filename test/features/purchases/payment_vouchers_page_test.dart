@@ -4,6 +4,7 @@ import '../../app/journal_workspace_integration_test.dart'
     show captureUi, loadJournalLayoutFonts;
 
 import 'package:audyt/app/accounting_theme.dart';
+import 'package:audyt/app/accounting_components.dart';
 import 'package:audyt/app/feature_registry.dart';
 
 import 'package:audyt/core/documents/receipt_document.dart';
@@ -73,7 +74,31 @@ void main() {
           }
 
           final close = find.byKey(const ValueKey('voucher-editor-close'));
+          expect(
+            find.text(
+              'Confirm the source payment and bank review without another payment or expense posting.',
+            ),
+            findsOneWidget,
+          );
           await tap(open);
+          final sourceHelp = find.byWidgetPredicate(
+            (widget) =>
+                widget is AccountingFieldHelp &&
+                widget.label == 'Linked source type',
+          );
+          final sourceMessage = t
+              .widget<AccountingFieldHelp>(sourceHelp)
+              .message;
+          expect(find.text(sourceMessage), findsNothing);
+          await tap(sourceHelp);
+          expect(find.text(sourceMessage), findsOneWidget);
+          await captureUi(
+            t,
+            'Voucher ${existing ? 'Edit' : 'New'} Source Helper ${width.toInt()}',
+          );
+          Tooltip.dismissAllToolTips();
+          await t.pumpAndSettle();
+          expect(find.text(sourceMessage), findsNothing);
           await tap(close);
           expect(find.text('Discard Unsaved Changes?'), findsNothing);
           await tap(open);
@@ -401,7 +426,7 @@ void main() {
       );
       expect(find.text('Paid'), findsOneWidget);
       expect(
-        find.textContaining('Each voucher controls one source payment'),
+        find.textContaining('Confirm the source payment and bank review'),
         findsOneWidget,
       );
     },

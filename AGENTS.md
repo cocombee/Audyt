@@ -43,6 +43,80 @@ actual route observations separately from newer uninstalled changes. Preserve
 rollback and Safe Build. If a build fails, record the failure and fix it rather
 than counting screenshots, code or test renders as an installation.
 
+Default-window authority: the established default is 1162 × 809 macOS points
+(2324 × 1618 pixels in the approved Retina view), capped to the visible screen.
+Check `MainFlutterWindow.swift`, `MainMenu.xib` and the product contract together.
+A remembered smaller window is a separate observed state, not default acceptance;
+1224 × 1000 is an additional wide test view. Record actual measured bounds and
+keep established-default acceptance pending until that view is inspected.
+Fixed popout width acquisition and forced fields may enlarge the window; retain
+that actual size separately. This QA rule changes no field/button geometry or
+personal saved window preference.
+
+Shared page alignment — 8 October latest user correction: keep the date row,
+tab container and page body together in the existing responsive content column.
+Their outer left edges share the body's first inset (the button/card frame edge).
+Keep the title's own inner inset. The tab viewport's right limit is the main green
+action's right edge; short tab groups keep their natural width and long groups
+scroll inside that limit. Use one shared alignment owner and existing width/inset
+tokens, including wide, default, minimum and resized-sidebar states. Do not widen
+the page body to resolve top-bar/tab misalignment. Popout, field, button and sidebar
+geometry remain owned separately.
+
+Settings action alignment — 7 October latest correction: the user superseded
+heading-text alignment after identifying the missing icons. Use the existing
+Backup & Export Preferences body-left token: helper text and normal-size Manage
+button frames align to the section's body inset, as the ordinary fields do.
+Reuse one Settings-only helper/action body for the six dedicated sections,
+including Users & Accountant Access. Keep the original header icon/title layout;
+do not add the icon width/title gap to expanded body padding. A content-fit Column
+must not be centered by ExpansionTile. Ordinary preference editors, embedded file
+setup, Sign-In controls, fields and checkboxes retain their inner owners. Reuse
+existing small payment/calendar/letter artwork for the missing Settings icons;
+never request an unmapped `settings-null` or nonexistent SVG. Inspect all actual
+section callers and the complete small icon family before installation.
+Online Delivery's two selectors remain in one ordinary field run; PDF Attached
+follows them. No broad button width or unrelated checkbox/field rule is implied.
+
+Backup inline composition — latest 7 October correction: Backup Frequency,
+Export Format and the labelled Backup Destination control participate in one
+measured ordinary row when their title/helper and control minima fit. Destination
+was previously separated by the footer owner; do not preserve that forced break.
+Its Choose Folder button retains its normal intrinsic width and original command,
+busy state, loaded path, errors and company ownership. A long stored folder may
+wrap the labelled slot and ellipsize within available space. Reuse the ordinary
+row planner with an explicit external-control floor; do not apply field fractions
+to button frames, move other backup actions into the field row, or opt unrelated
+embedded forms into this composition. Proposal-only Settings exposes no native
+backup command. Inspect the actual saved-company route before confirming it.
+
+Supporting-text scope — 7 October user correction: short supporting text is
+acceptable. Put long field-specific explanations in each field's existing helper
+tooltip, rather than a combined paragraph beneath the form. Backup scheduling
+belongs to Backup Frequency, archive/export/import behavior to Export Format,
+and folder/original-document/restored-copy guidance to Backup Destination.
+Preserve concise live errors, progress, validation and preview limitations; this
+does not authorize hiding required workflow information or changing commands.
+Apply this audit across app owners, including raw Text paragraphs and catalogue
+descriptions, not just accountingHelperText callers. Classify by purpose rather
+than a character limit: user-entered descriptions, legal text, live facts,
+blocking errors, destructive-action consequences and report-scope notices are
+not generic field guidance. Keep each relocated explanation scoped to its actual
+field/caller; do not alter global helper, button, checkbox or width rules. Verify
+the original information remains reachable through the existing helper owner.
+
+Accounting Preferences verified subset — 7 October: expose the existing global
+Settings section through the same helper/action body and FrontendFormDialog.
+Financial-year months and Reporting Basis reuse the original catalogue fields.
+Tax Year Starts includes only the observed January / Same As Financial Year.
+Date/currency format catalogues and the three separate cheque/supplier-bill/
+journal warning switches are local preview choices only. Save remains disabled;
+CompanyPreferences, transaction shortcuts, reporting, date/money parsing and
+posting locks stay separate. No reference defaults are copied. Uninspected
+closing-book dependencies, tax-basis semantics, Reporting Framework and Home
+Currency remain pending; a generic duplicate warning never replaces the three
+specific controls or weakens document uniqueness.
+
 Apply this method to every design update. Edit this existing instruction file and
 the existing coverage records in place; do not create another competing guide.
 Keep these implementation rules in this existing `AGENTS.md`; do not create a
@@ -120,6 +194,11 @@ failure through the following implementation and acceptance gates.
    can consume Escape before its parent receives it; inspect its keyboard owner
    and scope any callback to the guarded caller. Reusing a parent warning or
    passing a pointer-only test does not prove focused keyboard dismissal.
+   Every editable child popup owns its opening snapshot and guarded dismissal;
+   the parent guard cannot protect edits that have not returned from the child.
+   Connect the existing `AccountingDescriptionField.onEscape` at that caller
+   when a narrative editor consumes Escape. Keep valid Apply/Continue results
+   separate from dismissal, and prove that Discard changes no saved tables.
 5. **Audit the complete component family, including bypasses.** Inspect caller
    constraints, inherited styles, local hardcoded widths/padding, raw controls and
    flags; a shared token declaration alone proves nothing about its callers.
