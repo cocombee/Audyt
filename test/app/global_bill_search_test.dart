@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:audyt/app/accounting_global_search.dart';
 import 'package:audyt/app/app.dart';
+import 'package:audyt/app/accounting_components.dart';
+import 'package:audyt/app/accounting_theme.dart';
 import 'package:audyt/core/ids/entity_id.dart';
 import 'package:audyt/core/money/money.dart';
 import 'package:audyt/features/accounting/application/accounting_workspace.dart';
@@ -148,7 +150,7 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  for (final width in [720.0, 1224.0]) {
+  for (final width in [720.0, 1162.0, 1224.0]) {
     testWidgets('global Bill suggestion opens Bills at $width', (tester) async {
       tester.view.physicalSize = Size(width, 1000);
       tester.view.devicePixelRatio = 1;
@@ -179,6 +181,25 @@ void main() {
       );
       await tester.pumpAndSettle();
       final result = find.widgetWithText(ListTile, postedNumber);
+      final tile = tester.widget<ListTile>(result);
+      expect(tile.horizontalTitleGap, AccountingSelectionLabel.minimumTextGap);
+      final label = find.descendant(of: result, matching: find.text('Bill'));
+      expect(
+        tester.widget<Text>(label).style!.fontSize,
+        accountingSmallControlFontSize,
+      );
+      expect(tester.widget<Text>(label).style!.fontWeight, FontWeight.w400);
+      final labelBox = find
+          .ancestor(of: label, matching: find.byType(DecoratedBox))
+          .first;
+      final titleBox = find.descendant(
+        of: result,
+        matching: find.text(postedNumber),
+      );
+      expect(
+        tester.getRect(labelBox).left - tester.getRect(titleBox).right,
+        greaterThanOrEqualTo(AccountingSelectionLabel.minimumTextGap - 0.5),
+      );
       expect(result, findsOneWidget);
       await captureUi(tester, 'Global Bill Search Popup ${width.toInt()}');
       await tester.tap(result);

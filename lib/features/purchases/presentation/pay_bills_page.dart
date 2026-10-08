@@ -243,11 +243,12 @@ class _PayBillsPageState extends State<PayBillsPage> {
       context: context,
       builder: (context) => AccountingDialog.alert(
         context,
+        widthFamily: AccountingPopoutWidthFamily.custom,
         title: 'View Bill',
-        maxContentWidth: 680,
+        maxContentWidth: AccountingPopoutTokens.widerContentWidth,
         actions: const [],
         content: SizedBox(
-          width: 680,
+          width: AccountingPopoutTokens.widerContentWidth,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -314,11 +315,12 @@ class _PayBillsPageState extends State<PayBillsPage> {
       context: context,
       builder: (context) => AccountingDialog.alert(
         context,
+        widthFamily: AccountingPopoutWidthFamily.custom,
         title: 'View Bill Payment',
-        maxContentWidth: 680,
+        maxContentWidth: AccountingPopoutTokens.widerContentWidth,
         actions: const [],
         content: SizedBox(
-          width: 680,
+          width: AccountingPopoutTokens.widerContentWidth,
           child: AccountingInformationRows(
             rows: [
               ('Reference', payment.reference),
@@ -444,11 +446,12 @@ class _PayBillsPageState extends State<PayBillsPage> {
           );
           return AccountingDialog.alert(
             context,
+            widthFamily: AccountingPopoutWidthFamily.custom,
             title: 'Bill Payments',
-            maxContentWidth: 680,
+            maxContentWidth: AccountingPopoutTokens.widerContentWidth,
             actions: const [],
             content: SizedBox(
-              width: 680,
+              width: AccountingPopoutTokens.widerContentWidth,
               child: total == 0
                   ? const Text('No payments recorded for this bill.')
                   : AccountingRecordList(

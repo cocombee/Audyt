@@ -9,6 +9,7 @@ import 'package:audyt/app/accounting_components.dart';
 import 'package:audyt/app/accounting_theme.dart';
 import 'package:audyt/app/frontend_review.dart';
 import 'package:audyt/app/demo_company.dart';
+import 'package:audyt/app/app.dart';
 import 'package:audyt/features/purchases/presentation/bill_form.dart';
 import 'package:audyt/features/accounting/presentation/record_expense_page.dart';
 import 'package:flutter/material.dart';
@@ -19,7 +20,194 @@ import '../support/fixed_popout_host.dart';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'journal_workspace_integration_test.dart'
+    show captureUi, loadJournalLayoutFonts;
+
 void main() {
+  test('ordinary money growth uses the actual three-or-more row only', () {
+    const base = [80.0, 120.0, 120.0, 120.0];
+    const grown = [210.0, null, null, null];
+    final crowded = trialRows(700, base, threeOrMoreFieldMinima: grown);
+    expect(crowded.single.widths, hasLength(4));
+    expect(crowded.single.widths.first, greaterThanOrEqualTo(210));
+    final fallback = trialRows(320, base, threeOrMoreFieldMinima: grown);
+    expect(fallback.first.widths, hasLength(2));
+    expect(fallback.first.widths, trialRows(320, base).first.widths);
+    for (final count in [1, 2]) {
+      expect(
+        trialRows(
+          620,
+          base.take(count).toList(),
+          threeOrMoreFieldMinima: grown.take(count).toList(),
+        ).first.widths,
+        trialRows(620, base.take(count).toList()).first.widths,
+      );
+    }
+    expect(trialRows(700, base).single.widths.first, lessThan(210));
+  });
+
+  for (final width in [1162.0, 720.0, 1224.0]) {
+    testWidgets('actual Fixed Assets populated money fits at $width', (
+      t,
+    ) async {
+      t.view.physicalSize = Size(width, 809);
+      t.view.devicePixelRatio = 1;
+      addTearDown(t.view.resetPhysicalSize);
+      addTearDown(t.view.resetDevicePixelRatio);
+      installFixedPopoutHost(t);
+      await loadJournalLayoutFonts();
+      final workspace = await createDemoWorkspace();
+      addTearDown(workspace.dispose);
+      await t.pumpWidget(
+        RepaintBoundary(
+          key: const ValueKey('workspace-capture'),
+          child: DemoCompany(
+            child: AudytApp(initialPath: '/accounting', workspace: workspace),
+          ),
+        ),
+      );
+      await t.pumpAndSettle();
+      final tabs = t.widget<AccountingTabs>(find.byType(AccountingTabs).first);
+      final index = tabs.labels.indexOf('Fixed Assets');
+      expect(index, greaterThanOrEqualTo(0));
+      await t.ensureVisible(find.byKey(ValueKey('${tabs.keyPrefix}-$index')));
+      await t.tap(find.byKey(ValueKey('${tabs.keyPrefix}-$index')));
+      await t.pumpAndSettle();
+      final view = find.byKey(const ValueKey('view-record-DEMO-FIXEDASSETS-4'));
+      await t.ensureVisible(view);
+      await t.tap(view);
+      await t.pumpAndSettle();
+      final cost = find.byKey(const ValueKey('design-field-Cost'));
+      await t.ensureVisible(
+        find.ancestor(of: cost, matching: find.byType(Column)).first,
+      );
+      await t.pumpAndSettle();
+      final editable = find.descendant(
+        of: cost,
+        matching: find.byType(EditableText),
+      );
+      expect(t.widget<EditableText>(editable).controller.text, '350.00');
+      expect(
+        t.state<EditableTextState>(editable).renderEditable.maxScrollExtent,
+        closeTo(0, .1),
+        reason: 'Retained 350.00 must not clip its last digit',
+      );
+      await captureUi(
+        t,
+        'Ordinary Money Fixed Assets Retained ${width.toInt()}',
+      );
+      await t.enterText(cost, '1234567.89');
+      await t.pumpAndSettle();
+      final peers = find.ancestor(of: cost, matching: find.byType(Row)).first;
+      final row = t.widget<Row>(peers);
+      final count = row.children
+          .whereType<SizedBox>()
+          .where((w) => w.key != null)
+          .length;
+      expect(count, greaterThanOrEqualTo(3));
+      expect(
+        t.state<EditableTextState>(editable).renderEditable.maxScrollExtent,
+        closeTo(0, .1),
+        reason: 'Current amount fits only in eligible crowded row',
+      );
+      expect(t.widget<EditableText>(editable).focusNode.hasFocus, isTrue);
+      expect(t.testTextInput.isRegistered, isTrue);
+      await captureUi(t, 'Ordinary Money Fixed Assets Typed ${width.toInt()}');
+      expect(t.takeException(), isNull);
+    });
+  }
+
+  for (final count in [1, 2]) {
+    testWidgets('ordinary $count-field amount retains its track after entry', (
+      t,
+    ) async {
+      await loadJournalLayoutFonts();
+      await t.pumpWidget(
+        MaterialApp(
+          theme: AccountingTheme.light(),
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                width: 620,
+                child: FrontendFormDialog(
+                  embedded: true,
+                  fieldLayoutOwner: AccountingFieldLayoutOwner.sharedPopup,
+                  form: DesignForm('Ordinary Scope Check', [
+                    const DesignField('Cost', monetary: true),
+                    if (count == 2) const DesignField('Reference'),
+                  ]),
+                  onCommit: (_) async {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await t.pumpAndSettle();
+      final cost = find.byKey(const ValueKey('design-field-Cost'));
+      final original = t.getRect(cost);
+      await t.enterText(cost, '123456789012345678901234567890.56');
+      await t.pumpAndSettle();
+      expect(t.getRect(cost), original);
+      expect(t.takeException(), isNull);
+    });
+  }
+
+  testWidgets(
+    'crowded amount fallback retains focus and restores static tracks',
+    (t) async {
+      await loadJournalLayoutFonts();
+      final width = ValueNotifier<double>(620);
+      addTearDown(width.dispose);
+      await t.pumpWidget(
+        MaterialApp(
+          theme: AccountingTheme.light(),
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.topLeft,
+              child: ValueListenableBuilder<double>(
+                valueListenable: width,
+                builder: (_, available, _) => SizedBox(
+                  width: available,
+                  child: FrontendFormDialog(
+                    embedded: true,
+                    fieldLayoutOwner: AccountingFieldLayoutOwner.sharedPopup,
+                    form: const DesignForm('Ordinary Scope Check', [
+                      DesignField('Cost', monetary: true),
+                      DesignField('Reference'),
+                      DesignField('Code'),
+                    ]),
+                    onCommit: (_) async {},
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await t.pumpAndSettle();
+      final cost = find.byKey(const ValueKey('design-field-Cost'));
+      await t.enterText(cost, '123456789012345.67');
+      await t.pumpAndSettle();
+      final editable = find.descendant(
+        of: cost,
+        matching: find.byType(EditableText),
+      );
+      final state = t.state<EditableTextState>(editable);
+      final selection = t.widget<EditableText>(editable).controller.selection;
+      expect(state.renderEditable.maxScrollExtent, closeTo(0, .1));
+      width.value = 400;
+      await t.pumpAndSettle();
+      expect(t.state<EditableTextState>(editable), same(state));
+      expect(t.widget<EditableText>(editable).focusNode.hasFocus, isTrue);
+      expect(t.widget<EditableText>(editable).controller.selection, selection);
+      expect(t.getSize(cost).width, 190);
+      expect(t.testTextInput.isRegistered, isTrue);
+      expect(t.takeException(), isNull);
+    },
+  );
+
   testWidgets(
     'ordinary reflow retains editor focus, caret and input connection',
     (tester) async {
@@ -426,7 +614,7 @@ void main() {
   });
 
   testWidgets(
-    'new ordinary popout inherits shared rows without a form allowlist',
+    'normal ordinary popout inherits two-field rows without a form allowlist',
     (tester) async {
       tester.view.physicalSize = const Size(1224, 2000);
       tester.view.devicePixelRatio = 1;
@@ -458,8 +646,10 @@ void main() {
         for (final label in ['Reference', 'Number', 'Code', 'Tag'])
           tester.getRect(find.byKey(ValueKey('design-field-$label'))),
       ];
+      expect(frames[1].top, frames[0].top);
+      expect(frames[2].top, greaterThan(frames[0].bottom));
+      expect(frames[3].top, frames[2].top);
       for (final frame in frames.skip(1)) {
-        expect(frame.top, frames.first.top);
         expect(frame.width, closeTo(frames.first.width, .01));
       }
       final custom = tester.getRect(
@@ -468,7 +658,7 @@ void main() {
       final notes = tester.getRect(
         find.byKey(const ValueKey('design-field-Notes')),
       );
-      expect(custom.width, greaterThan(frames.first.width * 3));
+      expect(custom.width, greaterThan(frames.first.width * 2));
       expect(notes.width, custom.width);
       expect(notes.top, greaterThan(custom.top));
       expect(tester.takeException(), isNull);

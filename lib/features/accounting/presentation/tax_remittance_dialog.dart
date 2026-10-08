@@ -467,9 +467,10 @@ Future<void> showTaxRemittance(
     context: context,
     builder: (context) => AccountingDialog.alert(
       context,
+      widthFamily: AccountingPopoutWidthFamily.normal,
       title: source.reference,
-      maxContentWidth: 600,
-      fixedContentWidth: 600,
+      maxContentWidth: AccountingPopoutTokens.normalContentWidth,
+      fixedContentWidth: AccountingPopoutTokens.normalContentWidth,
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -619,9 +620,10 @@ Future<void> showTaxRemittanceAccountTrace(
         formatAccountingMinor(context, n, w.identity.currency);
     return AccountingDialog.alert(
       context,
+      widthFamily: AccountingPopoutWidthFamily.normal,
       title: account.balance.account.displayName,
-      maxContentWidth: 600,
-      fixedContentWidth: 600,
+      maxContentWidth: AccountingPopoutTokens.normalContentWidth,
+      fixedContentWidth: AccountingPopoutTokens.normalContentWidth,
       content: SelectionArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,

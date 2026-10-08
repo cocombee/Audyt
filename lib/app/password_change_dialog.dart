@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'accounting_components.dart';
+import 'accounting_theme.dart';
 import 'authentication_page.dart';
 import 'google_account_session.dart';
 
@@ -78,13 +79,14 @@ class _PasswordChangeDialogState extends State<_PasswordChangeDialog> {
     );
     return AccountingDialog.alert(
       context,
+      widthFamily: AccountingPopoutWidthFamily.normal,
       title: 'Change Password',
       description: 'Saving signs you out of all sessions. Sign in again with your new password.',
-      maxContentWidth: 420,
+      maxContentWidth: AccountingPopoutTokens.normalContentWidth,
       contentInset: 20,
       formFooter: true,
       content: SizedBox(
-        width: 420,
+        width: AccountingPopoutTokens.normalContentWidth,
         child: Form(
           key: form,
           child: Column(

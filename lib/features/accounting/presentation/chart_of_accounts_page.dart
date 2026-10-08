@@ -25,12 +25,14 @@ Future<EntityId?> showLedgerAccountDialog(
   AccountingWorkspace workspace,
   List<StoredAccount> accounts, {
   Set<ReportingAccountType>? allowedReportingTypes,
+  StoredAccount? original,
 }) => showDialog<EntityId>(
   context: context,
   builder: (_) => _NewAccountDialog(
     workspace: workspace,
     accounts: accounts,
     allowedReportingTypes: allowedReportingTypes,
+    original: original,
   ),
 );
 
@@ -95,6 +97,79 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
 
   void _create() =>
       showLedgerAccountDialog(context, widget.workspace, _accounts ?? []);
+  Future<void> _view(StoredAccount record) async {
+    final account = record.account;
+    final parent = (_accounts ?? [])
+        .where((r) => r.account.id == account.parentId)
+        .map((r) => r.account.displayName)
+        .firstOrNull;
+    final tax = widget.workspace.taxRates
+        .where((r) => r.id == account.profile?.defaultTaxCodeId)
+        .map((r) => r.label)
+        .firstOrNull;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AccountingDialog.alert(
+        dialogContext,
+        widthFamily: AccountingPopoutWidthFamily.normal,
+        title: account.name,
+        description: 'Saved Account Details',
+        closeKey: const ValueKey('ledger-account-view-close'),
+        content: SelectionArea(
+          child: AccountingInformationRows(
+            rows: [
+              ('Account Code', account.code),
+              (
+                'Account Type',
+                account.profile?.reportingType?.label ??
+                    accountingTitleCase(account.type.name),
+              ),
+              ('Detail Type', account.profile?.detailType ?? 'Not Set'),
+              ('Parent Account', parent ?? account.parentId?.value ?? 'None'),
+              (
+                'Default Tax Code',
+                tax ?? account.profile?.defaultTaxCodeId?.value ?? 'Not Set',
+              ),
+              ('Group Account', account.isParent ? 'Yes' : 'No'),
+              ('Status', accountingTitleCase(account.status.name)),
+              ('Description', account.profile?.description ?? ''),
+              ('Revision', '${record.metadata.revision}'),
+            ],
+          ),
+        ),
+        actions: [],
+      ),
+    );
+  }
+
+  Widget _recordActions(BuildContext context, StoredAccount record) =>
+      AccountingRecordActions(
+        trailing: [
+          AccountingButton.iconOnly(
+            context,
+            key: ValueKey('ledger-account-view-${record.account.id.value}'),
+            tooltip: 'View ${record.account.name}',
+            icon: Icons.visibility_outlined,
+            onPressed: () => _view(record),
+          ),
+          AccountingButton.iconOnly(
+            context,
+            key: ValueKey('ledger-account-edit-${record.account.id.value}'),
+            tooltip: 'Edit ${record.account.name}',
+            icon: Icons.edit_outlined,
+            onPressed: () => showLedgerAccountDialog(
+              context,
+              widget.workspace,
+              _accounts ?? [],
+              original: record,
+            ),
+          ),
+        ],
+      );
+
+  double get _recordActionWidth =>
+      accountingSmallControlHeight * 2 + accountingRecordIconGap;
+
   @override
   Widget build(BuildContext context) {
     final accounts = (_accounts ?? [])
@@ -182,13 +257,26 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                         final columns = _columnsFor(
                           context,
                           (_accounts ?? []).map((stored) => stored.account),
-                          constraints.maxWidth - accountingContentInset * 2,
+                          constraints.maxWidth -
+                              accountingContentInset * 3 -
+                              _recordActionWidth,
                         );
                         return Column(
                           children: [
                             Padding(
                               padding: accountingContentPadding,
-                              child: _accountHeader(context, columns),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: _accountHeader(context, columns),
+                                  ),
+                                  SizedBox(
+                                    width:
+                                        accountingContentInset +
+                                        _recordActionWidth,
+                                  ),
+                                ],
+                              ),
                             ),
                             Divider(
                               height: 1,
@@ -202,10 +290,26 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                                 ),
                               Padding(
                                 padding: accountingContentPadding,
-                                child: _accountRow(
-                                  context,
-                                  accounts[index].account,
-                                  columns,
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: _accountRow(
+                                        context,
+                                        accounts[index].account,
+                                        columns,
+                                      ),
+                                    ),
+                                    const SizedBox(
+                                      width: accountingContentInset,
+                                    ),
+                                    SizedBox(
+                                      width: _recordActionWidth,
+                                      child: _recordActions(
+                                        context,
+                                        accounts[index],
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -526,7 +630,9 @@ class _NewAccountDialog extends StatefulWidget {
     required this.workspace,
     required this.accounts,
     this.allowedReportingTypes,
+    this.original,
   });
+  final StoredAccount? original;
   final Set<ReportingAccountType>? allowedReportingTypes;
   final AccountingWorkspace workspace;
   final List<StoredAccount> accounts;
@@ -544,6 +650,7 @@ class _NewAccountDialogState extends State<_NewAccountDialog> {
   late final _fieldChanges = Listenable.merge([_code, _name]);
   final _typeFieldKey = GlobalKey();
   final _parentFieldKey = GlobalKey();
+  final _saveErrorKey = GlobalKey();
   Iterable<ReportingAccountType> get _allowedTypes =>
       ReportingAccountType.values.where(
         (type) =>
@@ -560,6 +667,104 @@ class _NewAccountDialogState extends State<_NewAccountDialog> {
   bool _busy = false;
   bool _closePromptOpen = false;
   String? _error;
+  late final List<Object?> _openingFacts;
+  Future<BigInt>? _balance;
+  final _balanceThrough = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    final account = widget.original?.account;
+    if (account != null) {
+      _code.text = account.code;
+      _name.text = account.name;
+      _description.text = account.profile?.description ?? '';
+      _type = account.type;
+      _reportingType = account.profile?.reportingType;
+      _detailType = account.profile?.detailType;
+      _defaultTaxCode = account.profile?.defaultTaxCodeId;
+      _parent = account.parentId?.value ?? 'none';
+      _group = account.isParent;
+      _locked = account.status == AccountStatus.locked;
+      _balance = widget.workspace
+          .report(from: DateTime.utc(1), through: _balanceThrough)
+          .then(
+            (report) => report.rows
+                .singleWhere((row) => row.account.id == account.id)
+                .endingNetDebit,
+          );
+    }
+    _openingFacts = _facts;
+  }
+
+  List<Object?> get _facts => [
+    _code.text,
+    _name.text,
+    _description.text,
+    _type,
+    _reportingType,
+    _detailType,
+    _parent,
+    _group,
+    _locked,
+    _defaultTaxCode,
+    _openingAmount.text,
+    _openingDate.text,
+  ];
+
+  Future<bool> _confirmClassificationChange() async {
+    if (widget.original == null) return true;
+    return await showDialog<bool>(
+          context: context,
+          builder: (c) => AccountingDialog.alert(
+            c,
+            widthFamily: AccountingPopoutWidthFamily.dialog,
+            title: 'Change Account Classification',
+            closeKey: const ValueKey('ledger-classification-close'),
+            content: accountingHelperText(
+              c,
+              'Changing the account type or detail changes its reporting classification. Existing postings remain unchanged.',
+            ),
+            actions: [
+              AccountingButton.outline(
+                c,
+                key: const ValueKey('ledger-classification-keep'),
+                onPressed: () => Navigator.of(c).pop(false),
+                child: const Text('Keep Current'),
+              ),
+              AccountingButton.primary(
+                c,
+                key: const ValueKey('ledger-classification-change'),
+                onPressed: () => Navigator.of(c).pop(true),
+                child: const Text('Change Classification'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  Future<void> _changeType(ReportingAccountType? value) async {
+    if (value == _reportingType || _busy) return;
+    if (!await _confirmClassificationChange() || !mounted) return;
+    setState(() {
+      _reportingType = value;
+      _type = value?.ledgerType;
+      _detailType = value?.details.first;
+      _parent = 'none';
+      _error = null;
+    });
+  }
+
+  Future<void> _changeDetail(String? value) async {
+    if (value == _detailType || _busy) return;
+    if (!await _confirmClassificationChange() || !mounted) return;
+    setState(() {
+      _detailType = value;
+      _error = null;
+    });
+  }
+
   @override
   void dispose() {
     _code.dispose();
@@ -572,17 +777,17 @@ class _NewAccountDialogState extends State<_NewAccountDialog> {
   }
 
   Future<void> _save() async {
-    if (_busy) return;
+    if (_busy || widget.original != null) return;
     if (_code.text.trim().isEmpty ||
         _name.text.trim().isEmpty ||
         _type == null) {
-      setState(() => _error = 'Enter an account code, name and type.');
+      _showSaveError('Enter an account code, name and type.');
       return;
     }
     if (_openingAmount.text.trim().isNotEmpty ||
         _openingDate.text.trim().isNotEmpty) {
-      setState(
-        () => _error = 'Opening balances require a dated balanced journal. This step is not connected to account creation yet.',
+      _showSaveError(
+        'Opening balances require a dated balanced journal. This step is not connected to account creation yet.',
       );
       return;
     }
@@ -608,31 +813,37 @@ class _NewAccountDialogState extends State<_NewAccountDialog> {
       if (mounted) Navigator.of(context).pop(savedId);
     } catch (error) {
       if (mounted) {
-        setState(() {
-          _error = error is StateError
+        _showSaveError(
+          error is StateError
               ? error.message
-              : 'The account could not be saved. Check the details and retry.';
-          _busy = false;
-        });
+              : 'The account could not be saved. Check the details and retry.',
+        );
       }
     }
+  }
+
+  void _showSaveError(String message) {
+    setState(() {
+      _error = message;
+      _busy = false;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _error != message) return;
+      final errorContext = _saveErrorKey.currentContext;
+      if (errorContext != null) {
+        Scrollable.ensureVisible(errorContext, alignment: 1);
+      }
+    });
   }
 
   void _clearFieldError() {
     if (!_busy && _error != null) setState(() => _error = null);
   }
 
-  bool get _hasChanges =>
-      _code.text.isNotEmpty ||
-      _name.text.isNotEmpty ||
-      _description.text.isNotEmpty ||
-      _type != null ||
-      _parent != 'none' ||
-      _group ||
-      _locked ||
-      _defaultTaxCode != null ||
-      _openingAmount.text.isNotEmpty ||
-      _openingDate.text.isNotEmpty;
+  bool get _hasChanges {
+    final facts = _facts;
+    return facts.asMap().entries.any((e) => e.value != _openingFacts[e.key]);
+  }
 
   Future<void> _handleClose() async {
     if (_busy || _closePromptOpen) return;
@@ -686,8 +897,10 @@ class _NewAccountDialogState extends State<_NewAccountDialog> {
     final parents = widget.accounts
         .where(
           (r) =>
+              r.account.id != widget.original?.account.id &&
               r.account.isParent &&
-              r.account.status == AccountStatus.active &&
+              (r.account.status == AccountStatus.active ||
+                  r.account.id == widget.original?.account.parentId) &&
               r.account.type == _type,
         )
         .toList();
@@ -709,12 +922,15 @@ class _NewAccountDialogState extends State<_NewAccountDialog> {
         },
         child: AccountingDialog.alert(
           context,
-          title: 'New Account',
+          widthFamily: AccountingPopoutWidthFamily.normal,
+          title: widget.original == null ? 'New Account' : 'Edit Account',
           closeKey: const ValueKey('ledger-account-close'),
           formFooter: true,
-          description: 'Create an account in the company reporting currency.',
+          description: widget.original == null
+              ? 'Create an account in the company reporting currency.'
+              : 'Account updates are not connected yet.',
           content: SizedBox(
-            width: 420,
+            width: AccountingPopoutTokens.normalContentWidth,
             child: AnimatedBuilder(
               animation: _fieldChanges,
               builder: (context, _) => Column(
@@ -786,17 +1002,13 @@ class _NewAccountDialogState extends State<_NewAccountDialog> {
                             searchKey: const ValueKey('ledger-type-search'),
                             assignedWidth: width,
                             value: _reportingType,
-                            onChanged: _busy
-                                ? (_) {}
-                                : (value) => setState(() {
-                                    _reportingType = value;
-                                    _type = value?.ledgerType;
-                                    _detailType = value?.details.first;
-                                    _parent = 'none';
-                                    _error = null;
-                                  }),
+                            onChanged: _changeType,
                             enabled: !_busy,
-                            hintText: 'Select Type',
+                            hintText:
+                                widget.original != null &&
+                                    _reportingType == null
+                                ? accountingTitleCase(_type!.name)
+                                : 'Select Type',
                             searchable: true,
                             options: [
                               for (final type in _allowedTypes)
@@ -822,10 +1034,7 @@ class _NewAccountDialogState extends State<_NewAccountDialog> {
                             assignedWidth: width,
                             value: _detailType,
                             enabled: !_busy && _reportingType != null,
-                            onChanged: (value) => setState(() {
-                              _detailType = value;
-                              _error = null;
-                            }),
+                            onChanged: _changeDetail,
                             searchable: true,
                             hintText: 'Select Detail Type',
                             options: [
@@ -877,12 +1086,19 @@ class _NewAccountDialogState extends State<_NewAccountDialog> {
                             key: _parentFieldKey,
                           ),
                         ),
+                    ],
+                  ),
+                  const SizedBox(height: AccountingResponsive.groupGap),
+                  AccountingOrdinaryFields(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    fields: [
                       AccountingOrdinaryFieldSlot(
                         label: 'Default Tax Code',
+                        hasGuidance: true,
                         choices: [
                           'Not Set',
                           for (final rate in widget.workspace.taxRates.where(
-                            (r) => r.active,
+                            (r) => r.active || r.id == _defaultTaxCode,
                           ))
                             rate.label,
                         ],
@@ -906,7 +1122,7 @@ class _NewAccountDialogState extends State<_NewAccountDialog> {
                               ),
                               for (final rate
                                   in widget.workspace.taxRates.where(
-                                    (r) => r.active,
+                                    (r) => r.active || r.id == _defaultTaxCode,
                                   ))
                                 AccountingSelectorOption<EntityId?>(
                                   value: rate.id,
@@ -918,7 +1134,53 @@ class _NewAccountDialogState extends State<_NewAccountDialog> {
                           guidance: 'Retains this company tax code as an account default. Existing transaction lines keep their own tax selection.',
                         ),
                       ),
-                      if (_reportingType?.hasOpeningBalance ?? false) ...[
+                      AccountingOrdinaryFieldSlot(
+                        label: 'Group Account',
+                        minimumControlWidth:
+                            18 +
+                            accountingContentInset +
+                            accountingFieldLabelMinimumWidth(
+                              context,
+                              'Group Account',
+                              alignToField: true,
+                              hasGuidance: true,
+                            ),
+                        builder: (_) => SizedBox(
+                          height: accountingControlHeight,
+                          child: Row(
+                            children: [
+                              AccountingLeadingCheckbox(
+                                undividedRow: true,
+                                checkboxKey: const ValueKey(
+                                  'ledger-group-account',
+                                ),
+                                value: _group,
+                                onChanged: _busy
+                                    ? null
+                                    : (value) => setState(
+                                        () => _group = value ?? false,
+                                      ),
+                                semanticLabel: 'Group Account',
+                              ),
+                              Expanded(
+                                child: accountingFieldLabel(
+                                  context,
+                                  'Group Account',
+                                  alignToField: true,
+                                  guidance: 'Group accounts contain subaccounts and cannot receive postings.',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (widget.original == null &&
+                      (_reportingType?.hasOpeningBalance ?? false)) ...[
+                    const SizedBox(height: AccountingResponsive.groupGap),
+                    AccountingOrdinaryFields(
+                      fields: [
                         AccountingOrdinaryFieldSlot(
                           label:
                               'Opening Balance (${CurrencyPresentation.fromCode(widget.workspace.identity.currency).amountSymbol})',
@@ -987,31 +1249,8 @@ class _NewAccountDialogState extends State<_NewAccountDialog> {
                           ),
                         ),
                       ],
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      AccountingLeadingCheckbox(
-                        undividedRow: true,
-                        checkboxKey: const ValueKey('ledger-group-account'),
-                        value: _group,
-                        onChanged: _busy
-                            ? null
-                            : (value) =>
-                                  setState(() => _group = value ?? false),
-                        semanticLabel: 'Group Account',
-                      ),
-                      Expanded(
-                        child: accountingFieldLabel(
-                          context,
-                          'Group Account',
-                          alignToField: true,
-                          guidance: 'Group accounts contain subaccounts and cannot receive postings.',
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                   const SizedBox(height: accountingContentInset),
                   accountingFieldLabel(
                     context,
@@ -1031,6 +1270,38 @@ class _NewAccountDialogState extends State<_NewAccountDialog> {
                       hintText: 'Describe The Account',
                     ),
                   ),
+                  if (widget.original != null) ...[
+                    const SizedBox(height: accountingContentInset),
+                    FutureBuilder<BigInt>(
+                      future: _balance,
+                      builder: (context, snapshot) => AccountingInformationRows(
+                        rows: [
+                          (
+                            'Status',
+                            accountingTitleCase(
+                              widget.original!.account.status.name,
+                            ),
+                          ),
+                          (
+                            'Posted Balance',
+                            snapshot.hasError
+                                ? 'Unavailable'
+                                : !snapshot.hasData
+                                ? 'Loading…'
+                                : '${formatAccountingMinor(context, snapshot.data!.abs(), widget.workspace.identity.currency)}${snapshot.data == BigInt.zero
+                                      ? ''
+                                      : snapshot.data! > BigInt.zero
+                                      ? ' Dr'
+                                      : ' Cr'}',
+                          ),
+                          (
+                            'Through Date',
+                            formatAccountingDate(context, _balanceThrough),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: accountingContentInset),
                   Row(
                     children: [
@@ -1058,6 +1329,7 @@ class _NewAccountDialogState extends State<_NewAccountDialog> {
                     const SizedBox(height: 12),
                     Text(
                       _error!,
+                      key: _saveErrorKey,
                       style: AccountingTypography.helper(context).copyWith(
                         color: AccountingTheme.of(context).destructive,
                       ),
@@ -1077,7 +1349,7 @@ class _NewAccountDialogState extends State<_NewAccountDialog> {
             AccountingButton.primary(
               context,
               key: const ValueKey('save-ledger-account'),
-              onPressed: _busy ? null : _save,
+              onPressed: _busy || widget.original != null ? null : _save,
               child: Text(_busy ? 'Saving…' : 'Save Account'),
             ),
           ],

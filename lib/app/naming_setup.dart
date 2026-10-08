@@ -246,9 +246,9 @@ Future<void> showAccountingPreferencesPreview(BuildContext context) {
   ];
   return AccountingDialog.showFixed<void>(
     context: context,
-    contentWidth: 600,
+    contentWidth: AccountingPopoutTokens.normalContentWidth,
     builder: (_) => FrontendFormDialog(
-      contentWidth: 600,
+      contentWidth: AccountingPopoutTokens.normalContentWidth,
       previewConfirmationEnabled: false,
       initial: const {
         'Duplicate Cheque Warning': false,
@@ -440,6 +440,7 @@ class _AccountingSettingsDialogState extends State<_AccountingSettingsDialog> {
   @override
   Widget build(BuildContext context) => AccountingDialog.alert(
     context,
+    widthFamily: AccountingPopoutWidthFamily.wider,
     title: widget.title,
     description: widget.proposalOnly
         ? 'Design preview · Changes stay in this review session. No company settings, files or account access are changed.'
@@ -450,7 +451,7 @@ class _AccountingSettingsDialogState extends State<_AccountingSettingsDialog> {
     contentInset: 20,
     backgroundColor: AccountingTheme.of(context).background,
     content: SizedBox(
-      width: 720,
+      width: AccountingPopoutTokens.widerContentWidth,
       child: _loading
           ? const Center(child: CircularProgressIndicator())
           : Column(
@@ -664,6 +665,9 @@ class _AccountingSettingsDialogState extends State<_AccountingSettingsDialog> {
                                                   builder: (context) =>
                                                       AccountingDialog.alert(
                                                         context,
+                                                        widthFamily:
+                                                            AccountingPopoutWidthFamily
+                                                                .dialog,
                                                         title: 'Preview Unavailable',
                                                         content: Text('$error'),
                                                         actions: [],
@@ -1388,6 +1392,7 @@ class _NamingSetupDialogState extends State<NamingSetupDialog> {
     }
     return AccountingDialog.alert(
       context,
+      widthFamily: AccountingPopoutWidthFamily.wider,
       title: widget.proposalTitle ?? widget.kind.label,
       formFooter: true,
       description: 'Build your filename one value at a time.',

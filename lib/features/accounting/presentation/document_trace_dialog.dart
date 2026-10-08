@@ -65,7 +65,8 @@ class _DocumentTraceDialogState extends State<DocumentTraceDialog> {
   Widget build(BuildContext context) => Dialog(
     insetPadding: const EdgeInsets.all(20),
     child: SizedBox(
-      width: 720,
+      width:
+          AccountingPopoutTokens.widerContentWidth + accountingContentInset * 2,
       height: MediaQuery.sizeOf(context).height - 40,
       child: Padding(
         padding: const EdgeInsets.all(20),

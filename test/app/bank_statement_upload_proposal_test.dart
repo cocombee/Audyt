@@ -106,10 +106,18 @@ void main() {
               .first,
         );
         final fields = tester.getRect(keyed('banking-ledger-fields'));
-        expect(fields.width, closeTo(460, 0.1));
+        final availableContent =
+            width -
+            AccountingPopoutTokens.windowInsets.horizontal -
+            AccountingPopoutTokens.contentInset * 2;
+        final normalWidth =
+            availableContent < AccountingPopoutTokens.normalContentWidth
+            ? availableContent
+            : AccountingPopoutTokens.normalContentWidth;
+        expect(fields.width, closeTo(normalWidth, 0.1));
         expect(
           dialog.width,
-          closeTo(460 + 2 * AccountingPopoutTokens.contentInset, 0.1),
+          closeTo(normalWidth + 2 * AccountingPopoutTokens.contentInset, 0.1),
         );
         expect(
           fields.left - dialog.left,

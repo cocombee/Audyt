@@ -33,7 +33,7 @@ Future<void> showPaymentMethodDirectoryPreview(
   String currencyCode = 'MYR',
 }) => AccountingDialog.showFixed<void>(
   context: context,
-  contentWidth: 600,
+  contentWidth: AccountingPopoutTokens.normalContentWidth,
   builder: (_) => PaymentMethodDirectoryDialog(
     currencyCode: currencyCode,
     entries: demo
@@ -96,12 +96,13 @@ class _PaymentMethodDirectoryDialogState
   Future<void> _view(PaymentMethodDirectoryPreviewEntry entry) =>
       AccountingDialog.showFixed<void>(
         context: context,
-        contentWidth: 600,
+        contentWidth: AccountingPopoutTokens.normalContentWidth,
         builder: (context) => AccountingDialog.alert(
           context,
+          widthFamily: AccountingPopoutWidthFamily.normal,
           title: entry.name,
-          fixedContentWidth: 600,
-          maxContentWidth: 600,
+          fixedContentWidth: AccountingPopoutTokens.normalContentWidth,
+          maxContentWidth: AccountingPopoutTokens.normalContentWidth,
           content: AccountingInformationRows(
             rows: [
               ('Name', entry.name),
@@ -116,12 +117,13 @@ class _PaymentMethodDirectoryDialogState
   Future<void> _activation(PaymentMethodDirectoryPreviewEntry entry) =>
       AccountingDialog.showFixed<void>(
         context: context,
-        contentWidth: 400,
+        contentWidth: AccountingPopoutTokens.dialogContentWidth,
         builder: (context) => AccountingDialog.alert(
           context,
+          widthFamily: AccountingPopoutWidthFamily.dialog,
           title: entry.active ? 'Make Method Inactive?' : 'Make Method Active?',
-          fixedContentWidth: 400,
-          maxContentWidth: 400,
+          fixedContentWidth: AccountingPopoutTokens.dialogContentWidth,
+          maxContentWidth: AccountingPopoutTokens.dialogContentWidth,
           description:
               'Changing payment-method availability is not connected yet.',
           content: Text(entry.name, style: AccountingTypography.value(context)),
@@ -232,10 +234,11 @@ class _PaymentMethodDirectoryDialogState
         .toList();
     return AccountingDialog.alert(
       context,
+      widthFamily: AccountingPopoutWidthFamily.normal,
       title: 'Payment Methods',
       description: 'Design preview · Methods are not saved. Existing payment selections are unchanged.',
-      fixedContentWidth: 600,
-      maxContentWidth: 600,
+      fixedContentWidth: AccountingPopoutTokens.normalContentWidth,
+      maxContentWidth: AccountingPopoutTokens.normalContentWidth,
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -268,11 +271,13 @@ class _PaymentMethodDirectoryDialogState
                     ),
                     trailing: AccountingRecordActions(
                       trailing: [
-                        AccountingButton.outline(
+                        AccountingButton.iconOnly(
                           context,
                           key: ValueKey('payment-method-activity-${entry.id}'),
                           onPressed: () => _report(entry),
-                          child: const Text('Run Report'),
+                          icon: Icons.insert_chart_outlined,
+                          iconAsset: '014-presentation.svg',
+                          tooltip: 'Run Report for ${entry.name}',
                         ),
                         AccountingButton.iconOnly(
                           context,
@@ -293,15 +298,15 @@ class _PaymentMethodDirectoryDialogState
                           icon: Icons.edit_outlined,
                           tooltip: 'Edit ${entry.name}',
                         ),
-                        AccountingButton.outline(
+                        AccountingButton.iconOnly(
                           context,
                           key: ValueKey(
                             'payment-method-activation-${entry.id}',
                           ),
                           onPressed: () => _activation(entry),
-                          child: Text(
-                            entry.active ? 'Make Inactive' : 'Make Active',
-                          ),
+                          icon: entry.active ? Icons.block : Icons.restore,
+                          tooltip:
+                              '${entry.active ? 'Make Inactive' : 'Make Active'} ${entry.name}',
                         ),
                       ],
                     ),
@@ -469,7 +474,7 @@ class _PaymentMethodReportPreviewState
     }
     await AccountingDialog.showFixed<void>(
       context: context,
-      contentWidth: 600,
+      contentWidth: AccountingPopoutTokens.normalContentWidth,
       builder: (_) => _PaymentMethodReportColumns(
         columns: _columns,
         filters: _filters,
@@ -482,14 +487,14 @@ class _PaymentMethodReportPreviewState
 
   Future<void> _saveCustomisationPreview() => AccountingDialog.showFixed<void>(
     context: context,
-    contentWidth: 600,
+    contentWidth: AccountingPopoutTokens.normalContentWidth,
     builder: (_) =>
         _PaymentMethodSavedReportPreview(reportTitle: _presentation.title.text),
   );
 
   Future<void> _managementReportPreview() => AccountingDialog.showFixed<void>(
     context: context,
-    contentWidth: 600,
+    contentWidth: AccountingPopoutTokens.normalContentWidth,
     builder: (_) => const _PaymentMethodManagementReportPreview(),
   );
 
@@ -515,14 +520,15 @@ class _PaymentMethodReportPreviewState
   Future<void> _printPreview() async {
     final next = await AccountingDialog.showFixed<String>(
       context: context,
-      contentWidth: 600,
+      contentWidth: AccountingPopoutTokens.normalContentWidth,
       builder: (context) => StatefulBuilder(
         builder: (context, refresh) => AccountingDialog.alert(
           context,
+          widthFamily: AccountingPopoutWidthFamily.normal,
           key: const ValueKey('payment-method-report-print-dialog'),
           title: 'Print, Email, Or Save As PDF',
-          fixedContentWidth: 600,
-          maxContentWidth: 600,
+          fixedContentWidth: AccountingPopoutTokens.normalContentWidth,
+          maxContentWidth: AccountingPopoutTokens.normalContentWidth,
           description: 'Report delivery preview. Generated report pages and delivery commands are not connected.',
           content: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -622,7 +628,7 @@ class _PaymentMethodReportPreviewState
     if (next == 'email' && mounted) {
       await AccountingDialog.showFixed<void>(
         context: context,
-        contentWidth: 600,
+        contentWidth: AccountingPopoutTokens.normalContentWidth,
         builder: (_) => _PaymentMethodReportEmailPreview(
           reportTitle: _presentation.title.text.trim().isEmpty
               ? (widget.method == null
@@ -671,6 +677,7 @@ class _PaymentMethodReportPreviewState
         },
         child: AccountingDialog.alert(
           context,
+          widthFamily: AccountingPopoutWidthFamily.custom,
           key: ValueKey(
             activity
                 ? 'payment-method-activity-report'
@@ -682,11 +689,11 @@ class _PaymentMethodReportPreviewState
           description: activity
               ? 'Design preview · Transaction queries, calculated date ranges and original-record links are not connected.'
               : 'Design preview · Maintained methods and metadata queries are not connected. Shown names are temporary preview facts.',
-          maxContentWidth: 1000,
+          maxContentWidth: AccountingPopoutTokens.customContentWidth,
           onClose: _close,
           closeKey: const ValueKey('payment-method-report-close'),
           content: SizedBox(
-            width: 1000,
+            width: AccountingPopoutTokens.customContentWidth,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1102,7 +1109,7 @@ class _PaymentMethodReportPreviewState
 
   Future<void> _customiseActivity() => AccountingDialog.showFixed<void>(
     context: context,
-    contentWidth: 600,
+    contentWidth: AccountingPopoutTokens.normalContentWidth,
     builder: (context) => StatefulBuilder(
       builder: (context, refresh) {
         void change(VoidCallback update) {
@@ -1110,35 +1117,35 @@ class _PaymentMethodReportPreviewState
           refresh(() {});
         }
 
-        Widget check(String label, bool value, ValueChanged<bool> update) =>
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                vertical: accountingUndividedRowVerticalInset,
+        Widget check(
+          String label,
+          bool value,
+          ValueChanged<bool> update, {
+          double verticalInset = accountingUndividedRowVerticalInset,
+        }) => Padding(
+          padding: EdgeInsets.symmetric(vertical: verticalInset),
+          child: Row(
+            children: [
+              AccountingLeadingCheckbox(
+                checkboxKey: ValueKey('payment-method-activity-$label'),
+                undividedRow: true,
+                semanticLabel: label,
+                value: value,
+                onChanged: (v) => change(() => update(v == true)),
               ),
-              child: Row(
-                children: [
-                  AccountingLeadingCheckbox(
-                    checkboxKey: ValueKey('payment-method-activity-$label'),
-                    undividedRow: true,
-                    semanticLabel: label,
-                    value: value,
-                    onChanged: (v) => change(() => update(v == true)),
-                  ),
-                  Expanded(
-                    child: Text(
-                      label,
-                      style: AccountingTypography.value(context),
-                    ),
-                  ),
-                ],
+              Expanded(
+                child: Text(label, style: AccountingTypography.value(context)),
               ),
-            );
+            ],
+          ),
+        );
         return AccountingDialog.alert(
           context,
+          widthFamily: AccountingPopoutWidthFamily.normal,
           title: 'Customise Activity Report',
           description: 'Preview options only. Report queries, calculated date ranges and saved customisations are not connected. Personal preferences are unchanged.',
-          fixedContentWidth: 600,
-          maxContentWidth: 600,
+          fixedContentWidth: AccountingPopoutTokens.normalContentWidth,
+          maxContentWidth: AccountingPopoutTokens.normalContentWidth,
           content: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -1197,15 +1204,35 @@ class _PaymentMethodReportPreviewState
                 'Select columns; drag a selected label to reorder.',
               ),
               const SizedBox(height: accountingContentInset),
-              for (final id in _activity.columns)
-                _activityColumnRow(context, id, change, check),
-              for (final column in _paymentMethodActivityColumns)
-                if (!_activity.columns.contains(column.id))
-                  check(column.label, false, (v) {
-                    if (v) {
-                      _activity.columns.add(column.id);
-                    }
-                  }),
+              _paymentMethodReportCheckboxRows(
+                context,
+                [
+                  for (final id in _activity.columns)
+                    _paymentMethodActivityColumns
+                        .singleWhere((column) => column.id == id)
+                        .label,
+                  for (final column in _paymentMethodActivityColumns)
+                    if (!_activity.columns.contains(column.id)) column.label,
+                ],
+                (label) {
+                  final column = _paymentMethodActivityColumns.singleWhere(
+                    (column) => column.label == label,
+                  );
+                  if (_activity.columns.contains(column.id)) {
+                    return _activityColumnRow(
+                      context,
+                      column.id,
+                      change,
+                      (name, value, update) =>
+                          check(name, value, update, verticalInset: 0),
+                    );
+                  }
+                  return check(label, false, (value) {
+                    if (value) _activity.columns.add(column.id);
+                  }, verticalInset: 0);
+                },
+                maximumFieldsPerRow: 3,
+              ),
               const SizedBox(height: accountingContentInset),
               _activityFilterFields(context, change),
               _PaymentMethodReportPresentationControls(
@@ -1651,11 +1678,12 @@ class _PaymentMethodManagementReportPreviewState
       },
       child: AccountingDialog.alert(
         context,
+        widthFamily: AccountingPopoutWidthFamily.normal,
         key: const ValueKey('payment-method-management-dialog'),
         title: 'Add To Management Reports',
         description: 'Management report preview. Report selection and adding are not available yet.',
-        fixedContentWidth: 600,
-        maxContentWidth: 600,
+        fixedContentWidth: AccountingPopoutTokens.normalContentWidth,
+        maxContentWidth: AccountingPopoutTokens.normalContentWidth,
         onClose: _close,
         closeKey: const ValueKey('payment-method-management-close'),
         content: Column(
@@ -1878,11 +1906,12 @@ class _PaymentMethodSavedReportPreviewState
       },
       child: AccountingDialog.alert(
         context,
+        widthFamily: AccountingPopoutWidthFamily.normal,
         key: const ValueKey('payment-method-saved-report-dialog'),
         title: 'Save Customisation',
         description: 'Report customisation preview. Maintained groups, sharing and saving are not connected.',
-        fixedContentWidth: 600,
-        maxContentWidth: 600,
+        fixedContentWidth: AccountingPopoutTokens.normalContentWidth,
+        maxContentWidth: AccountingPopoutTokens.normalContentWidth,
         onClose: _close,
         closeKey: const ValueKey('payment-method-saved-report-close'),
         content: Column(
@@ -2076,11 +2105,12 @@ class _PaymentMethodReportEmailPreviewState
       },
       child: AccountingDialog.alert(
         context,
+        widthFamily: AccountingPopoutWidthFamily.normal,
         key: const ValueKey('payment-method-report-email-dialog'),
         title: 'Email Report',
         description: 'Email preview. The generated attachment and sending are not available yet.',
-        fixedContentWidth: 600,
-        maxContentWidth: 600,
+        fixedContentWidth: AccountingPopoutTokens.normalContentWidth,
+        maxContentWidth: AccountingPopoutTokens.normalContentWidth,
         onClose: _close,
         closeKey: const ValueKey('payment-method-report-email-close'),
         content: Column(
@@ -2118,8 +2148,9 @@ class _PaymentMethodReportEmailPreviewState
 Widget _paymentMethodReportCheckboxRows(
   BuildContext context,
   List<String> labels,
-  Widget Function(String label) builder,
-) => LayoutBuilder(
+  Widget Function(String label) builder, {
+  int maximumFieldsPerRow = 4,
+}) => LayoutBuilder(
   builder: (context, constraints) => AccountingOrdinaryFieldRows(
     width: constraints.maxWidth,
     minima: [
@@ -2133,6 +2164,7 @@ Widget _paymentMethodReportCheckboxRows(
             ),
     ],
     preferEqual: true,
+    maximumFieldsPerRow: maximumFieldsPerRow,
     fieldBuilder: (index, width) => builder(labels[index]),
   ),
 );
@@ -2287,10 +2319,11 @@ class _PaymentMethodReportColumnsState
   @override
   Widget build(BuildContext context) => AccountingDialog.alert(
     context,
+    widthFamily: AccountingPopoutWidthFamily.normal,
     title: 'Customise Report',
     description: 'Preview options only. Filters and sorting are not applied to a company query; personal report preferences are unchanged.',
-    fixedContentWidth: 600,
-    maxContentWidth: 600,
+    fixedContentWidth: AccountingPopoutTokens.normalContentWidth,
+    maxContentWidth: AccountingPopoutTokens.normalContentWidth,
     content: Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,

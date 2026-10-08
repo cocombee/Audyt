@@ -28,7 +28,7 @@ import 'journal_workspace_integration_test.dart'
 void main() {
   salesReceiptConfiguredJourneys();
   salesReceiptCustomerCreationJourneys();
-  for (final width in [720.0, 1224.0]) {
+  for (final width in [720.0, 1162.0, 1224.0]) {
     for (final (title, savedPreview) in [
       ('Sales Receipts', false),
       ('Purchase Orders', false),
@@ -40,7 +40,7 @@ void main() {
         '$title ${savedPreview ? 'View' : 'New'} preview route shares editable grid at $width',
         (tester) async {
           installFixedPopoutHost(tester);
-          tester.view.physicalSize = Size(width, 1600);
+          tester.view.physicalSize = Size(width, 809);
           tester.view.devicePixelRatio = 1;
           addTearDown(tester.view.resetPhysicalSize);
           addTearDown(tester.view.resetDevicePixelRatio);
@@ -92,17 +92,21 @@ void main() {
                 widget.key is ValueKey &&
                 '${(widget.key as ValueKey).value}'.endsWith('-$field'),
           );
-          final monetaryField = title == 'Deposits' ? 'Amount' : 'Rate';
+          final amountOnly = const {
+            'Deposits',
+            'Credit Card Credits',
+          }.contains(title);
+          final monetaryField = amountOnly ? 'Amount' : 'Rate';
           final initialRows = input(monetaryField).evaluate().length;
           final rate = input(monetaryField).first;
-          final quantity = input('Quantity').first;
+          final quantity = amountOnly ? null : input('Quantity').first;
           await tester.ensureVisible(rate);
           await enterAccountingText(tester, rate, '123456.78');
-          if (title != 'Deposits') {
+          if (quantity != null) {
             await enterAccountingText(tester, quantity, '12');
           }
           await tester.pumpAndSettle();
-          for (final field in [rate, if (title != 'Deposits') quantity]) {
+          for (final field in [rate, ?quantity]) {
             expect(
               tester
                   .widget<InputDecorator>(
@@ -135,6 +139,25 @@ void main() {
             grid.columns.map((column) => column.title),
             contains('$monetaryField (RM)'),
           );
+          if (!amountOnly) {
+            expect(
+              tester.getRect(find.text('Rate (RM)')).left,
+              closeTo(tester.getRect(rate).left, 0.5),
+              reason: 'Rate title stays on the field frame left edge as it grows.',
+            );
+            expect(
+              tester
+                  .widget<EditableText>(
+                    find.descendant(
+                      of: rate,
+                      matching: find.byType(EditableText),
+                    ),
+                  )
+                  .textAlign,
+              TextAlign.right,
+              reason: 'Title alignment does not change monetary value alignment.',
+            );
+          }
           final rowBefore = tester.getRect(rate);
           final add = find.byKey(const ValueKey('design-add-line'));
           await tester.ensureVisible(add);
@@ -149,6 +172,8 @@ void main() {
             ),
           );
           expect(editable.controller.text.replaceAll(',', ''), '123456.78');
+          await tester.ensureVisible(find.text('$monetaryField (RM)'));
+          await tester.pump();
           await captureUi(
             tester,
             '$title Shared Preview ${savedPreview ? 'View' : 'New'} Added Row ${width.toInt()}',
@@ -562,6 +587,13 @@ void salesReceiptConfiguredJourneys() {
             );
             expect(input('Rate'), showRate ? findsOneWidget : findsNothing);
             expect(input('Quantity'), showRate ? findsOneWidget : findsNothing);
+            if (showRate) {
+              expect(
+                tester.getRect(find.text('Rate (RM)')).left,
+                closeTo(tester.getRect(input('Rate')).left, 0.5),
+                reason: 'Maintained selector grid also keeps Rate title left.',
+              );
+            }
             final product = tester.widget<AccountingSelector<String>>(
               selectors('-Product / Service').first,
             );

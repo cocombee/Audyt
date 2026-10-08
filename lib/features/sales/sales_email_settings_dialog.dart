@@ -31,9 +31,9 @@ Future<void> showSalesMessagesPreview(
   BuildContext context,
 ) => AccountingDialog.showFixed<void>(
   context: context,
-  contentWidth: 600,
+  contentWidth: AccountingPopoutTokens.normalContentWidth,
   builder: (_) => FrontendFormDialog(
-    contentWidth: 600,
+    contentWidth: AccountingPopoutTokens.normalContentWidth,
     previewConfirmationEnabled: false,
     initial: const {'Use Greeting': false, 'Email Me A Copy': false},
     leadingContentBuilder: (context, values, reviewing) => Padding(
@@ -93,9 +93,9 @@ Future<void> showOnlineDeliveryPreview(
   BuildContext context,
 ) => AccountingDialog.showFixed<void>(
   context: context,
-  contentWidth: 600,
+  contentWidth: AccountingPopoutTokens.normalContentWidth,
   builder: (_) => FrontendFormDialog(
-    contentWidth: 600,
+    contentWidth: AccountingPopoutTokens.normalContentWidth,
     previewConfirmationEnabled: false,
     initial: const {'PDF Attached': false},
     leadingContentBuilder: (context, values, reviewing) => Padding(

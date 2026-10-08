@@ -575,7 +575,9 @@ void main() {
       final fieldRect = tester.getRect(payeeField);
       final menuRect = tester.getRect(menu);
       expect(menuRect.left, closeTo(fieldRect.left, 1));
-      expect(menuRect.width, closeTo(fieldRect.width, 1));
+      // The complete directory can widen the menu to preserve the label gap.
+      expect(menuRect.width, greaterThanOrEqualTo(fieldRect.width));
+      expect(menuRect.right, lessThanOrEqualTo(952));
       expect((menuRect.top - fieldRect.bottom).abs(), lessThanOrEqualTo(8));
       final option = find.byKey(
         const ValueKey<String>('expense-payee-option-demo-payee-aina-rahman'),
@@ -583,6 +585,17 @@ void main() {
       expect(tester.getSize(option).height, greaterThanOrEqualTo(44));
       expect(option, findsOneWidget);
       expect(find.text('Employee'), findsOneWidget);
+      final nameRect = tester.getRect(find.text('Aina Rahman'));
+      final labelSurface = find
+          .ancestor(
+            of: find.text('Employee'),
+            matching: find.byType(DecoratedBox),
+          )
+          .first;
+      expect(
+        tester.getRect(labelSurface).left - nameRect.right,
+        greaterThanOrEqualTo(AccountingSelectionLabel.minimumTextGap - .5),
+      );
       expect(find.text('Optional. Choose a payee.'), findsNothing);
       expect(
         find.byWidgetPredicate(

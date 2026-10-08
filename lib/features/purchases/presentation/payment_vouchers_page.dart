@@ -521,6 +521,7 @@ class _PaymentVouchersPageState extends State<PaymentVouchersPage> {
       context: context,
       builder: (dialogContext) => AccountingDialog.alert(
         dialogContext,
+        widthFamily: AccountingPopoutWidthFamily.dialog,
         key: ValueKey<String>('voucher-payment-confirmation-${voucher.id}'),
         title: 'Record payment?',
         content: Column(
@@ -905,6 +906,7 @@ class _PaymentVoucherEditorDialogState
     return _guardInput(
       AccountingDialog.alert(
         context,
+        widthFamily: AccountingPopoutWidthFamily.custom,
         key: const ValueKey('payment-voucher-editor-dialog'),
         onClose: _handleClose,
         closeKey: const ValueKey('voucher-editor-close'),
@@ -1377,7 +1379,7 @@ class _PaymentVoucherEditorDialogState
               contentWidth: payeeAutocompleteMenuWidth(
                 context,
                 candidates,
-                badged: false,
+                rowHorizontalInset: 10,
                 extraLabels: const ['Add Payee'],
               ),
               itemCount: optionList.length,
@@ -1401,11 +1403,24 @@ class _PaymentVoucherEditorDialogState
                   onTap: () => onSelected(payee),
                   child: Padding(
                     padding: const EdgeInsets.all(10),
-                    child: Text(
-                      '${payee.name} · ${payee.typeLabel}',
-                      maxLines: 1,
-                      softWrap: false,
-                      overflow: TextOverflow.ellipsis,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            payee.name,
+                            maxLines: 1,
+                            softWrap: false,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(
+                          width: AccountingSelectionLabel.minimumTextGap,
+                        ),
+                        AccountingSelectionLabel.build(
+                          context,
+                          label: payee.typeLabel,
+                        ),
+                      ],
                     ),
                   ),
                 );
@@ -1804,10 +1819,11 @@ class _PaymentVoucherEditorDialogState
       barrierDismissible: false,
       builder: (dialogContext) => AccountingDialog.alert(
         dialogContext,
+        widthFamily: AccountingPopoutWidthFamily.normal,
         title: 'Add Payee',
         formFooter: true,
         content: SizedBox(
-          width: 232,
+          width: AccountingPopoutTokens.normalContentWidth,
           child: AccountingOrdinaryFields(
             fields: [
               AccountingOrdinaryFieldSlot(

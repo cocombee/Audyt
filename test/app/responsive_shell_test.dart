@@ -16,6 +16,197 @@ import 'package:flutter_test/flutter_test.dart';
 import 'claim_receipts_proposal_test.dart' show prepare, capture;
 
 void main() {
+  testWidgets(
+    'actual main tabs retain their selected tab through resize and sidebar return',
+    (t) async {
+      await prepare(t, 2056);
+      t.view.physicalSize = const Size(2056, 809);
+      final workspace = await createDemoWorkspace();
+      addTearDown(workspace.dispose);
+      await t.pumpWidget(
+        RepaintBoundary(
+          key: const ValueKey('workspace-capture'),
+          child: AudytApp(initialPath: '/banking', workspace: workspace),
+        ),
+      );
+      await t.pumpAndSettle();
+      final tabs = find.byType(AccountingTabs).first;
+      final owner = t.widget<AccountingTabs>(tabs);
+      final lastIndex = owner.labels.indexOf('Cheques');
+      expect(lastIndex, greaterThan(0));
+      expect(owner.revealSelectedOnResize, isTrue);
+      final selected = find.byKey(ValueKey('${owner.keyPrefix}-$lastIndex'));
+      await t.tap(selected);
+      await t.pumpAndSettle();
+      for (final width in [1162.0, 720.0, 1224.0]) {
+        t.view.physicalSize = Size(width, 809);
+        await t.pumpAndSettle();
+        final modes =
+            find
+                .byKey(const ValueKey('collapse-accounting-navigation'))
+                .evaluate()
+                .isEmpty
+            ? ['Automatic Compact']
+            : ['Expanded', 'Compact', 'Expanded Return'];
+        for (final mode in modes) {
+          if (mode == 'Compact') {
+            await t.tap(
+              find.byKey(const ValueKey('collapse-accounting-navigation')),
+            );
+          } else if (mode == 'Expanded Return') {
+            await t.tap(
+              find.byKey(const ValueKey('expand-accounting-navigation')),
+            );
+          }
+          await t.pumpAndSettle();
+          final band = t.getRect(tabs);
+          final tab = t.getRect(selected);
+          expect(tab.left, greaterThanOrEqualTo(band.left - .1));
+          expect(tab.right, lessThanOrEqualTo(band.right + .1));
+          expect(t.widget<AccountingTabs>(tabs).selectedIndex, lastIndex);
+          expect(t.takeException(), isNull);
+          await capture(t, 'Main Tab Reveal Cheques $mode ${width.toInt()}');
+        }
+      }
+      // Switching back to an earlier tab must reveal that selection as well.
+      t.view.physicalSize = const Size(720, 809);
+      await t.pumpAndSettle();
+      final outerScroll = find
+          .descendant(of: tabs, matching: find.byType(SingleChildScrollView))
+          .first;
+      await t.drag(outerScroll, const Offset(900, 0));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(ValueKey('${owner.keyPrefix}-0')));
+      await t.pumpAndSettle();
+      expect(t.widget<AccountingTabs>(tabs).selectedIndex, 0);
+      final first = t.getRect(find.byKey(ValueKey('${owner.keyPrefix}-0')));
+      expect(first.left, greaterThanOrEqualTo(t.getRect(tabs).left - .1));
+      expect(first.right, lessThanOrEqualTo(t.getRect(tabs).right + .1));
+      await capture(t, 'Main Tab Reveal First Return 720');
+    },
+  );
+
+  for (final direction in [TextDirection.ltr, TextDirection.rtl]) {
+    testWidgets(
+      'selected reveal is opt-in and preserves manual browsing $direction',
+      (t) async {
+        await prepare(t, 720);
+        final width = ValueNotifier<double>(620);
+        final revision = ValueNotifier<int>(0);
+        addTearDown(width.dispose);
+        addTearDown(revision.dispose);
+        Widget host(bool reveal) => MaterialApp(
+          home: Directionality(
+            textDirection: direction,
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: ValueListenableBuilder<double>(
+                valueListenable: width,
+                builder: (_, size, _) => SizedBox(
+                  width: size,
+                  child: ValueListenableBuilder<int>(
+                    valueListenable: revision,
+                    builder: (_, _, _) => AccountingTabs(
+                      key: ValueKey(reveal),
+                      labels: const [
+                        'One',
+                        'Two',
+                        'Three',
+                        'Last Selected Tab',
+                      ],
+                      selectedIndex: 3,
+                      onChanged: (_) {},
+                      keyPrefix: 'scope-check',
+                      revealSelectedOnResize: reveal,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        for (final reveal in [false, true]) {
+          width.value = 620;
+          await t.pumpWidget(host(reveal));
+          await t.pumpAndSettle();
+          width.value = 260;
+          await t.pumpAndSettle();
+          final tabs = find.byType(AccountingTabs);
+          final selected = find.byKey(const ValueKey('scope-check-3'));
+          final band = t.getRect(tabs);
+          final rect = t.getRect(selected);
+          if (reveal) {
+            expect(rect.left, greaterThanOrEqualTo(band.left - .1));
+            expect(rect.right, lessThanOrEqualTo(band.right + .1));
+            final outer = find
+                .descendant(
+                  of: tabs,
+                  matching: find.byType(SingleChildScrollView),
+                )
+                .first;
+            await t.drag(
+              outer,
+              Offset(direction == TextDirection.ltr ? 600 : -600, 0),
+            );
+            await t.pumpAndSettle();
+            final browsed = t.getRect(selected);
+            expect(browsed, isNot(rect));
+            expect(
+              browsed.left < band.left || browsed.right > band.right,
+              isTrue,
+              reason: 'Manual browsing must reach tabs away from the selection',
+            );
+            revision.value++;
+            await t.pumpAndSettle();
+            expect(
+              t.getRect(selected),
+              browsed,
+              reason: 'A same-width rebuild must not undo manual tab browsing',
+            );
+          } else {
+            expect(
+              rect.left < band.left || rect.right > band.right,
+              isTrue,
+              reason: 'Unrelated owners must not acquire automatic reveal',
+            );
+          }
+          expect(t.takeException(), isNull);
+        }
+      },
+    );
+  }
+
+  testWidgets('actual Products page header spacing at supported widths', (
+    t,
+  ) async {
+    await prepare(t, 1162);
+    final workspace = await createDemoWorkspace();
+    addTearDown(workspace.dispose);
+    for (final width in [1162.0, 720.0, 1224.0]) {
+      t.view.physicalSize = Size(width, 809);
+      await t.pumpWidget(
+        RepaintBoundary(
+          key: const ValueKey('workspace-capture'),
+          child: AudytApp(
+            initialPath: '/sales-customers',
+            workspace: workspace,
+          ),
+        ),
+      );
+      await t.pumpAndSettle();
+      final tabs = find.byType(AccountingTabs).first;
+      final owner = t.widget<AccountingTabs>(tabs);
+      final index = owner.labels.indexOf('Products & Services');
+      expect(index, greaterThanOrEqualTo(0));
+      await t.ensureVisible(find.byKey(ValueKey('${owner.keyPrefix}-$index')));
+      await t.tap(find.byKey(ValueKey('${owner.keyPrefix}-$index')));
+      await t.pumpAndSettle();
+      expect(find.text('Products & Services'), findsWidgets);
+      expect(t.takeException(), isNull);
+      await capture(t, 'Products Header Gap ${width.toInt()}');
+    }
+  });
+
   for (final width in [720.0, 1162.0, 1224.0, 2056.0]) {
     for (final path in [
       '/home',

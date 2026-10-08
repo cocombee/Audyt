@@ -111,6 +111,7 @@ Future<AccountingPayeeCreation?> showAccountingPayeeDialog(
             },
             child: AccountingDialog.alert(
               dialogContext,
+              widthFamily: AccountingPopoutWidthFamily.normal,
               title: 'Add Payee',
               onClose: close,
               closeKey: const ValueKey('payee-close'),
@@ -862,6 +863,7 @@ class _RecordExpensePageState extends State<RecordExpensePage> {
           },
           child: AccountingDialog.alert(
             context,
+            widthFamily: AccountingPopoutWidthFamily.custom,
             key: const ValueKey('expense-live-dialog'),
             title: _isClaim ? 'Claim' : 'Expense',
             onClose: _handleClose,
@@ -2002,32 +2004,13 @@ class _RecordExpensePageState extends State<RecordExpensePage> {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    color: tokens.muted,
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(color: tokens.border),
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 2,
-                                    ),
-                                    child: Text(
-                                      payee.typeLabel,
-                                      softWrap: false,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(
-                                            color: tokens.mutedForeground,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                    ),
-                                  ),
+                                const SizedBox(
+                                  width:
+                                      AccountingSelectionLabel.minimumTextGap,
+                                ),
+                                AccountingSelectionLabel.build(
+                                  context,
+                                  label: payee.typeLabel,
                                 ),
                               ],
                             ),
@@ -3189,6 +3172,7 @@ class _RecordExpensePageState extends State<RecordExpensePage> {
         context: context,
         builder: (c) => AccountingDialog.alert(
           c,
+          widthFamily: AccountingPopoutWidthFamily.normal,
           title: 'Review Asset Purchase',
           description: 'Expense and asset posting is unavailable here. Return to the purchase to keep editing.',
           content: SelectionArea(

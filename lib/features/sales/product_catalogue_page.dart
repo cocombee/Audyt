@@ -23,7 +23,7 @@ import 'domain/product_catalogue.dart';
 Future<String?> _manualCatalogueName(BuildContext context, String title) =>
     AccountingDialog.showFixed<String>(
       context: context,
-      contentWidth: 320,
+      contentWidth: AccountingPopoutTokens.normalContentWidth,
       contentInset: accountingContentInset,
       builder: (context) => CatalogueNameDialog(title: title),
     );
@@ -106,6 +106,7 @@ class CatalogueNameDialogState extends State<CatalogueNameDialog> {
   @override
   Widget build(BuildContext context) => AccountingDialog.alert(
     context,
+    widthFamily: AccountingPopoutWidthFamily.custom,
     title: widget.preview ? '${widget.title} · Proposed' : widget.title,
     description: widget.preview
         ? 'Design preview · No catalogue records are saved.'
@@ -358,7 +359,7 @@ Future<CatalogueItem?> showCatalogueItemDialog(
   CatalogueItem? initial,
 }) => AccountingDialog.showFixed<CatalogueItem>(
   context: context,
-  contentWidth: 600,
+  contentWidth: AccountingPopoutTokens.normalContentWidth,
   contentInset: accountingContentInset,
   builder: (_) => CatalogueItemDialog(workspace: workspace, initial: initial),
 );
@@ -518,8 +519,9 @@ class _CatalogueItemDialogState extends State<CatalogueItemDialog> {
     );
     return AccountingDialog.alert(
       context,
+      widthFamily: AccountingPopoutWidthFamily.normal,
       title: revision == 0 ? 'Add Item' : 'Edit Item',
-      fixedContentWidth: 600,
+      fixedContentWidth: AccountingPopoutTokens.normalContentWidth,
       contentInset: accountingContentInset,
       formFooter: true,
       footerLeading: AccountingSettingsShortcut(
@@ -809,7 +811,7 @@ class _CatalogueItemDialogState extends State<CatalogueItemDialog> {
     final values = await showDialog<Map<String, Object?>>(
       context: context,
       builder: (_) => FrontendFormDialog(
-        contentWidth: 320,
+        contentWidth: AccountingPopoutTokens.normalContentWidth,
         form: DesignForm(
           'Product / Service Settings',
           form.fields.where((f) => f.label == 'Income Account').toList(),
@@ -844,9 +846,10 @@ class _CatalogueItemDialogState extends State<CatalogueItemDialog> {
     ];
     return AccountingDialog.alert(
       context,
+      widthFamily: AccountingPopoutWidthFamily.normal,
       title: '${widget.initial == null ? 'Add' : 'Edit'} Item · Proposed',
       description: 'Design preview · Changes stay in this review session.',
-      fixedContentWidth: 600,
+      fixedContentWidth: AccountingPopoutTokens.normalContentWidth,
       contentInset: accountingContentInset,
       formFooter: true,
       footerLeading: AccountingSettingsShortcut(
@@ -854,7 +857,7 @@ class _CatalogueItemDialogState extends State<CatalogueItemDialog> {
         onPressed: _openPreviewSettings,
       ),
       content: SizedBox(
-        width: 600,
+        width: AccountingPopoutTokens.normalContentWidth,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1096,6 +1099,7 @@ class ProductCataloguePage extends StatelessWidget {
                 child: const Text('Add Item'),
               ),
             ),
+            const SizedBox(height: accountingContentInset),
             AccountingRecordList(
               paginationKey: 'product-catalogue-1',
               children: [

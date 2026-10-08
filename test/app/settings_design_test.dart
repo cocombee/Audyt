@@ -1,5 +1,6 @@
 import 'package:audyt/features/accounting/application/accounting_workspace.dart';
 import 'package:audyt/features/accounting/application/workspace_backup.dart';
+import 'package:audyt/features/accounting/domain/account.dart';
 
 import 'dart:io';
 import 'dart:ui' show PointerDeviceKind;
@@ -57,6 +58,59 @@ void main() {
   }
 
   for (final width in [720.0, 1162.0]) {
+    testWidgets(
+      'Default Accounts review Back preserves local choices at $width',
+      (t) async {
+        await fonts();
+        final w = await host(t, width);
+        final incomeId = await w.createAccount(
+          code: '4000',
+          name: 'Sales',
+          type: AccountType.income,
+        );
+        await tap(t, accountingCloseIcon().last);
+        await tap(t, keyed('accounting-settings'));
+        await tap(t, keyed('settings-editor-Default Accounts'));
+        final before = tables(w);
+        await tap(t, keyed('design-field-Income Account'));
+        await tap(t, find.text('4000 · Sales').last);
+        await tap(t, keyed('design-preview'));
+        expect(
+          t
+              .widget<AccountingInformationRows>(
+                find.byType(AccountingInformationRows),
+              )
+              .rows,
+          contains(('Income Account', '4000 · Sales')),
+        );
+        await t.ensureVisible(find.text('Default Accounts'));
+        await t.pumpAndSettle();
+        await captureUi(
+          t,
+          'Settings Default Accounts Review Back ${width.toInt()}',
+        );
+        await tap(t, keyed('design-preview'));
+        expect(find.text('4000 · Sales'), findsOneWidget);
+        await t.ensureVisible(find.text('Default Accounts'));
+        await t.pumpAndSettle();
+        await captureUi(
+          t,
+          'Settings Default Accounts Back Retained ${width.toInt()}',
+        );
+        expect(tables(w), before);
+        expect(
+          w.preferences.text('Default Accounts', 'Income Account'),
+          isNot(incomeId.value),
+        );
+        await tap(t, accountingCloseIcon().last);
+        await tap(t, keyed('accounting-settings'));
+        await tap(t, keyed('settings-editor-Default Accounts'));
+        expect(find.text('4000 · Sales'), findsNothing);
+        expect(tables(w), before);
+        expect(t.takeException(), isNull);
+      },
+    );
+
     testWidgets('actual Settings section family alignment at $width', (
       t,
     ) async {

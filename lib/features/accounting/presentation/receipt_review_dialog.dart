@@ -232,7 +232,9 @@ class _ReceiptReviewDialogState extends State<ReceiptReviewDialog> {
             ),
             child: ConstrainedBox(
               constraints: BoxConstraints(
-                maxWidth: 960,
+                maxWidth:
+                    AccountingPopoutTokens.customContentWidth +
+                    AccountingPopoutTokens.contentInset * 2,
                 minHeight: maxHeight,
                 maxHeight: maxHeight,
               ),
@@ -1457,6 +1459,7 @@ class _ReceiptReviewDialogState extends State<ReceiptReviewDialog> {
       barrierDismissible: false,
       builder: (dialogContext) => AccountingDialog.alert(
         dialogContext,
+        widthFamily: AccountingPopoutWidthFamily.dialog,
         title: 'Skip all receipts?',
         content: const Text(
           'Every unresolved receipt will remain available in the form but will not be saved as an attachment.',
@@ -1704,6 +1707,7 @@ class ReceiptProcessingNotice extends StatelessWidget {
     canPop: false,
     child: AccountingDialog.alert(
       context,
+      widthFamily: AccountingPopoutWidthFamily.dialog,
       key: const ValueKey('receipt-processing-notice'),
       title: message,
       closeKey: const ValueKey('receipt-processing-close'),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:audyt/app/accounting_components.dart';
+import 'package:audyt/app/accounting_theme.dart';
 import 'package:audyt/app/field_row_trial.dart';
 import 'package:audyt/core/money/currency_presentation.dart';
 
@@ -68,13 +69,14 @@ Future<PaymentAccount?> showPaymentAccountDialog(
             },
             child: AccountingDialog.alert(
               dialogContext,
+              widthFamily: AccountingPopoutWidthFamily.normal,
               title: initial == null ? 'Add Account' : 'Edit Account',
               formFooter: true,
               description: initial == null
                   ? 'Choose the bank and enter the details used to validate statements.'
                   : 'Review the bank details used to validate imported statements.',
               content: SizedBox(
-                width: 480,
+                width: AccountingPopoutTokens.normalContentWidth,
                 child: AnimatedBuilder(
                   animation: fieldChanges,
                   builder: (context, _) => SingleChildScrollView(

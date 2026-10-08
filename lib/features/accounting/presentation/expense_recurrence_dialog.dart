@@ -173,6 +173,7 @@ class _RecurrenceDialogState extends State<_RecurrenceDialog> {
         },
         child: AccountingDialog.alert(
           context,
+          widthFamily: AccountingPopoutWidthFamily.wider,
           title: 'Recurring Expense',
           formFooter: true,
           description:

@@ -23,14 +23,26 @@ List<TrialRow> trialRows(
   List<double> minima, {
   double gap = 20,
   bool preferEqual = false,
+  int maximumFieldsPerRow = 4,
+  List<double?>? threeOrMoreFieldMinima,
 }) {
+  assert(maximumFieldsPerRow >= 1 && maximumFieldsPerRow <= 4);
+  assert(
+    threeOrMoreFieldMinima == null ||
+        threeOrMoreFieldMinima.length == minima.length,
+  );
+  List<double> rowMinima(int start, int count) => [
+    for (var i = start; i < start + count; i++)
+      count >= 3
+          ? math.max(minima[i], threeOrMoreFieldMinima?[i] ?? minima[i])
+          : minima[i],
+  ];
   final result = <TrialRow>[];
   var start = 0;
   while (start < minima.length) {
-    var count = math.min(4, minima.length - start);
+    var count = math.min(maximumFieldsPerRow, minima.length - start);
     while (count > 1 &&
-        minima.sublist(start, start + count).reduce((a, b) => a + b) +
-                gap * (count - 1) >
+        rowMinima(start, count).reduce((a, b) => a + b) + gap * (count - 1) >
             width) {
       count--;
     }
@@ -42,7 +54,7 @@ List<TrialRow> trialRows(
         count = balanced;
       }
     }
-    final row = minima.sublist(start, start + count);
+    final row = rowMinima(start, count);
     final available = width - gap * (count - 1);
     final maximum = row.reduce(math.max);
     final minimum = row.reduce(math.min);
@@ -99,11 +111,20 @@ class AccountingOrdinaryFieldRows extends StatefulWidget {
     required this.minima,
     required this.fieldBuilder,
     this.preferEqual = false,
+    this.maximumFieldsPerRow = 4,
+    this.threeOrMoreFieldMinima,
+    this.crossAxisAlignment = CrossAxisAlignment.start,
   });
+  final CrossAxisAlignment crossAxisAlignment;
   final double width;
   final List<double> minima;
   final Widget Function(int index, double width) fieldBuilder;
   final bool preferEqual;
+  final int maximumFieldsPerRow;
+
+  /// Explicit value-fit floors for eligible ordinary money only. One/two-field
+  /// rows ignore them, including after a crowded row falls back to two fields.
+  final List<double?>? threeOrMoreFieldMinima;
 
   @override
   State<AccountingOrdinaryFieldRows> createState() =>
@@ -132,13 +153,15 @@ class _AccountingOrdinaryFieldRowsState
           widget.minima,
           gap: AccountingResponsive.groupGap,
           preferEqual: widget.preferEqual,
+          maximumFieldsPerRow: widget.maximumFieldsPerRow,
+          threeOrMoreFieldMinima: widget.threeOrMoreFieldMinima,
         );
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             for (final row in rows) ...[
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: widget.crossAxisAlignment,
                 children: [
                   for (var i = 0; i < row.widths.length; i++) ...[
                     if (i > 0)
@@ -231,13 +254,19 @@ final class AccountingOrdinaryFieldSlot {
 }
 
 class AccountingOrdinaryFields extends StatelessWidget {
-  const AccountingOrdinaryFields({super.key, required this.fields});
+  const AccountingOrdinaryFields({
+    super.key,
+    required this.fields,
+    this.crossAxisAlignment = CrossAxisAlignment.start,
+  });
+  final CrossAxisAlignment crossAxisAlignment;
   final List<AccountingOrdinaryFieldSlot> fields;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) => AccountingOrdinaryFieldRows(
       width: constraints.maxWidth,
+      crossAxisAlignment: crossAxisAlignment,
       minima: [
         for (final field in fields)
           math.max(
@@ -247,6 +276,7 @@ class AccountingOrdinaryFields extends StatelessWidget {
           ),
       ],
       preferEqual: true,
+      maximumFieldsPerRow: AccountingPopoutWidthScope.ordinaryFieldCap(context),
       fieldBuilder: (index, width) => fields[index].builder(width),
     ),
   );

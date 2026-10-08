@@ -222,7 +222,16 @@ void main() {
               )
               .first,
         );
-        expect(surface.width, closeTo(528, .1));
+        expect(
+          surface.width,
+          closeTo(
+            width < AccountingPopoutTokens.widerContentWidth + 128
+                ? width - AccountingPopoutTokens.windowInsets.horizontal
+                : AccountingPopoutTokens.widerContentWidth +
+                      AccountingPopoutTokens.contentInset * 2,
+            .1,
+          ),
+        );
         expect(opening.left - surface.left, closeTo(24, .1));
         expect(find.text('Cancel'), findsNothing);
         expect(
@@ -362,8 +371,18 @@ void main() {
               )
               .first,
         );
-        expect(reasonFrame.width, closeTo(420, .1));
-        expect(reasonSurface.width, closeTo(468, .1));
+        expect(
+          reasonFrame.width,
+          closeTo(AccountingPopoutTokens.dialogContentWidth, .1),
+        );
+        expect(
+          reasonSurface.width,
+          closeTo(
+            AccountingPopoutTokens.dialogContentWidth +
+                AccountingPopoutTokens.contentInset * 2,
+            .1,
+          ),
+        );
         expect(reasonFrame.left - reasonSurface.left, closeTo(24, .1));
         expect(reasonSurface.right - reasonFrame.right, closeTo(24, .1));
         final reopen = tester.widget<FilledButton>(

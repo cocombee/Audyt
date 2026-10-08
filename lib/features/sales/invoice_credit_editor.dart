@@ -177,11 +177,12 @@ class _InvoiceCreditEditorState extends State<InvoiceCreditEditor> {
   @override
   Widget build(BuildContext context) => AccountingDialog.alert(
     context,
+    widthFamily: AccountingPopoutWidthFamily.custom,
     title: 'Credit Draft',
     formFooter: true,
     description: 'Enter gross credit amounts for returned lines. Leave other lines blank.',
     content: SizedBox(
-      width: 600,
+      width: AccountingPopoutTokens.widerContentWidth,
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,

@@ -124,10 +124,11 @@ class _TaxOverviewPageState extends State<TaxOverviewPage> {
     context: context,
     builder: (dialogContext) => AccountingDialog.alert(
       dialogContext,
+      widthFamily: AccountingPopoutWidthFamily.normal,
       title: row.sourceLabel,
       description: row.documentNumber.isEmpty ? null : row.documentNumber,
-      fixedContentWidth: 600,
-      maxContentWidth: 600,
+      fixedContentWidth: AccountingPopoutTokens.normalContentWidth,
+      maxContentWidth: AccountingPopoutTokens.normalContentWidth,
       content: SelectionArea(
         child: AccountingInformationRows(
           rows: [
@@ -191,10 +192,11 @@ class _TaxOverviewPageState extends State<TaxOverviewPage> {
           context: context,
           builder: (dialogContext) => AccountingDialog.alert(
             dialogContext,
+            widthFamily: AccountingPopoutWidthFamily.normal,
             title: account.balance.account.displayName,
             description: '${_range(report)} · Credit balances',
-            fixedContentWidth: 600,
-            maxContentWidth: 600,
+            fixedContentWidth: AccountingPopoutTokens.normalContentWidth,
+            maxContentWidth: AccountingPopoutTokens.normalContentWidth,
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,

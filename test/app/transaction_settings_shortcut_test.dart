@@ -9,6 +9,7 @@ import 'dart:io';
 import 'package:audyt/app/accounting_components.dart';
 import 'package:audyt/app/accounting_icons.dart';
 import 'package:audyt/app/accounting_theme.dart';
+import 'package:audyt/app/app.dart';
 import 'package:audyt/app/transaction_form_layout.dart';
 import 'package:audyt/app/demo_company.dart';
 import 'package:audyt/app/naming_setup.dart';
@@ -18,7 +19,9 @@ import 'package:audyt/features/sales/invoice_page.dart';
 import 'package:audyt/features/sales/product_catalogue_page.dart';
 import 'package:audyt/features/sales/domain/product_catalogue.dart';
 import 'package:audyt/core/ids/entity_id.dart';
+import 'package:audyt/core/money/currency_presentation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -69,6 +72,259 @@ Future<void> _save(WidgetTester tester) async {
 }
 
 void main() {
+  for (final width in [1162.0, 720.0, 1224.0]) {
+    testWidgets(
+      'actual purchase preview monetary hint fits and quantity stays separate at $width',
+      (tester) async {
+        await _prepare(tester);
+        tester.view.physicalSize = Size(width, 809);
+        final workspace = await createDemoWorkspace();
+        addTearDown(workspace.dispose);
+        await tester.pumpWidget(
+          RepaintBoundary(
+            key: const ValueKey('workspace-capture'),
+            child: DemoCompany(
+              child: AudytApp(
+                initialPath: '/expenses-vendors',
+                workspace: workspace,
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final tabs = tester.widget<AccountingTabs>(
+          find.byType(AccountingTabs).first,
+        );
+        final tab = find.byKey(
+          ValueKey(
+            '${tabs.keyPrefix}-${tabs.labels.indexOf('Purchase Orders')}',
+          ),
+        );
+        await tester.ensureVisible(tab);
+        await tester.tap(tab);
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('design-open-form')));
+        await tester.pumpAndSettle();
+        Finder field(String name) => find.byWidgetPredicate(
+          (w) =>
+              w is TextFormField &&
+              w.key is ValueKey &&
+              '${(w.key as ValueKey).value}'.endsWith('-$name'),
+        );
+        final rate = field('Rate').first;
+        final quantity = field('Quantity').first;
+        await tester.ensureVisible(
+          find
+              .ancestor(
+                of: rate,
+                matching: find.byType(AccountingTransactionGrid),
+              )
+              .first,
+        );
+        await tester.pumpAndSettle();
+        final hint = find.descendant(of: rate, matching: find.text('0.00'));
+        expect(hint, findsOneWidget);
+        expect(
+          tester.renderObject<RenderParagraph>(hint).didExceedMaxLines,
+          isFalse,
+        );
+        expect(
+          tester
+              .widget<TextField>(
+                find.descendant(of: quantity, matching: find.byType(TextField)),
+              )
+              .decoration!
+              .hintText,
+          isNull,
+        );
+        expect(
+          tester
+              .widget<EditableText>(
+                find.descendant(of: rate, matching: find.byType(EditableText)),
+              )
+              .controller
+              .text,
+          isEmpty,
+        );
+        await captureUi(tester, 'Purchase Preview Zero MYR ${width.toInt()}');
+        await enterAccountingText(tester, quantity, '2');
+        await enterAccountingText(tester, rate, '1234567.89');
+        await tester.pumpAndSettle();
+        expect(
+          tester
+              .state<EditableTextState>(
+                find.descendant(of: rate, matching: find.byType(EditableText)),
+              )
+              .renderEditable
+              .maxScrollExtent,
+          closeTo(0, .1),
+        );
+        await captureUi(
+          tester,
+          'Purchase Preview Populated MYR ${width.toInt()}',
+        );
+        await _close(tester);
+        await tester.tap(find.byKey(const ValueKey('design-discard-changes')));
+        await tester.pumpAndSettle();
+        expect(find.byType(AccountingTransactionGrid), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+  for (final width in [1162.0, 720.0, 1224.0]) {
+    for (final currency in ['MYR', 'JPY']) {
+      testWidgets(
+        'actual invoice empty monetary hints fit forced columns $currency at $width',
+        (tester) async {
+          await _prepare(tester);
+          tester.view.physicalSize = Size(width, 809);
+          final workspace = await createDemoWorkspace();
+          addTearDown(workspace.dispose);
+          workspace.savePreferences(
+            workspace.preferences.change('Sales Preferences', {
+              ...workspace.preferences.values('Sales Preferences'),
+              'Show Quantity': true,
+              'Show Rate': true,
+            }),
+          );
+          final invoicesBefore = workspace
+              .invoiceDrafts()
+              .map((r) => r.invoice.id)
+              .toSet();
+          await tester.pumpWidget(
+            RepaintBoundary(
+              key: const ValueKey('workspace-capture'),
+              child: DemoCompany(
+                child: AudytApp(
+                  initialPath: '/sales-customers',
+                  workspace: workspace,
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          await tester.tap(find.byKey(const ValueKey('new-invoice')));
+          await tester.pumpAndSettle();
+          if (currency != 'MYR') {
+            final selector = find.byKey(
+              const ValueKey('design-field-Currency'),
+            );
+            await tester.ensureVisible(selector);
+            await tester.tap(selector);
+            await tester.pumpAndSettle();
+            final option = find
+                .text(CurrencyPresentation.fromCode(currency).amountSymbol)
+                .last;
+            await tester.ensureVisible(option);
+            await tester.tap(option);
+            await tester.pumpAndSettle();
+            expect(
+              tester
+                  .widget<AccountingSelector<String>>(
+                    find.byWidgetPredicate(
+                      (w) =>
+                          w is AccountingSelector<String> &&
+                          w.triggerKey ==
+                              const ValueKey('design-field-Currency'),
+                    ),
+                  )
+                  .value,
+              currency,
+            );
+          }
+          Finder field(String name) => find.byWidgetPredicate(
+            (w) =>
+                w is TextFormField &&
+                w.key is ValueKey &&
+                '${(w.key as ValueKey).value}'.endsWith('-$name'),
+          );
+          final rate = field('Rate').first;
+          final amount = field('Amount').first;
+          await tester.ensureVisible(
+            find
+                .ancestor(
+                  of: rate,
+                  matching: find.byType(AccountingTransactionGrid),
+                )
+                .first,
+          );
+          await tester.pumpAndSettle();
+          final zero = currency == 'JPY' ? '0' : '0.00';
+          for (final input in [rate, amount]) {
+            final textField = find.descendant(
+              of: input,
+              matching: find.byType(TextField),
+            );
+            expect(
+              tester.widget<TextField>(textField).decoration!.hintText,
+              zero,
+            );
+            final hint = find.descendant(of: input, matching: find.text(zero));
+            expect(hint, findsOneWidget);
+            expect(
+              tester
+                  .widget<EditableText>(
+                    find.descendant(
+                      of: input,
+                      matching: find.byType(EditableText),
+                    ),
+                  )
+                  .controller
+                  .text,
+              isEmpty,
+              reason:
+                  'The currency-zero hint must not become an entered amount',
+            );
+            expect(
+              tester.renderObject<RenderParagraph>(hint).didExceedMaxLines,
+              isFalse,
+              reason: 'The empty money hint must fit its painted frame, with existing padding',
+            );
+          }
+          await captureUi(
+            tester,
+            'Forced Invoice Zero $currency ${width.toInt()}',
+          );
+          await enterAccountingText(
+            tester,
+            rate,
+            currency == 'JPY' ? '123456789' : '1234567.89',
+          );
+          await tester.pumpAndSettle();
+          final editable = find.descendant(
+            of: rate,
+            matching: find.byType(EditableText),
+          );
+          expect(
+            tester
+                .state<EditableTextState>(editable)
+                .renderEditable
+                .maxScrollExtent,
+            closeTo(0, .1),
+          );
+          expect(
+            tester.widget<EditableText>(editable).focusNode.hasFocus,
+            isTrue,
+          );
+          expect(tester.getRect(rate).top, tester.getRect(amount).top);
+          await captureUi(
+            tester,
+            'Forced Invoice Populated $currency ${width.toInt()}',
+          );
+          await _close(tester);
+          await tester.tap(
+            find.byKey(const ValueKey('design-discard-changes')),
+          );
+          await tester.pumpAndSettle();
+          expect(
+            workspace.invoiceDrafts().map((r) => r.invoice.id).toSet(),
+            invoicesBefore,
+          );
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+  }
   testWidgets(
     'actual invoice saves selected items with the approved one-line grid',
     (tester) async {

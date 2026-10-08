@@ -61,8 +61,18 @@ void main() {
                 )
                 .first,
           );
-          expect(field.width, closeTo(400, .1));
-          expect(surface.width, closeTo(440, .1));
+          expect(
+            field.width,
+            closeTo(AccountingPopoutTokens.normalContentWidth, .1),
+          );
+          expect(
+            surface.width,
+            closeTo(
+              AccountingPopoutTokens.normalContentWidth +
+                  accountingContentInset * 2,
+              .1,
+            ),
+          );
           expect(field.left - surface.left, closeTo(20, .1));
           await capture(tester, '$stem ${width.toInt()}');
           await tester.tap(find.bySemanticsLabel('Help for Role'));

@@ -72,6 +72,21 @@ final class AccountingRoundChartTokens {
 final class AccountingPopoutTokens {
   const AccountingPopoutTokens._();
 
+  // Shared content-width families. Custom callers declare their measured or
+  // transactional width explicitly; they never inherit a field-count rule.
+  static const dialogContentWidth = 400.0;
+  static const normalContentWidth = 600.0;
+  static const widerContentWidth = 728.0;
+  static const customContentWidth = 1000.0;
+
+  static double? contentWidthFor(AccountingPopoutWidthFamily family) =>
+      switch (family) {
+        AccountingPopoutWidthFamily.dialog => dialogContentWidth,
+        AccountingPopoutWidthFamily.normal => normalContentWidth,
+        AccountingPopoutWidthFamily.wider => widerContentWidth,
+        AccountingPopoutWidthFamily.custom => null,
+      };
+
   static const contentInset = 24.0;
   // The accepted ordinary popout keeps the painted Close circle inside the
   // same 20px content boundary, rather than against the rounded corner.
@@ -90,6 +105,27 @@ final class AccountingPopoutTokens {
       EdgeInsets.fromLTRB(inset, closeInset, closeInset, titleBottomInset);
   static EdgeInsets contentPadding(double inset) =>
       EdgeInsets.fromLTRB(inset, contentTopInset, inset, contentBottomInset);
+}
+
+enum AccountingPopoutWidthFamily { dialog, normal, wider, custom }
+
+/// Only declared ordinary-field popouts consume the row cap. Checkbox groups,
+/// transactional lines, buttons, page bodies and embedded Settings are separate.
+class AccountingPopoutWidthScope extends InheritedWidget {
+  const AccountingPopoutWidthScope({
+    super.key,
+    required this.family,
+    required super.child,
+  });
+  final AccountingPopoutWidthFamily family;
+  static AccountingPopoutWidthFamily? of(BuildContext context) => context
+      .dependOnInheritedWidgetOfExactType<AccountingPopoutWidthScope>()
+      ?.family;
+  static int ordinaryFieldCap(BuildContext context) =>
+      of(context) == AccountingPopoutWidthFamily.normal ? 2 : 4;
+  @override
+  bool updateShouldNotify(AccountingPopoutWidthScope oldWidget) =>
+      oldWidget.family != family;
 }
 
 const double accountingSearchRadius = 12;

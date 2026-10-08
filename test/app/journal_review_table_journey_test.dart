@@ -8,6 +8,7 @@ import 'package:audyt/features/accounting/domain/journal_entry.dart';
 import 'package:audyt/features/accounting/presentation/journal_workspace_page.dart';
 import 'package:audyt/core/money/money.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../features/accounting/data/account_reconciliation_test.dart'
@@ -153,6 +154,144 @@ void main() {
         await captureUi(
           tester,
           'Posted Journal Headed Review ${width.toInt()}',
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+  for (final width in [720.0, 1162.0]) {
+    testWidgets(
+      'Prepare Closing protects edits and retains its pending-draft blocker at $width',
+      (tester) async {
+        strictClicks();
+        await prepare(tester, width);
+        tester.view.physicalSize = Size(width, 809);
+        final f = Fixture();
+        await f.open();
+        await f.w.createAccount(
+          code: '3000',
+          name: 'Fictional Closing Equity',
+          type: AccountType.equity,
+        );
+        await f.post(9, 2, -1000, approve: false);
+        final before = f.w.database.exportDataArchive(
+          f.business,
+          DateTime.utc(2027),
+        );
+        await host(tester, f.w);
+        Future<void> open() async {
+          await tap(tester, keyed('prepare-closing'));
+          expect(find.text('Prepare Closing'), findsWidgets);
+        }
+
+        await open();
+        final initialDate = tester
+            .widget<TextField>(keyed('closing-date'))
+            .controller!
+            .text;
+        await tap(tester, keyed('closing-editor-close'));
+        expect(keyed('closing-date'), findsNothing);
+        expect(find.text('Discard Unsaved Changes?'), findsNothing);
+        await open();
+        await tester.enterText(keyed('closing-date'), '30-09-2026');
+        await tester.enterText(keyed('closing-date'), initialDate);
+        await tap(tester, keyed('closing-editor-close'));
+        expect(find.text('Discard Unsaved Changes?'), findsNothing);
+        expect(keyed('closing-date'), findsNothing);
+        await open();
+        await tap(tester, keyed('closing-equity'));
+        await tap(tester, find.text('3000 · Fictional Closing Equity').last);
+        await tap(tester, keyed('save-closing-draft'));
+        const blocker =
+            'Resolve ledger differences and pending drafts before closing.';
+        expect(find.text(blocker), findsOneWidget);
+        expect((await f.w.journals()).where((r) => r.entry.isClosing), isEmpty);
+        await captureUi(
+          tester,
+          'Closing Pending Draft Blocker ${width.toInt()}',
+        );
+        await tap(tester, keyed('closing-editor-close'));
+        expect(find.text('Discard Unsaved Changes?'), findsOneWidget);
+        await captureUi(tester, 'Closing Discard Warning ${width.toInt()}');
+        await tap(tester, keyed('closing-keep-editing'));
+        expect(find.text('3000 · Fictional Closing Equity'), findsOneWidget);
+        expect(find.text(blocker), findsOneWidget);
+        await tap(tester, keyed('closing-equity'));
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pumpAndSettle();
+        expect(find.text('Discard Unsaved Changes?'), findsNothing);
+        await tester.tap(keyed('closing-date'));
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pumpAndSettle();
+        expect(find.text('Discard Unsaved Changes?'), findsOneWidget);
+        await tap(tester, keyed('closing-discard-close'));
+        expect(find.text(blocker), findsOneWidget);
+        expect(find.text('3000 · Fictional Closing Equity'), findsOneWidget);
+        await tester.tapAt(const Offset(4, 100));
+        await tester.pumpAndSettle();
+        expect(find.text('Discard Unsaved Changes?'), findsOneWidget);
+        await tap(tester, keyed('closing-discard-changes'));
+        expect(keyed('closing-date'), findsNothing);
+        await open();
+        expect(find.text('Select Account'), findsOneWidget);
+        expect(find.text(blocker), findsNothing);
+        await tester.enterText(keyed('closing-date'), '30-09-2026');
+        await tap(tester, keyed('closing-editor-close'));
+        await tap(tester, keyed('closing-keep-editing'));
+        expect(
+          tester.widget<TextField>(keyed('closing-date')).controller!.text,
+          '30-09-2026',
+        );
+        await captureUi(tester, 'Closing Date Retained ${width.toInt()}');
+        await tap(tester, keyed('closing-editor-close'));
+        await tap(tester, keyed('closing-discard-changes'));
+        expect(
+          f.w.database.exportDataArchive(f.business, DateTime.utc(2027)),
+          before,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+    testWidgets(
+      'Prepare Closing still saves its eligible draft and preserves posting at $width',
+      (tester) async {
+        strictClicks();
+        await prepare(tester, width);
+        tester.view.physicalSize = Size(width, 809);
+        final f = Fixture();
+        await f.open();
+        await f.w.createAccount(
+          code: '3000',
+          name: 'Fictional Closing Equity',
+          type: AccountType.equity,
+        );
+        final postedId = await f.post(9, 2, -1000);
+        final original = await f.w.database.getById(postedId);
+        await host(tester, f.w);
+        await tap(tester, keyed('prepare-closing'));
+        await tester.enterText(keyed('closing-date'), '30-09-2026');
+        await tap(tester, keyed('closing-equity'));
+        await tap(tester, find.text('3000 · Fictional Closing Equity').last);
+        await captureUi(tester, 'Closing Eligible Draft ${width.toInt()}');
+        await tap(tester, keyed('save-closing-draft'));
+        expect(keyed('closing-date'), findsNothing);
+        expect(find.text('Discard Unsaved Changes?'), findsNothing);
+        final closing = (await f.w.journals()).singleWhere(
+          (r) => r.entry.isClosing,
+        );
+        expect(closing.entry.state, JournalEntryState.draft);
+        expect(closing.entry.date, DateTime.utc(2026, 9, 30));
+        expect(
+          (await f.w.database.getById(postedId))!.metadata.revision,
+          original!.metadata.revision,
+        );
+        expect(
+          (await f.w.database.getById(postedId))!.entry.lines
+              .map((line) => (line.accountId, line.amount, line.kind))
+              .toList(),
+          original.entry.lines
+              .map((line) => (line.accountId, line.amount, line.kind))
+              .toList(),
         );
         expect(tester.takeException(), isNull);
       },

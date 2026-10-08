@@ -27,9 +27,10 @@ Future<bool> confirmTransactionRemoval(
   final label = removalFamilyLabel(reviewed.kind);
   final confirmed = await AccountingDialog.showFixed<bool>(
     context: context,
-    contentWidth: 400,
+    contentWidth: AccountingPopoutTokens.dialogContentWidth,
     builder: (dialogContext) => AccountingDialog.alert(
       dialogContext,
+      widthFamily: AccountingPopoutWidthFamily.dialog,
       title: '${restore ? 'Restore' : 'Remove'} $label',
       content: Text(
         restore
@@ -74,6 +75,7 @@ Future<void> _showRemovalError(BuildContext context, Object error) =>
       context: context,
       builder: (context) => AccountingDialog.alert(
         context,
+        widthFamily: AccountingPopoutWidthFamily.dialog,
         title: 'Record Action Failed',
         content: Text(
           error is StateError
@@ -236,10 +238,11 @@ class _RemovedTransactionsDialogState extends State<RemovedTransactionsDialog> {
       );
       return AccountingDialog.alert(
         context,
+        widthFamily: AccountingPopoutWidthFamily.custom,
         title: 'Removed ${removalFamilyLabel(widget.kind, plural: true)}',
         description: 'Details and receipts are retained. Restore a record to return it to the active list.',
-        fixedContentWidth: 680,
-        maxContentWidth: 680,
+        fixedContentWidth: AccountingPopoutTokens.widerContentWidth,
+        maxContentWidth: AccountingPopoutTokens.widerContentWidth,
         actions: const [],
         content: Column(
           mainAxisSize: MainAxisSize.min,

@@ -286,11 +286,12 @@ class _LedgerReportsPageState extends State<LedgerReportsPage> {
       context: context,
       builder: (dialogContext) => AccountingDialog.alert(
         dialogContext,
+        widthFamily: AccountingPopoutWidthFamily.normal,
         title: category.name,
         description:
             '${formatAccountingInputDate(sales.ledger.from)} – ${formatAccountingInputDate(sales.ledger.through)} · Net Sales · ${CurrencyPresentation.fromCode(sales.ledger.currency).amountSymbol}',
-        fixedContentWidth: 600,
-        maxContentWidth: 600,
+        fixedContentWidth: AccountingPopoutTokens.normalContentWidth,
+        maxContentWidth: AccountingPopoutTokens.normalContentWidth,
         content: AccountingCard.surface(
           dialogContext,
           child: Padding(
@@ -331,11 +332,12 @@ class _LedgerReportsPageState extends State<LedgerReportsPage> {
       context: context,
       builder: (dialogContext) => AccountingDialog.alert(
         dialogContext,
+        widthFamily: AccountingPopoutWidthFamily.normal,
         title: item.name,
         description:
             '${formatAccountingInputDate(sales.ledger.from)} – ${formatAccountingInputDate(sales.ledger.through)} · Posted Sales',
-        fixedContentWidth: 600,
-        maxContentWidth: 600,
+        fixedContentWidth: AccountingPopoutTokens.normalContentWidth,
+        maxContentWidth: AccountingPopoutTokens.normalContentWidth,
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -387,11 +389,12 @@ class _LedgerReportsPageState extends State<LedgerReportsPage> {
       context: context,
       builder: (dialogContext) => AccountingDialog.alert(
         dialogContext,
+        widthFamily: AccountingPopoutWidthFamily.custom,
         title: 'Account Activity',
         description:
             '${row.account.displayName} · ${formatAccountingInputDate(report.from)} – ${formatAccountingInputDate(report.through)}',
         content: SizedBox(
-          width: 620,
+          width: AccountingPopoutTokens.widerContentWidth,
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,

@@ -348,13 +348,14 @@ class _BankingPageState extends State<BankingPage> {
           builder: (dialogContext) => StatefulBuilder(
             builder: (context, update) => AccountingDialog.alert(
               context,
+              widthFamily: AccountingPopoutWidthFamily.normal,
               title: importing
                   ? 'Review Statement Import'
                   : 'Imported Statement',
               formFooter: true,
               description: 'Importing preserves evidence. Exact outgoing matches may connect; reconciliation still needs statement-balance review.',
               content: SizedBox(
-                width: 640,
+                width: AccountingPopoutTokens.normalContentWidth,
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -522,6 +523,7 @@ class _BankingPageState extends State<BankingPage> {
     context: context,
     builder: (context) => AccountingDialog.alert(
       context,
+      widthFamily: AccountingPopoutWidthFamily.dialog,
       title: 'Original File Unavailable',
       content: const Text(
         'This data-only restore retains the statement rows and checksum. The original document remains in its original folder and must be reconnected before it can be viewed or exported.',
@@ -558,10 +560,11 @@ class _BankingPageState extends State<BankingPage> {
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, update) => AccountingDialog.alert(
           context,
+          widthFamily: AccountingPopoutWidthFamily.custom,
           title: 'Original Statement · ${statement.filename}',
           description: 'The original imported file is preserved for review.',
           content: SizedBox(
-            width: 640,
+            width: AccountingPopoutTokens.widerContentWidth,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -797,10 +800,11 @@ class _BankingPageState extends State<BankingPage> {
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, update) => AccountingDialog.alert(
           context,
+          widthFamily: AccountingPopoutWidthFamily.custom,
           title: 'Match History',
           description: 'Review accepted connections and any later corrections.',
           content: SizedBox(
-            width: 560,
+            width: AccountingPopoutTokens.widerContentWidth,
             child: SingleChildScrollView(
               child: AccountingCard.surface(
                 context,
@@ -914,10 +918,11 @@ class _BankingPageState extends State<BankingPage> {
           builder: (dialogContext) => StatefulBuilder(
             builder: (context, update) => AccountingDialog.alert(
               context,
+              widthFamily: AccountingPopoutWidthFamily.dialog,
               title: 'Retract Match',
               description: 'The original acceptance and your correction reason remain in the audit history. Ledger transactions are unchanged.',
               content: SizedBox(
-                width: 420,
+                width: AccountingPopoutTokens.dialogContentWidth,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1252,15 +1257,16 @@ class _BankingPageState extends State<BankingPage> {
           });
           return AccountingDialog.alert(
             context,
+            widthFamily: AccountingPopoutWidthFamily.normal,
             key: ValueKey('transaction-search-dialog-${anchor.sourceRow}'),
             title: 'Search or Combine',
             preserveTitleCase: true,
             description:
                 '${anchor.description} · ${formatAccountingMoney(context, anchor.amount)}',
-            maxContentWidth: 640,
+            maxContentWidth: AccountingPopoutTokens.normalContentWidth,
             formFooter: true,
             content: SizedBox(
-              width: 640,
+              width: AccountingPopoutTokens.normalContentWidth,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2400,14 +2406,15 @@ class _BankingPageState extends State<BankingPage> {
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, update) => AccountingDialog.alert(
           context,
+          widthFamily: AccountingPopoutWidthFamily.normal,
           title: 'Link Ledger Account',
-          maxContentWidth: 460,
-          fixedContentWidth: 460,
+          maxContentWidth: AccountingPopoutTokens.normalContentWidth,
+          fixedContentWidth: AccountingPopoutTokens.normalContentWidth,
           formFooter: true,
           description:
               '${payment.displayLabel}. Choose the dedicated ledger account for these bank or card movements.',
           content: SizedBox(
-            width: 460,
+            width: AccountingPopoutTokens.normalContentWidth,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,

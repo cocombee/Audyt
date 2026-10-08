@@ -9,9 +9,9 @@ Future<void> showStatementSettingsPreview(
   BuildContext context,
 ) => AccountingDialog.showFixed<void>(
   context: context,
-  contentWidth: 600,
+  contentWidth: AccountingPopoutTokens.normalContentWidth,
   builder: (_) => FrontendFormDialog(
-    contentWidth: 600,
+    contentWidth: AccountingPopoutTokens.normalContentWidth,
     previewConfirmationEnabled: false,
     initial: const {'Transaction Detail': '', 'Show Ageing Table': false},
     leadingContentBuilder: (context, values, reviewing) => Padding(

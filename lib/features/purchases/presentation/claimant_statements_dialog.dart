@@ -101,13 +101,14 @@ class _ClaimantStatementsDialogState extends State<ClaimantStatementsDialog> {
     context: context,
     builder: (context) => AccountingDialog.alert(
       context,
+      widthFamily: AccountingPopoutWidthFamily.normal,
       key: const ValueKey('claimant-statement-detail'),
       title: statement.claimantName,
       description:
           statement.identity?.label ??
           'Unlinked Recorded Name · Separate Claim',
-      fixedContentWidth: 600,
-      maxContentWidth: 600,
+      fixedContentWidth: AccountingPopoutTokens.normalContentWidth,
+      maxContentWidth: AccountingPopoutTokens.normalContentWidth,
       content: SelectionArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -154,9 +155,10 @@ class _ClaimantStatementsDialogState extends State<ClaimantStatementsDialog> {
     context: context,
     builder: (context) => AccountingDialog.alert(
       context,
+      widthFamily: AccountingPopoutWidthFamily.normal,
       title: balance.ledgerBalance.account.displayName,
-      fixedContentWidth: 600,
-      maxContentWidth: 600,
+      fixedContentWidth: AccountingPopoutTokens.normalContentWidth,
+      maxContentWidth: AccountingPopoutTokens.normalContentWidth,
       content: SelectionArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -228,11 +230,12 @@ class _ClaimantStatementsDialogState extends State<ClaimantStatementsDialog> {
     final report = _report;
     return AccountingDialog.alert(
       context,
+      widthFamily: AccountingPopoutWidthFamily.normal,
       key: const ValueKey('claimant-balances-dialog'),
       title: 'Claimant Balances',
       description: 'Amounts the company owes employees and directors from recognized claims.',
-      fixedContentWidth: 600,
-      maxContentWidth: 600,
+      fixedContentWidth: AccountingPopoutTokens.normalContentWidth,
+      maxContentWidth: AccountingPopoutTokens.normalContentWidth,
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -415,10 +418,14 @@ class _ClaimantStatementsDialogState extends State<ClaimantStatementsDialog> {
                                 context: context,
                                 builder: (context) => AccountingDialog.alert(
                                   context,
+                                  widthFamily:
+                                      AccountingPopoutWidthFamily.normal,
                                   title: claim.claimantName,
                                   description: 'Submitted / To Review',
-                                  fixedContentWidth: 600,
-                                  maxContentWidth: 600,
+                                  fixedContentWidth:
+                                      AccountingPopoutTokens.normalContentWidth,
+                                  maxContentWidth:
+                                      AccountingPopoutTokens.normalContentWidth,
                                   content: SelectionArea(
                                     child: AccountingInformationRows(
                                       rows: [

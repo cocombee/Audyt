@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:audyt/app/accounting_components.dart';
+import 'package:audyt/app/accounting_description_field.dart';
 import 'package:audyt/app/accounting_theme.dart';
 import 'package:audyt/app/frontend_review.dart';
 import 'package:audyt/core/ids/entity_id.dart';
@@ -22,6 +23,104 @@ import 'journal_workspace_integration_test.dart' show captureUi;
 import 'restored_page_routes_test.dart' show tables;
 
 void main() {
+  for (final width in [720.0, 1162.0, 1224.0]) {
+    testWidgets(
+      'Bill missing description warning preserves its draft at $width',
+      (tester) async {
+        tester.view.physicalSize = Size(width, 809);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final w = await AccountingWorkspace.open(':memory:');
+        addTearDown(w.dispose);
+        final (vendor, account) = await setupBill(w);
+        final source = billFixture(
+          w,
+          vendor,
+          account.account.id,
+          attachments: const [],
+        );
+        final bill = billFromForm(
+          billFormValues(source)..['Tax Mode'] = 'Exclusive',
+          metadata: source.metadata,
+          vendor: vendor,
+          existing: source,
+          purchaseAccountIds: {account.account.id.value},
+        );
+        w.saveBillDraft(bill, expectedRevision: 0);
+        await (FontLoader('Inter')
+              ..addFont(rootBundle.load('assets/fonts/Inter-Variable.woff2')))
+            .load();
+        await (FontLoader(
+          'MaterialIcons',
+        )..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'))).load();
+        await tester.pumpWidget(
+          RepaintBoundary(
+            key: const ValueKey('workspace-capture'),
+            child: MaterialApp(
+              debugShowCheckedModeBanner: false,
+              theme: AccountingTheme.light(),
+              home: Scaffold(body: BillsPage(workspace: w)),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        Future<void> tap(Finder finder) async {
+          await tester.ensureVisible(finder);
+          await tester.tap(finder);
+          await tester.pumpAndSettle();
+        }
+
+        final before = tables(w);
+        await tap(find.byKey(ValueKey('edit-bill-${bill.id}')));
+        final description = find
+            .byWidgetPredicate(
+              (widget) =>
+                  widget is AccountingDescriptionField &&
+                  widget.decoration?.hintText == 'Description',
+            )
+            .first;
+        await tester.ensureVisible(description);
+        await enterAccountingText(tester, description, ' ');
+        await tap(find.byKey(const ValueKey('design-review')));
+        final warning = find.text(
+          'Could not review: Enter a description for bill line 1.',
+        );
+        expect(warning, findsOneWidget);
+        expect(find.textContaining('Invalid argument'), findsNothing);
+        expect(find.textContaining('sales line'), findsNothing);
+        expect(find.byKey(const ValueKey('design-review')), findsOneWidget);
+        expect(tables(w), before);
+        FocusManager.instance.primaryFocus?.unfocus();
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(warning);
+        await tester.pumpAndSettle();
+        await captureUi(
+          tester,
+          'Bill Missing Description Warning ${width.toInt()}',
+        );
+        await tester.ensureVisible(description);
+        await enterAccountingText(
+          tester,
+          description,
+          bill.lines.single.description,
+        );
+        await tap(find.byKey(const ValueKey('design-review')));
+        expect(warning, findsNothing);
+        expect(find.byType(AccountingInformationRows), findsWidgets);
+        expect(tables(w), before);
+        await tap(find.text('Back'));
+        await tester.ensureVisible(description);
+        await enterAccountingText(tester, description, 'Discarded correction');
+        await tap(find.byKey(const ValueKey('design-close')));
+        expect(find.text('Discard Unsaved Changes?'), findsOneWidget);
+        await tap(find.text('Discard'));
+        expect(find.byType(FrontendFormDialog), findsNothing);
+        expect(tables(w), before);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
   for (final width in [720.0, 1224.0]) {
     testWidgets(
       'configured Bill tax reviews, cancels, saves and survives restart at $width',

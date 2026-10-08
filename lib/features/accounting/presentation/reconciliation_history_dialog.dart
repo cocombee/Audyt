@@ -48,12 +48,13 @@ class _ReconciliationHistoryDialogState
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, update) => AccountingDialog.alert(
           context,
+          widthFamily: AccountingPopoutWidthFamily.dialog,
           title: 'Reopen Reconciliation',
-          maxContentWidth: 420,
-          fixedContentWidth: 420,
+          maxContentWidth: AccountingPopoutTokens.dialogContentWidth,
+          fixedContentWidth: AccountingPopoutTokens.dialogContentWidth,
           description: 'The approval remains in history. Reopening permits corrections to its matches. Later reconciliations must be reopened first.',
           content: SizedBox(
-            width: 420,
+            width: AccountingPopoutTokens.dialogContentWidth,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -187,12 +188,13 @@ class _ReconciliationHistoryDialogState
         builder: (dialogContext) => StatefulBuilder(
           builder: (context, _) => AccountingDialog.alert(
             context,
+            widthFamily: AccountingPopoutWidthFamily.custom,
             title: 'Approved Transaction Evidence',
             description: evidence.isAccountPeriod
                 ? 'The account ledger, selected transactions and supporting files preserved when this reconciliation was approved.'
                 : 'The statement, ledger and connections preserved when this reconciliation was approved.',
             content: SizedBox(
-              width: 560,
+              width: AccountingPopoutTokens.widerContentWidth,
               child: SingleChildScrollView(
                 child: AccountingCard.surface(
                   context,
@@ -565,10 +567,11 @@ class _ReconciliationHistoryDialogState
           );
     return AccountingDialog.alert(
       context,
+      widthFamily: AccountingPopoutWidthFamily.custom,
       title: 'Reconciliation History',
       description: 'Review approvals, their evidence and any later reopening.',
       content: SizedBox(
-        width: 560,
+        width: AccountingPopoutTokens.widerContentWidth,
         child: SingleChildScrollView(
           child: AccountingRecordList(
             paginationKey: 'reconciliation-history',

@@ -136,6 +136,7 @@ class _ClaimReceiptApprovalDialogState
         },
         child: AccountingDialog.alert(
           context,
+          widthFamily: AccountingPopoutWidthFamily.custom,
           onClose: _close,
           key: const ValueKey('claim-receipt-approval'),
           title: widget.currentExpense == null
@@ -145,7 +146,7 @@ class _ClaimReceiptApprovalDialogState
               ? 'Review each receipt and its ledger allocation before approving.'
               : 'Review each expense line and its ledger allocation before approving.',
           formFooter: true,
-          fixedContentWidth: 600,
+          fixedContentWidth: AccountingPopoutTokens.widerContentWidth,
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'accounting_components.dart';
+import 'accounting_theme.dart';
 
 /// Review copy, not a published agreement. Registration is enabled only after
 /// the operator has supplied a reviewed version in client/server configuration.
@@ -50,13 +51,14 @@ Future<void> showTermsAndConditions(BuildContext context) => showDialog<void>(
   context: context,
   builder: (context) => AccountingDialog.alert(
     context,
+    widthFamily: AccountingPopoutWidthFamily.custom,
     title: 'Terms & Conditions',
     description:
         'Review draft — publication details and legal review are pending.',
     contentInset: 20,
-    maxContentWidth: 680,
+    maxContentWidth: AccountingPopoutTokens.widerContentWidth,
     content: SizedBox(
-      width: 680,
+      width: AccountingPopoutTokens.widerContentWidth,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,

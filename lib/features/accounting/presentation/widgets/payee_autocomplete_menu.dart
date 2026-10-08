@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../../app/accounting_theme.dart';
+import '../../../../app/accounting_components.dart';
 import '../../../../app/responsive.dart';
 import '../../domain/payee.dart';
 
@@ -13,21 +14,23 @@ double payeeAutocompleteMenuWidth(
   BuildContext context,
   Iterable<Payee> candidates, {
   bool badged = true,
+  double rowHorizontalInset = 8,
   Iterable<String> extraLabels = const [],
 }) {
   final textTheme = Theme.of(context).textTheme;
   final nameStyle = textTheme.bodyMedium!;
-  final badgeStyle = textTheme.bodySmall!.copyWith(fontWeight: FontWeight.w500);
   double measure(String text, TextStyle style) =>
       AccountingResponsive.measuredTextWidth(context, text, style);
   var width = 0.0;
   for (final payee in candidates) {
-    // Badge rows: menu 4+4, row 8+8, peer 8, badge 6+6.
+    // Label rows retain menu/row insets and the shared minimum text gap.
     // Voucher rows retain their existing combined text and 10+10 row inset.
     final rowWidth = badged
-        ? 44 +
+        ? 8 +
+              rowHorizontalInset * 2 +
+              AccountingSelectionLabel.minimumTextGap +
               measure(payee.name, nameStyle) +
-              measure(payee.typeLabel, badgeStyle)
+              AccountingSelectionLabel.measuredWidth(context, payee.typeLabel)
         : 28 + measure('${payee.name} · ${payee.typeLabel}', nameStyle);
     width = math.max(width, rowWidth);
   }

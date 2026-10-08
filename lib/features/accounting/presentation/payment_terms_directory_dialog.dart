@@ -25,7 +25,7 @@ Future<void> showPaymentTermsDirectoryPreview(
   bool demo = false,
 }) => AccountingDialog.showFixed<void>(
   context: context,
-  contentWidth: 600,
+  contentWidth: AccountingPopoutTokens.normalContentWidth,
   builder: (_) => PaymentTermsDirectoryDialog(
     entries: demo
         ? [
@@ -110,9 +110,9 @@ List<(String, String)> _reviewTerm(Map<String, Object?> values) {
 Future<void> showAccountingTermPreview(BuildContext context) =>
     AccountingDialog.showFixed<void>(
       context: context,
-      contentWidth: 600,
+      contentWidth: AccountingPopoutTokens.normalContentWidth,
       builder: (_) => FrontendFormDialog(
-        contentWidth: 600,
+        contentWidth: AccountingPopoutTokens.normalContentWidth,
         form: _termForm(const {'Due Rule': 'fixed'}),
         initial: const {
           'Name': '',
@@ -256,10 +256,11 @@ class _PaymentTermsDirectoryDialogState
         .toList();
     return AccountingDialog.alert(
       context,
+      widthFamily: AccountingPopoutWidthFamily.normal,
       title: 'Terms',
       description: 'Design preview · Terms are not saved. Existing due dates and defaults are unchanged.',
-      fixedContentWidth: 600,
-      maxContentWidth: 600,
+      fixedContentWidth: AccountingPopoutTokens.normalContentWidth,
+      maxContentWidth: AccountingPopoutTokens.normalContentWidth,
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -336,13 +336,18 @@ class _ExpenseIntakePageState extends State<ExpenseIntakePage> {
         context: context,
         builder: (context) => AccountingDialog.alert(
           context,
+          widthFamily: suggestions.isEmpty
+              ? AccountingPopoutWidthFamily.dialog
+              : AccountingPopoutWidthFamily.wider,
           title: 'Saved Recurring Suggestions',
           description: suggestions.isEmpty ? null : 'Review a suggestion to record an expense. Saved occurrences remain linked to their expense.',
           titleGuidance: suggestions.isEmpty
               ? 'Review a suggestion to record an expense. Saved occurrences remain linked to their expense.'
               : null,
           content: SizedBox(
-            width: suggestions.isEmpty ? 400 : 728,
+            width: suggestions.isEmpty
+                ? AccountingPopoutTokens.dialogContentWidth
+                : AccountingPopoutTokens.widerContentWidth,
             child: SingleChildScrollView(
               child: suggestions.isEmpty
                   ? accountingHelperText(
@@ -459,13 +464,18 @@ class _ExpenseIntakePageState extends State<ExpenseIntakePage> {
         builder: (context) => StatefulBuilder(
           builder: (context, updateScheduleView) => AccountingDialog.alert(
             context,
+            widthFamily: templates.isEmpty
+                ? AccountingPopoutWidthFamily.dialog
+                : AccountingPopoutWidthFamily.wider,
             title: 'Recurring Expenses',
             description: templates.isEmpty ? null : 'Due suggestions are prepared for review. Nothing is paid or posted.',
             titleGuidance: templates.isEmpty
                 ? 'Due suggestions are prepared for review. Nothing is paid or posted.'
                 : null,
             content: SizedBox(
-              width: templates.isEmpty ? 400 : 728,
+              width: templates.isEmpty
+                  ? AccountingPopoutTokens.dialogContentWidth
+                  : AccountingPopoutTokens.widerContentWidth,
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -724,6 +734,9 @@ class _ExpenseIntakePageState extends State<ExpenseIntakePage> {
                                                         context: context,
                                                         builder: (reviewContext) => AccountingDialog.alert(
                                                           reviewContext,
+                                                          widthFamily:
+                                                              AccountingPopoutWidthFamily
+                                                                  .wider,
                                                           title: 'Recurring Suggestion',
                                                           description: 'Saved for review. This is not a recorded expense or payment.',
                                                           content: Column(
@@ -914,9 +927,10 @@ class _ExpenseIntakePageState extends State<ExpenseIntakePage> {
     final restoring = expense.isArchived;
     final confirmed = await AccountingDialog.showFixed<bool>(
       context: context,
-      contentWidth: 400,
+      contentWidth: AccountingPopoutTokens.dialogContentWidth,
       builder: (dialogContext) => AccountingDialog.alert(
         dialogContext,
+        widthFamily: AccountingPopoutWidthFamily.dialog,
         title: restoring ? 'Restore Expense' : 'Remove Expense',
         content: Text(
           restoring ? 'Restore this expense to the active list for review?' : 'Remove this unposted expense from the active list? Its details and receipts are retained in Removed Expenses, where you can restore it.',

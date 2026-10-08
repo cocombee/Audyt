@@ -114,20 +114,35 @@ class _ReminderFormDialogState extends State<ReminderFormDialog> {
           ),
         ),
       ),
-      if (mode == 'Custom Dates' && dates.length > 1) ...[
+      if (mode == 'Custom Dates') ...[
         const SizedBox(width: 10),
-        accountingCompactRemove(
-          context,
-          tooltip: 'Remove Date',
-          key: ValueKey('remove-reminder-date-$index'),
-          onPressed: () {
-            setState(() {
-              dates.remove(controller);
+        if (index == 0)
+          accountingCompactAdd(
+            context,
+            key: const ValueKey('reminder-add-date'),
+            tooltip: 'Add Date',
+            onPressed: () => setState(() {
+              dates.add(
+                TextEditingController(
+                  text: formatAccountingInputDate(DateTime.now()),
+                ),
+              );
               error = null;
-            });
-            controller.dispose();
-          },
-        ),
+            }),
+          )
+        else
+          accountingCompactRemove(
+            context,
+            tooltip: 'Remove Date',
+            key: ValueKey('remove-reminder-date-$index'),
+            onPressed: () {
+              setState(() {
+                dates.remove(controller);
+                error = null;
+              });
+              controller.dispose();
+            },
+          ),
       ],
     ],
   );
@@ -189,7 +204,7 @@ class _ReminderFormDialogState extends State<ReminderFormDialog> {
     // Both outer dialog insets and the form's inner insets reduce the usable
     // width. Calculate columns from that space so they stay paired at 720px.
     final width = math.min(
-      700.0,
+      AccountingPopoutTokens.widerContentWidth,
       media.size.width -
           dialogInsets.horizontal -
           media.viewInsets.horizontal -
@@ -198,6 +213,7 @@ class _ReminderFormDialogState extends State<ReminderFormDialog> {
     final column = (width - 20) / 2;
     return AccountingDialog.alert(
       context,
+      widthFamily: AccountingPopoutWidthFamily.wider,
       title: widget.reminder == null ? 'Add Reminder' : 'Edit Reminder',
       maxContentWidth: width,
       contentInset: accountingContentInset,
@@ -292,27 +308,6 @@ class _ReminderFormDialogState extends State<ReminderFormDialog> {
                             ) ...[
                               if (i > 0) const SizedBox(height: 10),
                               deadline(dates[i], i),
-                            ],
-                            if (mode == 'Custom Dates') ...[
-                              const SizedBox(height: 10),
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: AccountingButton.outline(
-                                  context,
-                                  key: const ValueKey('reminder-add-date'),
-                                  leadingIcon: Icons.add_rounded,
-                                  child: const Text('Add Date'),
-                                  onPressed: () => setState(
-                                    () => dates.add(
-                                      TextEditingController(
-                                        text: formatAccountingInputDate(
-                                          DateTime.now(),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
                             ],
                           ],
                         ),

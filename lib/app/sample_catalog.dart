@@ -243,6 +243,7 @@ class SampleStateRows extends StatelessWidget {
               context: context,
               builder: (dialogContext) => AccountingDialog.alert(
                 dialogContext,
+                widthFamily: AccountingPopoutWidthFamily.normal,
                 title: 'Example ${form.title}',
                 description: '$status · Fictional record for design review',
                 content: SingleChildScrollView(

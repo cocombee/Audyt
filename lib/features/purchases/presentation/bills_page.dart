@@ -321,12 +321,13 @@ class _BillsPageState extends State<BillsPage> {
       context: context,
       builder: (context) => AccountingDialog.alert(
         context,
+        widthFamily: AccountingPopoutWidthFamily.custom,
         title: historical
             ? 'Bill Revision ${bill.metadata.revision}'
             : 'View Bill',
-        maxContentWidth: 680,
+        maxContentWidth: AccountingPopoutTokens.widerContentWidth,
         content: SizedBox(
-          width: 680,
+          width: AccountingPopoutTokens.widerContentWidth,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -398,10 +399,11 @@ class _BillsPageState extends State<BillsPage> {
     context: context,
     builder: (context) => AccountingDialog.alert(
       context,
+      widthFamily: AccountingPopoutWidthFamily.custom,
       title: 'Bill History',
-      maxContentWidth: 680,
+      maxContentWidth: AccountingPopoutTokens.widerContentWidth,
       content: SizedBox(
-        width: 680,
+        width: AccountingPopoutTokens.widerContentWidth,
         child: AccountingRecordList(
           paginationKey: 'bills-1',
           children: [

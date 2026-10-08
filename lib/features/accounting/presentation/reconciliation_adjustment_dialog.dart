@@ -170,6 +170,7 @@ class _ReconciliationAdjustmentDialogState
         },
         child: AccountingDialog.alert(
           context,
+          widthFamily: AccountingPopoutWidthFamily.normal,
           title: 'Add Transaction',
           description:
               '${widget.bankLabel} · This adjustment cannot be saved yet.',
@@ -177,7 +178,7 @@ class _ReconciliationAdjustmentDialogState
           closeKey: const ValueKey('adjustment-editor-close'),
           formFooter: true,
           content: SizedBox(
-            width: 480,
+            width: AccountingPopoutTokens.normalContentWidth,
             child: SingleChildScrollView(
               child: AccountingOrdinaryFields(
                 fields: [

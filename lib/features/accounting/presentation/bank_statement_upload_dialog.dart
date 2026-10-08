@@ -118,12 +118,13 @@ class _BankStatementUploadDialogState extends State<BankStatementUploadDialog> {
   @override
   Widget build(BuildContext context) => AccountingDialog.alert(
     context,
+    widthFamily: AccountingPopoutWidthFamily.normal,
     title: 'Import Bank Statement',
     closeKey: const ValueKey('bank-statement-upload-close'),
     canClose: !_busy,
     formFooter: true,
     content: SizedBox(
-      width: 640,
+      width: AccountingPopoutTokens.normalContentWidth,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,

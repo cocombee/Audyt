@@ -153,7 +153,7 @@ void main() {
             of: find.byType(AlertDialog),
             matching: find.byType(AccountingOrdinaryFields),
           ),
-          findsOneWidget,
+          findsNWidgets(2),
         );
         final initialDialog = tester.getRect(find.byType(AlertDialog));
         final groupCheckbox = tester.getRect(keyed('ledger-group-account'));

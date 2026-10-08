@@ -1,5 +1,6 @@
 // Isolated UI proposal: actual owners and separate autocomplete geometry.
 import 'package:audyt/app/accounting_theme.dart';
+import 'package:audyt/app/accounting_components.dart';
 import 'package:audyt/features/accounting/domain/payee.dart';
 import 'package:audyt/features/accounting/presentation/record_expense_page.dart';
 import 'package:audyt/features/accounting/presentation/widgets/payee_autocomplete_menu.dart';
@@ -127,7 +128,7 @@ void checkOneLine(WidgetTester tester, Finder menu) {
 }
 
 void main() {
-  for (final width in [720.0, 1224.0]) {
+  for (final width in [720.0, 1162.0, 1224.0]) {
     for (final owner in ['Expense', 'Claimant', 'Merchant', 'Voucher']) {
       testWidgets(
         '$owner actual menu fits full directory and keeps selection at $width',
@@ -191,6 +192,45 @@ void main() {
           expect(panel.left, greaterThanOrEqualTo(8));
           expect(panel.right, lessThanOrEqualTo(width - 8));
           checkOneLine(tester, menu);
+          {
+            final choice = directory.singleWhere((payee) => payee.id == id);
+            final role = tester.widget<Text>(
+              find.descendant(of: menu, matching: find.text(choice.typeLabel)),
+            );
+            expect(role.style!.fontSize, accountingSmallControlFontSize);
+            expect(role.style!.fontWeight, FontWeight.w400);
+            expect(
+              role.style!.color,
+              AccountingTheme.of(tester.element(menu)).mutedForeground,
+            );
+            // Keep the selected name separate from its smaller metadata label.
+            final name = tester.renderObject<RenderParagraph>(
+              find.descendant(of: menu, matching: find.text(choice.name)),
+            );
+            expect(
+              (name.text as TextSpan).style!.fontSize,
+              accountingControlFontSize,
+            );
+            final labelBox = find
+                .ancestor(
+                  of: find.descendant(
+                    of: menu,
+                    matching: find.text(choice.typeLabel),
+                  ),
+                  matching: find.byType(DecoratedBox),
+                )
+                .first;
+            final nameBox = find.descendant(
+              of: menu,
+              matching: find.text(choice.name),
+            );
+            expect(
+              tester.getRect(labelBox).left - tester.getRect(nameBox).right,
+              greaterThanOrEqualTo(
+                AccountingSelectionLabel.minimumTextGap - 0.5,
+              ),
+            );
+          }
           await capturePayee(tester, 'Payee Scroller $owner ${width.toInt()}');
           // Filtering to a shorter name must not shrink the whole-directory width.
           await tester.enterText(field, shortQuery);
@@ -438,7 +478,7 @@ void main() {
     expect(tester.getRect(menu).left, 8);
     final option = keyed('voucher-payee-option-long');
     final paragraph = tester.renderObject<RenderParagraph>(
-      find.descendant(of: option, matching: find.byType(RichText)),
+      find.descendant(of: option, matching: find.text(name)),
     );
     expect(paragraph.maxLines, 1);
     expect(paragraph.didExceedMaxLines, isTrue);

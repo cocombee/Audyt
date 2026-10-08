@@ -5,10 +5,13 @@ import 'package:audyt/app/accounting_components.dart';
 import 'package:audyt/app/accounting_theme.dart';
 import 'package:audyt/app/transaction_form_layout.dart';
 import 'package:audyt/core/ids/entity_id.dart';
+import 'package:audyt/core/money/money.dart';
 import 'package:audyt/core/money/currency_presentation.dart';
 import 'package:audyt/features/accounting/data/accounting_database.dart';
 import 'package:audyt/features/accounting/application/accounting_workspace.dart';
 import 'package:audyt/features/accounting/domain/account.dart';
+import 'package:audyt/features/accounting/domain/journal_entry.dart';
+import 'package:audyt/features/accounting/application/journal_entry_repository.dart';
 import 'package:audyt/features/accounting/presentation/journal_workspace_page.dart';
 import 'package:audyt/features/accounting/presentation/receipt_attachment_picker.dart';
 import 'package:flutter/material.dart';
@@ -46,6 +49,111 @@ Future<AccountingWorkspace> openCurrencyFixture(String currency) async {
 }
 
 void main() {
+  for (final width in [720.0, 1162.0]) {
+    for (final (currency, decimal, displayed) in [
+      ('MYR', '1234567.89', '1,234,567.89'),
+      ('JPY', '1234567', '1,234,567'),
+      ('KWD', '1234567.891', '1,234,567.891'),
+    ]) {
+      for (final posted in [false, true]) {
+        final state = posted ? 'Posted' : 'Draft';
+        testWidgets(
+          'Journal saved amount initialization $currency $state at $width',
+          (tester) async {
+            await prepare(tester, width);
+            tester.view.physicalSize = Size(width, 809);
+            installFixedPopoutHost(tester);
+            final workspace = await openCurrencyFixture(currency);
+            final cash = await workspace.createAccount(
+              code: '1000',
+              name: 'Cash',
+              type: AccountType.asset,
+            );
+            final capital = await workspace.createAccount(
+              code: '3000',
+              name: 'Capital',
+              type: AccountType.equity,
+            );
+            final amount = Money.fromDecimal(decimal, currency);
+            await workspace.saveJournal(
+              date: DateTime.utc(2026, 10, 7),
+              memo: 'Saved exact amount',
+              lines: [
+                JournalLine.debit(accountId: cash, amount: amount),
+                JournalLine.credit(accountId: capital, amount: amount),
+              ],
+            );
+            final draft = (await workspace.journals()).single;
+            if (posted) {
+              await workspace.approveJournal(
+                JournalApproval(
+                  requestId: EntityId.random(),
+                  businessId: workspace.identity.businessId,
+                  journalId: draft.entry.id,
+                  expectedRevision: draft.metadata.revision,
+                  actorId: workspace.identity.ownerId,
+                  approvedAt: DateTime.now().toUtc(),
+                ),
+              );
+            }
+            final before = workspace.database.exportDataArchive(
+              workspace.identity.businessId,
+              DateTime.utc(2026, 10, 8),
+            );
+            await tester.pumpWidget(
+              RepaintBoundary(
+                key: const ValueKey('workspace-capture'),
+                child: MaterialApp(
+                  debugShowCheckedModeBanner: false,
+                  theme: AccountingTheme.light(),
+                  home: Scaffold(
+                    body: JournalReviewPage(
+                      workspace: workspace,
+                      initialPosted: posted,
+                    ),
+                  ),
+                ),
+              ),
+            );
+            await tester.pumpAndSettle();
+            await tap(tester, key('edit-journal-${draft.entry.id.value}'));
+            for (final field in ['journal-debit-0', 'journal-credit-1']) {
+              expect(
+                tester.widget<TextField>(key(field)).controller!.text,
+                displayed,
+              );
+            }
+            for (final field in ['journal-credit-0', 'journal-debit-1']) {
+              expect(
+                tester.widget<TextField>(key(field)).controller!.text,
+                isEmpty,
+              );
+            }
+            await captureUi(
+              tester,
+              'Journal Saved Amount $currency $state ${width.toInt()}',
+            );
+            await tap(tester, key('journal-editor-close'));
+            expect(find.text('Discard Unsaved Changes?'), findsNothing);
+            expect(
+              workspace.database.exportDataArchive(
+                workspace.identity.businessId,
+                DateTime.utc(2026, 10, 8),
+              ),
+              before,
+            );
+            expect(
+              (await workspace.journals()).single.entry.lines.map(
+                (line) => line.amount,
+              ),
+              [amount, amount],
+            );
+            expect(tester.takeException(), isNull);
+          },
+        );
+      }
+    }
+  }
   for (final width in [720.0, 1224.0]) {
     for (final (currency, zero, entered) in [
       ('MYR', '0.00', '123456789012.34'),

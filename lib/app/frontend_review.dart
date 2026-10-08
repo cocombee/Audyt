@@ -77,9 +77,9 @@ Future<void> showAccountingPaymentMethodPreview(
       : 'This Is A Credit Card';
   await AccountingDialog.showFixed<Map<String, Object?>>(
     context: context,
-    contentWidth: 600,
+    contentWidth: AccountingPopoutTokens.normalContentWidth,
     builder: (_) => FrontendFormDialog(
-      contentWidth: 600,
+      contentWidth: AccountingPopoutTokens.normalContentWidth,
       previewConfirmationEnabled: false,
       initial: {'Name': initialName ?? '', cardLabel: cardPayment},
       leadingContentBuilder: (context, values, reviewing) => Padding(
@@ -129,6 +129,26 @@ String _transactionColumnTitle(String field, String currency) =>
         '$field (${CurrencyPresentation.fromCode(currency).amountSymbol})',
       _ => field,
     };
+
+// These frontend transaction inputs reserve the default editable caret and
+// its gap within the content floor. Quantity and other numeric owners retain
+// their existing sizing; a title/helper floor is still independent of padding.
+double _frontendTransactionNumericWidth(
+  BuildContext context,
+  String field,
+  Iterable<String> values, {
+  String? minimumText,
+  required String title,
+}) => math.max(
+  AccountingTransactionGridTokens.numericWidth(
+        context,
+        field,
+        values,
+        minimumText: minimumText,
+      ) +
+      (field == 'Quantity' ? 0 : const TextField().cursorWidth + 1),
+  AccountingTransactionGridTokens.fieldTitleWidth(context, title),
+);
 
 Map<String, double> _transactionColumnWidths(
   BuildContext context,
@@ -180,10 +200,17 @@ Map<String, double> _transactionColumnWidths(
             _ => '9,999,999.99',
           }
         : AccountingTransactionGridTokens.initialNumericText[field]!;
-    return AccountingTransactionGridTokens.numericWidth(
+    return _frontendTransactionNumericWidth(
       context,
       field,
-      lines.map((line) => displayed(line, field)),
+      [
+        if (field != 'Quantity')
+          formatAccountingMoneyInputText(
+            formatAccountingInputAmount(Money.zero(currency)),
+            digits,
+          ),
+        ...lines.map((line) => displayed(line, field)),
+      ],
       minimumText: seed,
       title: _transactionColumnTitle(field, currency),
     );
@@ -527,6 +554,9 @@ Future<Map<String, Object?>?> _openFrontendPreviewForm(
         )
       : null;
   Widget builder(BuildContext _) => FrontendFormDialog(
+    widthFamily: form.title == 'Fixed Assets'
+        ? AccountingPopoutWidthFamily.wider
+        : AccountingPopoutWidthFamily.normal,
     form: currentForm(),
     formBuilder: salesReceipt || banking ? currentForm : null,
     accountBalances: transferBalances,
@@ -1221,6 +1251,7 @@ class FrontendFormDialog extends StatefulWidget {
     this.embedded = false,
     this.fieldLayoutOwner,
     this.contentWidth,
+    this.widthFamily = AccountingPopoutWidthFamily.normal,
     this.onCommit,
     this.lineDefaults = const {},
     this.footerContent,
@@ -1305,6 +1336,7 @@ class FrontendFormDialog extends StatefulWidget {
   /// Main/page/tab owners retain their layout unless explicitly opted in.
   final AccountingFieldLayoutOwner? fieldLayoutOwner;
   final double? contentWidth;
+  final AccountingPopoutWidthFamily widthFamily;
   final DesignForm form;
   final AccountingWorkspace? settingsWorkspace;
   final DesignForm Function()? formBuilder;
@@ -1540,7 +1572,8 @@ class _FrontendFormDialogState extends State<FrontendFormDialog> {
       (!widget.embedded &&
           _form.lines &&
           trialOrdinaryGroups.containsKey(_form.title));
-  late double _contentWidth = widget.contentWidth ?? 728;
+  late double _contentWidth =
+      widget.contentWidth ?? AccountingPopoutTokens.widerContentWidth;
   late final String _widthOwner = 'transaction-${identityHashCode(this)}';
   bool _ownsWidth = false;
   Future<void> _ensureTransactionWidth({bool allowShrink = false}) async {
@@ -1550,7 +1583,7 @@ class _FrontendFormDialogState extends State<FrontendFormDialog> {
     final requiredWidth = _transactionGrid
         ? frontendTransactionContentWidth(context, _form, lines: _lines)
         : math.max(
-            728.0,
+            AccountingPopoutTokens.widerContentWidth,
             _previewFixedWidth(_previewColumnWidths(_moneyCurrencyCode())) +
                 180,
           );
@@ -3287,6 +3320,33 @@ class _FrontendFormDialogState extends State<FrontendFormDialog> {
           AccountingOrdinaryFieldRows(
             width: width,
             minima: trialMinima,
+            maximumFieldsPerRow:
+                !widget.embedded &&
+                    !_form.lines &&
+                    widget.widthFamily == AccountingPopoutWidthFamily.normal
+                ? 2
+                : 4,
+            threeOrMoreFieldMinima: [
+              for (final field in trialFields)
+                if (field.monetary)
+                  AccountingResponsive.measuredTextWidth(
+                        context,
+                        _controllers[field.label]?.text ??
+                            formatAccountingMoneyInputText(
+                              _values[field.label] as String? ?? '',
+                              Currency.parse(_fieldMoneyCurrencyCode(field))
+                                  .fractionDigits,
+                            ),
+                        Theme.of(context).textTheme.bodyLarge,
+                      ) +
+                      accountingContentInset * 2 +
+                      // Ordinary inputs inherit bodyLarge, and RenderEditable
+                      // reserves its default caret plus a one-pixel gap.
+                      const TextField().cursorWidth +
+                      1
+                else
+                  null,
+            ],
             preferEqual: true,
             fieldBuilder: (index, assigned) =>
                 _field(trialFields[index], assignedWidth: assigned),
@@ -4379,7 +4439,13 @@ class _FrontendFormDialogState extends State<FrontendFormDialog> {
           textAlign: TextAlign.right,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           inputFormatters: [AccountingMoneyInputFormatter(digits)],
-          decoration: accountingSingleLineInputDecoration(context),
+          decoration: accountingSingleLineInputDecoration(
+            context,
+            hintText: formatAccountingMoneyInputText(
+              formatAccountingInputAmount(Money.zero(currency)),
+              digits,
+            ),
+          ),
           onChanged: (value) async {
             line['_manualAmount'] = value;
             try {
@@ -4480,7 +4546,7 @@ class _FrontendFormDialogState extends State<FrontendFormDialog> {
                     ? 'Account'
                     : _transactionColumnTitle(entry.key, currency),
                 width: entry.value,
-                headerAlignment: const {'Rate', 'Amount'}.contains(entry.key)
+                headerAlignment: entry.key == 'Amount'
                     ? Alignment.centerRight
                     : Alignment.centerLeft,
                 naturalHeaderWidth: const {
@@ -4608,17 +4674,24 @@ class _FrontendFormDialogState extends State<FrontendFormDialog> {
         field: field == 'Description'
             ? 180
             : _previewMoneyField(field) || field == 'Quantity'
-            ? AccountingTransactionGridTokens.numericWidth(
+            ? _frontendTransactionNumericWidth(
                 context,
                 field,
-                _lines.map(
-                  (line) => _previewMoneyField(field)
-                      ? formatAccountingMoneyInputText(
-                          line[field] ?? '',
-                          fractionDigits,
-                        )
-                      : line[field] ?? '',
-                ),
+                [
+                  if (_previewMoneyField(field))
+                    formatAccountingMoneyInputText(
+                      formatAccountingInputAmount(Money.zero(currencyCode)),
+                      fractionDigits,
+                    ),
+                  ..._lines.map(
+                    (line) => _previewMoneyField(field)
+                        ? formatAccountingMoneyInputText(
+                            line[field] ?? '',
+                            fractionDigits,
+                          )
+                        : line[field] ?? '',
+                  ),
+                ],
                 minimumText: field == 'Discount' ? '000' : null,
                 title: _transactionColumnTitle(field, currencyCode),
               )
@@ -4771,7 +4844,14 @@ class _FrontendFormDialogState extends State<FrontendFormDialog> {
             : null,
         decoration: accountingSingleLineInputDecoration(
           context,
-          hintText: moneyField(field) || field == 'Quantity' ? null : field,
+          hintText: moneyField(field)
+              ? formatAccountingMoneyInputText(
+                  formatAccountingInputAmount(Money.zero(currencyCode)),
+                  fractionDigits,
+                )
+              : field == 'Quantity'
+              ? null
+              : field,
         ),
         onChanged: (value) async {
           line[field] = value;
@@ -4807,7 +4887,7 @@ class _FrontendFormDialogState extends State<FrontendFormDialog> {
                   AccountingTransactionColumn(
                     title: _transactionColumnTitle(field, currencyCode),
                     width: widths[field]!,
-                    headerAlignment: moneyField(field)
+                    headerAlignment: field != 'Rate' && moneyField(field)
                         ? Alignment.centerRight
                         : Alignment.centerLeft,
                     naturalHeaderWidth: field != 'Description',
@@ -4969,12 +5049,27 @@ class _FrontendFormDialogState extends State<FrontendFormDialog> {
   }
 
   Widget _build(BuildContext context, {double? availableWidth}) {
-    final preferredWidth =
-        (_form.lines ? _contentWidth : widget.contentWidth) ??
-        (MediaQuery.sizeOf(context).width - 128).clamp(200.0, 720.0);
+    final preferredWidth = _form.lines
+        ? _contentWidth
+        : widget.embedded
+        ? widget.contentWidth ??
+              (MediaQuery.sizeOf(context).width - 128).clamp(200.0, 720.0)
+        : AccountingPopoutTokens.contentWidthFor(widget.widthFamily) ??
+              widget.contentWidth ??
+              (MediaQuery.sizeOf(context).width - 128).clamp(200.0, 720.0);
     final width = availableWidth != null && availableWidth.isFinite
         ? math.min(preferredWidth, availableWidth)
-        : preferredWidth;
+        : widget.embedded || _form.lines
+        ? preferredWidth
+        : math.min(
+            preferredWidth,
+            math.max(
+              0.0,
+              MediaQuery.sizeOf(context).width -
+                  AccountingPopoutTokens.windowInsets.horizontal -
+                  AccountingPopoutTokens.contentInset * 2,
+            ),
+          );
     final classSection = _form.title == 'Bills'
         ? 'Purchase Preferences'
         : 'Sales Preferences';
@@ -5404,7 +5499,7 @@ class _FrontendFormDialogState extends State<FrontendFormDialog> {
                         setState(() => _review = !_review);
                       }
                     },
-              leadingIcon: Icons.visibility_outlined,
+              leadingIcon: _review ? null : Icons.visibility_outlined,
               child: Text(_review ? 'Back' : 'Preview'),
             ),
             AccountingButton.primary(
@@ -5611,6 +5706,9 @@ class _FrontendFormDialogState extends State<FrontendFormDialog> {
           contentScrollKey: ValueKey(_review),
           maxContentWidth: width,
           fixedContentWidth: _form.lines ? _contentWidth : widget.contentWidth,
+          widthFamily: _form.lines
+              ? AccountingPopoutWidthFamily.custom
+              : widget.widthFamily,
           description: _transactionGrid && _form.title != 'Deposits'
               ? null
               : widget.onCommit == null
@@ -5717,9 +5815,10 @@ class _FrontendAreaPageState extends State<FrontendAreaPage> {
     if (!_canRemovePreview(record)) return;
     final confirmed = await AccountingDialog.showFixed<bool>(
       context: context,
-      contentWidth: 400,
+      contentWidth: AccountingPopoutTokens.dialogContentWidth,
       builder: (dialogContext) => AccountingDialog.alert(
         dialogContext,
+        widthFamily: AccountingPopoutWidthFamily.dialog,
         title: 'Remove Preview',
         content: const Text(
           'Remove this preview from the list? You can restore it while this screen is open.',
@@ -6289,6 +6388,7 @@ class _FrontendAreaPageState extends State<FrontendAreaPage> {
                   notificationCounts: widget.notificationCounts,
                   selectedIndex: _selected,
                   keyPrefix: 'preview-tab-${widget.area}',
+                  revealSelectedOnResize: true,
                   onChanged: (index) => setState(() => _selected = index),
                 ),
               ),

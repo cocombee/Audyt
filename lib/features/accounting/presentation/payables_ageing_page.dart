@@ -113,11 +113,12 @@ class _PayablesAgeingPageState extends State<PayablesAgeingPage> {
         context: context,
         builder: (context) => AccountingDialog.alert(
           context,
+          widthFamily: AccountingPopoutWidthFamily.custom,
           title: 'View Payable Balance',
-          maxContentWidth: 680,
+          maxContentWidth: AccountingPopoutTokens.widerContentWidth,
           actions: const [],
           content: SizedBox(
-            width: 680,
+            width: AccountingPopoutTokens.widerContentWidth,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,

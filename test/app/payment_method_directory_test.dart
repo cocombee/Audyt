@@ -31,6 +31,165 @@ void main() {
         .setMockMethodCallHandler(namingSettingsChannel, null),
   );
 
+  for (final width in [720.0, 1162.0]) {
+    testWidgets('compact payment row actions retain routes at $width', (
+      t,
+    ) async {
+      await prepare(t, width);
+      t.view.physicalSize = Size(width, 809);
+      final w = await AccountingWorkspace.open(':memory:');
+      addTearDown(w.dispose);
+      final before = tables(w);
+      await t.pumpWidget(
+        RepaintBoundary(
+          key: const ValueKey('workspace-capture'),
+          child: DemoCompany(
+            child: AudytApp(workspace: w, showInitialSetup: false),
+          ),
+        ),
+      );
+      await t.pumpAndSettle();
+      Finder key(String id) => find.byKey(ValueKey(id)).last;
+      await tap(t, key('accounting-settings'));
+      await tap(t, key('settings-editor-Payment Methods'));
+      await tap(t, key('settings-manage-payment-methods'));
+      final row = key('payment-method-row-demo-cash');
+      final actions = find.descendant(
+        of: row,
+        matching: find.byType(IconButton),
+      );
+      expect(actions, findsNWidgets(4));
+      final frames = actions
+          .evaluate()
+          .map((e) => t.getRect(find.byWidget(e.widget)))
+          .toList();
+      for (final frame in frames) {
+        expect(
+          frame.size,
+          const Size(
+            accountingSmallControlHeight,
+            accountingSmallControlHeight,
+          ),
+        );
+        expect(frame.center.dy, frames.first.center.dy);
+      }
+      expect(find.byTooltip('Run Report for Cash'), findsOneWidget);
+      expect(find.byTooltip('Make Inactive Cash'), findsOneWidget);
+      expect(
+        t.widget<ButtonStyleButton>(key('payment-method-report')).onPressed,
+        isNotNull,
+      );
+      await capture(t, 'Payment Method Compact Actions ${width.toInt()}');
+      await tap(t, key('payment-method-activity-demo-cash'));
+      expect(find.text('Cash · Activity'), findsOneWidget);
+      await tap(t, accountingCloseIcon().last);
+      await tap(t, key('payment-method-activation-demo-cash'));
+      expect(
+        t
+            .widget<ButtonStyleButton>(key('payment-method-deactivate-confirm'))
+            .onPressed,
+        isNull,
+      );
+      await tap(t, accountingCloseIcon().last);
+      await tap(t, key('payment-method-include-inactive'));
+      final inactive = key('payment-method-row-demo-inactive');
+      expect(
+        find.descendant(of: inactive, matching: find.byType(IconButton)),
+        findsNWidgets(4),
+      );
+      expect(find.byTooltip('Make Active Archived Transfer'), findsOneWidget);
+      await capture(
+        t,
+        'Payment Method Compact Inactive Actions ${width.toInt()}',
+      );
+      await tap(t, key('payment-method-activation-demo-inactive'));
+      expect(
+        t
+            .widget<ButtonStyleButton>(key('payment-method-activate-confirm'))
+            .onPressed,
+        isNull,
+      );
+      await tap(t, accountingCloseIcon().last);
+      expect(tables(w), before);
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets(
+      'Activity Columns reflow retains selection and order at $width',
+      (t) async {
+        await prepare(t, width);
+        t.view.physicalSize = Size(width, 809);
+        final w = await AccountingWorkspace.open(':memory:');
+        addTearDown(w.dispose);
+        final before = tables(w);
+        await t.pumpWidget(
+          RepaintBoundary(
+            key: const ValueKey('workspace-capture'),
+            child: DemoCompany(
+              child: AudytApp(workspace: w, showInitialSetup: false),
+            ),
+          ),
+        );
+        await t.pumpAndSettle();
+        Finder key(String id) => find.byKey(ValueKey(id)).last;
+        await tap(t, key('accounting-settings'));
+        await tap(t, key('settings-editor-Payment Methods'));
+        await tap(t, key('settings-manage-payment-methods'));
+        await tap(t, key('payment-method-activity-demo-cash'));
+        await tap(t, key('payment-method-report-customise'));
+        await t.ensureVisible(key('payment-method-activity-column-row-date'));
+        await t.pumpAndSettle();
+        final date = key('payment-method-activity-Date');
+        final type = key('payment-method-activity-Transaction Type');
+        expect(t.getCenter(date).dy, closeTo(t.getCenter(type).dy, .1));
+        expect(t.getRect(date).right, lessThan(t.getRect(type).left));
+        expect(
+          t.getCenter(key('payment-method-activity-Name')).dy,
+          greaterThan(t.getCenter(date).dy),
+          reason: 'Only Activity Columns opts into at most three slots per row',
+        );
+        final debit = key('payment-method-activity-Debit');
+        final credit = key('payment-method-activity-Credit');
+        expect(t.getCenter(debit).dy, closeTo(t.getCenter(credit).dy, .1));
+        await capture(t, 'Activity Columns Responsive ${width.toInt()}');
+        await tap(t, debit);
+        expect(t.widget<Checkbox>(debit).value, isTrue);
+        final debitRow = key('payment-method-activity-column-row-debit');
+        await t.ensureVisible(key('payment-method-activity-column-row-date'));
+        await t.pumpAndSettle();
+        final debitLabel = find.descendant(
+          of: debitRow,
+          matching: find.text('Debit'),
+        );
+        final dateRow = key('payment-method-activity-column-row-date');
+        await t.drag(
+          debitLabel,
+          t.getCenter(dateRow) - t.getCenter(debitLabel),
+        );
+        await t.pumpAndSettle();
+        await capture(t, 'Activity Columns Reordered ${width.toInt()}');
+        await tap(t, key('payment-method-activity-options-back'));
+        final table = key('payment-method-report-table');
+        final header = t.widget<Table>(table).children.first.children.first;
+        expect(
+          find.descendant(
+            of: find.byWidget(header),
+            matching: find.text('Debit (RM)'),
+          ),
+          findsOneWidget,
+        );
+        await tap(t, key('payment-method-report-customise'));
+        expect(t.widget<Checkbox>(debit).value, isTrue);
+        await tap(t, key('payment-method-activity-options-back'));
+        await tap(t, accountingCloseIcon().last);
+        await tap(t, find.text('Discard').last);
+        expect(find.byType(PaymentMethodReportPreview), findsNothing);
+        expect(tables(w), before);
+        expect(t.takeException(), isNull);
+      },
+    );
+  }
+
   for (final width in [720.0, 1224.0]) {
     for (final activity in [false, true]) {
       testWidgets('report draft dismissal activity=$activity at $width', (
@@ -55,13 +214,7 @@ void main() {
         await tap(t, key('settings-manage-payment-methods'));
         Future<void> openReport() async {
           if (activity) {
-            await tap(
-              t,
-              find.descendant(
-                of: key('payment-method-row-demo-debit'),
-                matching: find.text('Run Report'),
-              ),
-            );
+            await tap(t, key('payment-method-activity-demo-debit'));
           } else {
             await tap(t, key('payment-method-report'));
           }
@@ -827,7 +980,7 @@ void main() {
           final dateTarget = key('payment-method-activity-column-row-date');
           await t.drag(
             amountDrag,
-            Offset(0, t.getCenter(dateTarget).dy - t.getCenter(amountDrag).dy),
+            t.getCenter(dateTarget) - t.getCenter(amountDrag),
           );
           await t.pumpAndSettle();
           await capture(

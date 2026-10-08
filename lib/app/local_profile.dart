@@ -309,6 +309,7 @@ class _LocalProfileMenuState extends State<LocalProfileMenu> {
           context: context,
           builder: (context) => AccountingDialog.alert(
             context,
+            widthFamily: AccountingPopoutWidthFamily.dialog,
             title: 'Profile Could Not Be Loaded',
             content: AccountingAlert.build(
               context,
@@ -351,9 +352,10 @@ class _LocalProfileMenuState extends State<LocalProfileMenu> {
         listenable: google,
         builder: (context, _) => AccountingDialog.alert(
           context,
+          widthFamily: AccountingPopoutWidthFamily.dialog,
           title: !google.signedIn ? 'Sign In With Google' : 'Google Account',
           description: 'Connect your Google identity to Audyt.',
-          maxContentWidth: 400,
+          maxContentWidth: AccountingPopoutTokens.dialogContentWidth,
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -439,10 +441,11 @@ class _LocalProfileMenuState extends State<LocalProfileMenu> {
           listenable: google,
           builder: (context, _) => AccountingDialog.alert(
             context,
+            widthFamily: AccountingPopoutWidthFamily.dialog,
             title: 'Sign Out?',
             description: 'You will need to sign in again to use Audyt. Your saved business records remain on this device.',
             contentInset: 20,
-            maxContentWidth: 420,
+            maxContentWidth: AccountingPopoutTokens.dialogContentWidth,
             content: AccountingAlert.build(
               context,
               title: google.error == null
@@ -507,6 +510,7 @@ class _LocalProfileMenuState extends State<LocalProfileMenu> {
               final busy = google.busy || resending;
               return AccountingDialog.alert(
                 context,
+                widthFamily: AccountingPopoutWidthFamily.normal,
                 title: challenge == null
                     ? 'Switch User'
                     : google.linkChallenge != null
@@ -517,10 +521,10 @@ class _LocalProfileMenuState extends State<LocalProfileMenu> {
                     : expectedEmail == null
                     ? 'Sign in with a different Google account.'
                     : 'Sign in with $expectedEmail.',
-                maxContentWidth: 420,
+                maxContentWidth: AccountingPopoutTokens.normalContentWidth,
                 contentInset: 20,
                 content: SizedBox(
-                  width: 420,
+                  width: AccountingPopoutTokens.normalContentWidth,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1094,7 +1098,7 @@ class _LocalProfileDialogState extends State<_LocalProfileDialog> {
   Widget build(BuildContext context) {
     final contentWidth = (MediaQuery.sizeOf(context).width - 128).clamp(
       0.0,
-      680.0,
+      AccountingPopoutTokens.normalContentWidth,
     );
     Widget field(String label, Widget control) => Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1136,12 +1140,13 @@ class _LocalProfileDialogState extends State<_LocalProfileDialog> {
     );
     return AccountingDialog.alert(
       context,
+      widthFamily: AccountingPopoutWidthFamily.normal,
       title: widget.setup ? 'Profile Setup' : 'Profile',
       formFooter: true,
       description: widget.setup
           ? 'Check your details and complete your accounting profile.'
           : 'Your contact details and accounting responsibilities.',
-      maxContentWidth: 680,
+      maxContentWidth: AccountingPopoutTokens.normalContentWidth,
       content: SizedBox(
         width: contentWidth,
         child: Column(

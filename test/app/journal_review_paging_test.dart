@@ -63,11 +63,12 @@ Future<AccountingWorkspace> fixture(String path) async {
 }
 
 void main() {
-  for (final width in [720.0, 1224.0]) {
+  for (final width in [720.0, 1162.0, 1224.0]) {
     testWidgets(
       'restored journal pages retain search, controls and exact posting at $width',
       (tester) async {
         await view(tester, width);
+        tester.view.physicalSize = Size(width, 809);
         final root = Directory.systemTemp.createTempSync(
           'audyt-journal-page-ui-',
         );
@@ -103,6 +104,24 @@ void main() {
 
         await tap(find.widgetWithText(Tab, 'Journal Review'));
         expect(find.byType(AccountingRecordRow), findsNWidgets(5));
+        void expectInlineToolbar() {
+          final drafts = tester.getRect(
+            find.byKey(const ValueKey('review-drafts')),
+          );
+          final posted = tester.getRect(
+            find.byKey(const ValueKey('review-posted')),
+          );
+          final search = tester.getRect(
+            find.byKey(const ValueKey('journal-search')),
+          );
+          expect(posted.top, closeTo(drafts.top, 0.1));
+          expect(search.center.dy, closeTo(drafts.center.dy, 0.1));
+          expect(search.left, greaterThan(posted.right));
+          expect(drafts.width, lessThan(search.width));
+          expect(posted.width, lessThan(search.width));
+        }
+
+        expectInlineToolbar();
         await captureUi(tester, 'Journal Pages Drafts ${width.toInt()}');
         await tap(find.byKey(const ValueKey('journal-page-next')));
         expect(find.byType(AccountingRecordRow), findsNWidgets(5));
@@ -146,6 +165,7 @@ void main() {
         expect(posted.entry.state, JournalEntryState.posted);
         expect(posted.metadata.revision, target.metadata.revision + 1);
         await tap(find.byKey(const ValueKey('review-posted')));
+        expectInlineToolbar();
         expect(find.byType(AccountingRecordRow), findsOneWidget);
         await tap(
           find.byKey(ValueKey('review-journal-${target.entry.id.value}')),
@@ -239,12 +259,15 @@ void main() {
     final second = await AccountingWorkspace.open('${root.path}/second.sqlite');
     addTearDown(first.dispose);
     addTearDown(second.dispose);
-    Widget screen(AccountingWorkspace w) => MaterialApp(
-      theme: AccountingTheme.light(),
-      home: Scaffold(
-        body: JournalReviewPage(
-          workspace: w,
-          through: DateTime.utc(2026, 9, 1),
+    Widget screen(AccountingWorkspace w) => RepaintBoundary(
+      key: const ValueKey('workspace-capture'),
+      child: MaterialApp(
+        theme: AccountingTheme.light(),
+        home: Scaffold(
+          body: JournalReviewPage(
+            workspace: w,
+            through: DateTime.utc(2026, 9, 1),
+          ),
         ),
       ),
     );
@@ -253,11 +276,25 @@ void main() {
     final before = tables(first);
     expect(find.text('Through 01-09-2026'), findsOneWidget);
     expect(find.byType(AccountingRecordRow), findsNWidgets(5));
+    await captureUi(tester, 'Journal Toolbar Through Filter 720');
     await tester.tap(
       find.byKey(const ValueKey('clear-journal-summary-filter')),
     );
     await tester.pumpAndSettle();
     expect(find.byType(AccountingRecordRow), findsNWidgets(5));
+    tester.view.physicalSize = const Size(400, 809);
+    await tester.pumpAndSettle();
+    final drafts = tester.getRect(find.byKey(const ValueKey('review-drafts')));
+    final posted = tester.getRect(find.byKey(const ValueKey('review-posted')));
+    final search = tester.getRect(find.byKey(const ValueKey('journal-search')));
+    expect(posted.top, closeTo(drafts.top, 0.1));
+    expect(search.top, greaterThan(posted.bottom));
+    expect(search.left, closeTo(drafts.left, 0.1));
+    expect(search.right, lessThanOrEqualTo(400));
+    expect(tester.takeException(), isNull);
+    await captureUi(tester, 'Journal Toolbar Wrapped Owner 400');
+    tester.view.physicalSize = const Size(720, 809);
+    await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const ValueKey('journal-search')),
       'Journal',

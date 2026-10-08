@@ -477,15 +477,30 @@ void main() {
               .length,
           15,
         );
-        expect(
-          tester.getRect(find.byKey(const ValueKey('ledger-default-tax'))).top,
-          closeTo(
-            tester
-                .getRect(find.byKey(const ValueKey('ledger-detail-type')))
-                .top,
-            0.5,
-          ),
+        final nestedTax = tester.getRect(
+          find.byKey(const ValueKey('ledger-default-tax')),
         );
+        final nestedDetail = tester.getRect(
+          find.byKey(const ValueKey('ledger-detail-type')),
+        );
+        expect(nestedTax.top, greaterThanOrEqualTo(nestedDetail.top));
+        expect(
+          nestedTax.width,
+          lessThanOrEqualTo(AccountingPopoutTokens.normalContentWidth / 2),
+        );
+        if ((nestedTax.top - nestedDetail.top).abs() < .5) {
+          expect(nestedTax.left, greaterThan(nestedDetail.right));
+        } else {
+          expect(
+            nestedTax.left,
+            closeTo(
+              tester
+                  .getRect(find.byKey(const ValueKey('ledger-account-code')))
+                  .left,
+              .5,
+            ),
+          );
+        }
         await tap(find.byKey(const ValueKey('ledger-account-close')));
         final lineAmount = find.byWidgetPredicate(
           (w) => w is TextFormField && '${w.key}'.contains('-Amount'),
@@ -1054,7 +1069,24 @@ void main() {
       final taxRect = tester.getRect(
         find.byKey(const ValueKey('ledger-default-tax')),
       );
-      expect(taxRect.top, closeTo(detailRect.top, 0.5));
+      expect(taxRect.top, greaterThanOrEqualTo(detailRect.top));
+      expect(
+        taxRect.width,
+        lessThanOrEqualTo(AccountingPopoutTokens.normalContentWidth / 2),
+      );
+      if ((taxRect.top - detailRect.top).abs() < .5) {
+        expect(taxRect.left, greaterThan(detailRect.right));
+      } else {
+        expect(
+          taxRect.left,
+          closeTo(
+            tester
+                .getRect(find.byKey(const ValueKey('ledger-account-code')))
+                .left,
+            .5,
+          ),
+        );
+      }
       await captureUi(
         tester,
         'Deposit Canonical Line Account ${width.toInt()}',

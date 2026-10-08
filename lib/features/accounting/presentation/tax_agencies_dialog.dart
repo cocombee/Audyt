@@ -50,9 +50,10 @@ class TaxAgenciesDialog extends StatelessWidget {
         context: context,
         builder: (c) => AccountingDialog.alert(
           c,
+          widthFamily: AccountingPopoutWidthFamily.normal,
           title: agency.name,
-          fixedContentWidth: 600,
-          maxContentWidth: 600,
+          fixedContentWidth: AccountingPopoutTokens.normalContentWidth,
+          maxContentWidth: AccountingPopoutTokens.normalContentWidth,
           content: SelectionArea(
             child: AccountingInformationRows(
               rows: [
@@ -72,11 +73,12 @@ class TaxAgenciesDialog extends StatelessWidget {
     animation: workspace,
     builder: (context, _) => AccountingDialog.alert(
       context,
+      widthFamily: AccountingPopoutWidthFamily.normal,
       title: 'Tax Agencies',
       description:
           'Tax codes retain the agency revision selected when they are saved.',
-      fixedContentWidth: 600,
-      maxContentWidth: 600,
+      fixedContentWidth: AccountingPopoutTokens.normalContentWidth,
+      maxContentWidth: AccountingPopoutTokens.normalContentWidth,
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,

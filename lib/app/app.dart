@@ -1046,7 +1046,7 @@ class _AccountingShellState extends State<AccountingShell> {
         insetPadding: const EdgeInsets.all(24),
         clipBehavior: Clip.antiAlias,
         child: SizedBox(
-          width: 960,
+          width: AccountingPopoutTokens.customContentWidth,
           height: MediaQuery.sizeOf(dialogContext).height - 48,
           child: InvoicePage(workspace: workspace, createDraftOnOpen: true),
         ),
@@ -2170,6 +2170,7 @@ class _GlobalTopBar extends StatelessWidget {
                   final result = options.elementAt(index);
                   return ListTile(
                     dense: true,
+                    horizontalTitleGap: AccountingSelectionLabel.minimumTextGap,
                     title: Text(
                       result.title,
                       maxLines: 1,
@@ -2182,9 +2183,9 @@ class _GlobalTopBar extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                    trailing: Text(
-                      result.type,
-                      style: AccountingTypography.helper(context),
+                    trailing: AccountingSelectionLabel.build(
+                      context,
+                      label: result.type,
                     ),
                     onTap: () => onSelected(result),
                   );

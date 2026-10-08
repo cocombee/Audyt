@@ -1322,20 +1322,21 @@ class _StatementReconciliationDialogState
         },
         child: AccountingDialog.alert(
           context,
+          widthFamily: AccountingPopoutWidthFamily.wider,
           onClose: _handleClose,
           closeKey: const ValueKey('reconciliation-editor-close'),
           canClose: !_filesBusy && !_transactionBusy,
           title: _accountMode
               ? 'Account Reconciliation'
               : 'Statement Reconciliation',
-          maxContentWidth: 480,
-          fixedContentWidth: 480,
+          maxContentWidth: AccountingPopoutTokens.widerContentWidth,
+          fixedContentWidth: AccountingPopoutTokens.widerContentWidth,
           formFooter: true,
           description: _accountMode
               ? '${widget.sourceLabel} · Check the period, balances and selected account transactions before approval.'
               : 'Check the statement period, balances and linked transactions before approval.',
           content: SizedBox(
-            width: 480,
+            width: AccountingPopoutTokens.widerContentWidth,
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,

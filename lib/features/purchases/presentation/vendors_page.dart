@@ -288,13 +288,14 @@ class _VendorsPageState extends State<VendorsPage> {
         final vendor = entry.vendor;
         return AccountingDialog.alert(
           context,
+          widthFamily: AccountingPopoutWidthFamily.custom,
           title: historical
               ? 'Vendor Revision ${vendor!.metadata.revision}'
               : 'View Vendor',
-          maxContentWidth: 680,
+          maxContentWidth: AccountingPopoutTokens.widerContentWidth,
           actions: const [],
           content: SizedBox(
-            width: 680,
+            width: AccountingPopoutTokens.widerContentWidth,
             key: const ValueKey('vendor-details'),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -349,11 +350,12 @@ class _VendorsPageState extends State<VendorsPage> {
     context: context,
     builder: (context) => AccountingDialog.alert(
       context,
+      widthFamily: AccountingPopoutWidthFamily.custom,
       title: 'Vendor History',
-      maxContentWidth: 680,
+      maxContentWidth: AccountingPopoutTokens.widerContentWidth,
       actions: const [],
       content: SizedBox(
-        width: 680,
+        width: AccountingPopoutTokens.widerContentWidth,
         child: AccountingRecordList(
           paginationKey: 'vendors-1',
           children: [

@@ -125,7 +125,7 @@ void main() {
         final detailRect = tester.getRect(details);
         final actionRect = tester.getRect(actions);
         await capture(tester, 'Receipt Footer $variant ${width.toInt()}');
-        if (many || (width == 720 && long)) {
+        if (width == 720 && (many || long)) {
           expect(
             actionRect.top,
             closeTo(detailRect.bottom + 12, .01),

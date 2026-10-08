@@ -21,7 +21,7 @@ Future<void> showRecurringTransactions(
   RecurringDocumentKind initialKind = RecurringDocumentKind.invoice,
 }) => AccountingDialog.showFixed<void>(
   context: context,
-  contentWidth: 728,
+  contentWidth: AccountingPopoutTokens.widerContentWidth,
   contentInset: accountingContentInset,
   builder: (_) => RecurringTransactionsDialog(
     workspace: workspace,
@@ -306,9 +306,10 @@ class _RecurringTransactionsDialogState
     final next = index == null ? null : t.schedule.occurrenceAt(index);
     await AccountingDialog.showFixed<void>(
       context: context,
-      contentWidth: 600,
+      contentWidth: AccountingPopoutTokens.normalContentWidth,
       builder: (context) => AccountingDialog.alert(
         context,
+        widthFamily: AccountingPopoutWidthFamily.normal,
         title: t.name,
         content: AccountingInformationRows(
           rows: [
@@ -400,9 +401,10 @@ class _RecurringTransactionsDialogState
           .toList();
       return AccountingDialog.alert(
         context,
+        widthFamily: AccountingPopoutWidthFamily.wider,
         title: 'Recurring Transactions',
-        fixedContentWidth: 728,
-        maxContentWidth: 728,
+        fixedContentWidth: AccountingPopoutTokens.widerContentWidth,
+        maxContentWidth: AccountingPopoutTokens.widerContentWidth,
         formFooter: true,
         description: 'Prepare recurring drafts for review.',
         content: Column(

@@ -91,7 +91,7 @@ void checkReminderColumns(
 void main() {
   for (final width in [720.0, 1224.0]) {
     testWidgets(
-      'custom dates share Close column, recover full width and save at $width',
+      'custom dates share inline Add/Remove column, retain width and save at $width',
       (tester) async {
         await reminderView(tester, width);
         final workspace = await AccountingWorkspace.open(':memory:');
@@ -130,7 +130,7 @@ void main() {
         expect(second, findsOneWidget);
         final a = tester.getRect(first), b = tester.getRect(second);
         final closeA = tester.getRect(
-          find.byKey(const ValueKey('remove-reminder-date-0')),
+          find.byKey(const ValueKey('reminder-add-date')),
         );
         final closeB = tester.getRect(
           find.byKey(const ValueKey('remove-reminder-date-1')),
@@ -145,13 +145,15 @@ void main() {
         expect(a.right, b.right);
         expect(closeA.left - a.right, closeTo(10, .1));
         expect(closeB.left - b.right, closeTo(10, .1));
-        await tester.tap(find.byKey(const ValueKey('remove-reminder-date-0')));
+        await tester.tap(find.byKey(const ValueKey('remove-reminder-date-1')));
         await tester.pumpAndSettle();
         expect(
-          find.byKey(const ValueKey('remove-reminder-date-0')),
+          find.byKey(const ValueKey('remove-reminder-date-1')),
           findsNothing,
         );
-        expect(tester.getRect(first).width, closeTo(customWidth, .1));
+        expect(tester.getRect(first).width, closeTo(a.width, .1));
+        expect(find.byKey(const ValueKey('reminder-add-date')), findsOneWidget);
+        expect(find.widgetWithText(OutlinedButton, 'Add Date'), findsNothing);
         await tester.tap(find.byKey(const ValueKey('reminder-add-date')));
         await tester.pumpAndSettle();
         await tester.enterText(

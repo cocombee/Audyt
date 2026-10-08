@@ -463,10 +463,11 @@ class _ClaimsPageState extends State<ClaimsPage> {
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, update) => AccountingDialog.alert(
           context,
+          widthFamily: AccountingPopoutWidthFamily.dialog,
           title: 'Delete Demo Draft',
           formFooter: true,
           content: SizedBox(
-            width: 360,
+            width: AccountingPopoutTokens.dialogContentWidth,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -825,10 +826,11 @@ class _ClaimsPageState extends State<ClaimsPage> {
             },
             child: AccountingDialog.alert(
               context,
+              widthFamily: AccountingPopoutWidthFamily.dialog,
               title: title,
               formFooter: true,
               content: SizedBox(
-                width: 440,
+                width: AccountingPopoutTokens.dialogContentWidth,
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -1071,13 +1073,14 @@ class _ClaimsPageState extends State<ClaimsPage> {
               },
               child: AccountingDialog.alert(
                 context,
+                widthFamily: AccountingPopoutWidthFamily.dialog,
                 key: ValueKey('claim-recognition-correction-${claim.id}'),
                 title: returning
                     ? 'Return Approved Claim'
                     : 'Void Approved Claim',
                 formFooter: true,
                 content: SizedBox(
-                  width: 480,
+                  width: AccountingPopoutTokens.dialogContentWidth,
                   child: SingleChildScrollView(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1284,6 +1287,7 @@ class _ClaimsPageState extends State<ClaimsPage> {
       context: context,
       builder: (dialogContext) => AccountingDialog.alert(
         dialogContext,
+        widthFamily: AccountingPopoutWidthFamily.dialog,
         key: ValueKey<String>('claim-void-confirmation-${claim.id}'),
         title: 'Void this claim?',
         description: 'Voiding keeps the record for audit but prevents it from being reimbursed.',
@@ -1404,6 +1408,7 @@ class _ClaimsPageState extends State<ClaimsPage> {
                 },
                 child: AccountingDialog.alert(
                   context,
+                  widthFamily: AccountingPopoutWidthFamily.normal,
                   title: 'Claim Payment Account',
                   formFooter: true,
                   content: payments.isEmpty
@@ -1532,11 +1537,12 @@ class _ClaimsPageState extends State<ClaimsPage> {
               },
               child: AccountingDialog.alert(
                 context,
+                widthFamily: AccountingPopoutWidthFamily.normal,
                 key: const ValueKey('claims-batch-confirmation'),
                 title: 'Record selected claim payments',
                 formFooter: true,
                 content: SizedBox(
-                  width: 480,
+                  width: AccountingPopoutTokens.normalContentWidth,
                   child: SingleChildScrollView(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -1692,6 +1698,7 @@ class _ClaimsPageState extends State<ClaimsPage> {
       context: context,
       builder: (dialogContext) => AccountingDialog.alert(
         dialogContext,
+        widthFamily: AccountingPopoutWidthFamily.dialog,
         key: ValueKey<String>('claim-payment-confirmation-${claim.id}'),
         title: 'Record claim payment?',
         content: Text(
@@ -1939,7 +1946,10 @@ class _ClaimEditorDialogState extends State<ClaimEditorDialog> {
   @override
   Widget build(BuildContext context) {
     final viewport = MediaQuery.sizeOf(context);
-    final width = math.min(880.0, math.max(280.0, viewport.width - 32));
+    final width = math.min(
+      AccountingPopoutTokens.customContentWidth + accountingContentInset * 2,
+      math.max(280.0, viewport.width - 32),
+    );
     final height = math.min(760.0, math.max(280.0, viewport.height - 32));
     return Dialog(
       key: const ValueKey('claim-editor-dialog'),
@@ -2415,35 +2425,13 @@ class _ClaimEditorDialogState extends State<ClaimEditorDialog> {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    color: AccountingTheme.of(context).muted,
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(
-                                      color: AccountingTheme.of(context).border,
-                                    ),
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 2,
-                                    ),
-                                    child: Text(
-                                      payee.typeLabel,
-                                      softWrap: false,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(
-                                            color: AccountingTheme.of(context)
-                                                .mutedForeground,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                    ),
-                                  ),
+                                const SizedBox(
+                                  width:
+                                      AccountingSelectionLabel.minimumTextGap,
+                                ),
+                                AccountingSelectionLabel.build(
+                                  context,
+                                  label: payee.typeLabel,
                                 ),
                               ],
                             ),
@@ -2534,10 +2522,11 @@ class _ClaimEditorDialogState extends State<ClaimEditorDialog> {
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AccountingDialog.alert(
           dialogContext,
+          widthFamily: AccountingPopoutWidthFamily.normal,
           title: claimant ? 'Add Claimant' : 'Add Merchant',
           formFooter: true,
           content: SizedBox(
-            width: 232, // Existing acquired content width, measured at both desktop starts.
+            width: AccountingPopoutTokens.normalContentWidth, // Existing acquired content width, measured at both desktop starts.
             child: AccountingOrdinaryFields(
               fields: [
                 AccountingOrdinaryFieldSlot(

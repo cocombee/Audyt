@@ -90,6 +90,7 @@ class _CustomerReceiptsPageState extends State<CustomerReceiptsPage> {
         context: context,
         builder: (dialogContext) => AccountingDialog.alert(
           dialogContext,
+          widthFamily: AccountingPopoutWidthFamily.dialog,
           title: 'Set Up A Payment Account',
           content: const Text(
             'In Banking, link a bank or cash payment account to an active ledger account in the invoice currency, then return to receive payment.',
@@ -401,6 +402,7 @@ class _CustomerReceiptsPageState extends State<CustomerReceiptsPage> {
                             context: context,
                             builder: (dialogContext) => AccountingDialog.alert(
                               dialogContext,
+                              widthFamily: AccountingPopoutWidthFamily.normal,
                               title: record.documentNumber,
                               content: AccountingInformationRows(
                                 rows: [
@@ -496,6 +498,7 @@ class _CustomerReceiptsPageState extends State<CustomerReceiptsPage> {
                             context: context,
                             builder: (dialogContext) => AccountingDialog.alert(
                               dialogContext,
+                              widthFamily: AccountingPopoutWidthFamily.normal,
                               title: receipt.reference,
                               content: AccountingInformationRows(
                                 rows: [
@@ -535,10 +538,14 @@ class _CustomerReceiptsPageState extends State<CustomerReceiptsPage> {
       if (widget.popout) {
         return AccountingDialog.alert(
           context,
+          widthFamily: AccountingPopoutWidthFamily.custom,
           title: 'Receive Payment',
           description: 'Select outstanding invoices for one customer and currency, then review the amounts received.',
-          maxContentWidth: 960,
-          content: SizedBox(width: 960, child: body),
+          maxContentWidth: AccountingPopoutTokens.customContentWidth,
+          content: SizedBox(
+            width: AccountingPopoutTokens.customContentWidth,
+            child: body,
+          ),
           actions: [receiveButton],
         );
       }

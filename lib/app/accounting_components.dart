@@ -4,7 +4,8 @@ import 'dart:math' as math;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show precisionErrorTolerance;
+import 'package:flutter/foundation.dart'
+    show precisionErrorTolerance, listEquals;
 import 'package:flutter/services.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -1131,8 +1132,12 @@ class AccountingTabs extends StatefulWidget {
     required this.keyPrefix,
     this.notificationCounts = const {},
     this.embedded = false,
+    this.revealSelectedOnResize = false,
   });
   final bool embedded;
+
+  /// Main workspace strips opt in; unrelated tab owners keep their behavior.
+  final bool revealSelectedOnResize;
   final List<String> labels;
   final Map<String, int> notificationCounts;
   final int selectedIndex;
@@ -1144,6 +1149,54 @@ class AccountingTabs extends StatefulWidget {
 
 class _AccountingTabsState extends State<AccountingTabs>
     with SingleTickerProviderStateMixin {
+  final _viewportController = ScrollController();
+  double? _lastViewportWidth;
+  int? _lastSelectedIndex;
+  List<double>? _lastWidths;
+  TextDirection? _lastDirection;
+  int _revealGeneration = 0;
+
+  void _revealSelected(List<double> widths, double viewportWidth) {
+    final direction = Directionality.of(context);
+    if (_lastViewportWidth == viewportWidth &&
+        _lastSelectedIndex == widget.selectedIndex &&
+        listEquals(_lastWidths, widths) &&
+        _lastDirection == direction) {
+      return;
+    }
+    _lastViewportWidth = viewportWidth;
+    _lastSelectedIndex = widget.selectedIndex;
+    _lastWidths = List.of(widths);
+    _lastDirection = direction;
+    final selectedIndex = widget.selectedIndex;
+    final generation = ++_revealGeneration;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          generation != _revealGeneration ||
+          !widget.revealSelectedOnResize ||
+          !_viewportController.hasClients) {
+        return;
+      }
+      // The outer viewport, rather than TabBar's natural-width inner scroll,
+      // owns overflow. Move only enough to reveal the selected tab. Ordinary
+      // rebuilds must not undo a user's manual browsing of the other tabs.
+      final start = widths.take(selectedIndex).fold<double>(2, (a, b) => a + b);
+      final end = start + widths[selectedIndex];
+      final position = _viewportController.position;
+      final offset = position.pixels;
+      var target = offset;
+      if (start < offset) {
+        target = start;
+      } else if (end > offset + viewportWidth) {
+        target = end - viewportWidth;
+      }
+      target = target.clamp(position.minScrollExtent, position.maxScrollExtent);
+      if ((target - offset).abs() > precisionErrorTolerance) {
+        _viewportController.jumpTo(target);
+      }
+    });
+  }
+
   late final TabController _controller = TabController(
     length: widget.labels.length,
     initialIndex: widget.selectedIndex,
@@ -1158,6 +1211,10 @@ class _AccountingTabsState extends State<AccountingTabs>
   @override
   void didUpdateWidget(covariant AccountingTabs oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.revealSelectedOnResize != widget.revealSelectedOnResize) {
+      _lastViewportWidth = null;
+      _revealGeneration++;
+    }
     if (_controller.index != widget.selectedIndex) {
       _controller.animateTo(widget.selectedIndex);
     }
@@ -1165,6 +1222,7 @@ class _AccountingTabsState extends State<AccountingTabs>
 
   @override
   void dispose() {
+    _viewportController.dispose();
     _controller.removeListener(_changed);
     _controller.dispose();
     super.dispose();
@@ -1267,21 +1325,31 @@ class _AccountingTabsState extends State<AccountingTabs>
           ),
       ],
     );
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(accountingControlRadius),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(accountingControlRadius),
-          child: SizedBox(
-            width: widths.fold<double>(4, (sum, width) => sum + width),
-            child: ColoredBox(
-              color: accountingTabBandColor(context),
-              child: bar,
-            ),
-          ),
+    final naturalWidth = widths.fold<double>(4, (sum, width) => sum + width);
+    Widget viewport({ScrollController? controller}) => SingleChildScrollView(
+      controller: controller,
+      scrollDirection: Axis.horizontal,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(accountingControlRadius),
+        child: SizedBox(
+          width: naturalWidth,
+          child: ColoredBox(color: accountingTabBandColor(context), child: bar),
         ),
       ),
+    );
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(accountingControlRadius),
+      child: widget.revealSelectedOnResize
+          ? LayoutBuilder(
+              builder: (context, constraints) {
+                _revealSelected(
+                  widths,
+                  math.min(naturalWidth, constraints.maxWidth),
+                );
+                return viewport(controller: _viewportController);
+              },
+            )
+          : viewport(),
     );
   }
 }
@@ -1630,6 +1698,46 @@ final class AccountingCard {
       ),
       clipBehavior: clipBehavior,
       child: child,
+    );
+  }
+}
+
+/// Short metadata identifying a selectable item, separate from status/counts.
+final class AccountingSelectionLabel {
+  const AccountingSelectionLabel._();
+
+  static const minimumTextGap = accountingContentInset;
+  static const padding = EdgeInsets.symmetric(horizontal: 6, vertical: 2);
+
+  static TextStyle textStyle(BuildContext context) =>
+      AccountingTypography.helper(context);
+
+  static double measuredWidth(BuildContext context, String label) =>
+      AccountingResponsive.measuredTextWidth(
+        context,
+        label,
+        textStyle(context),
+      ) +
+      padding.horizontal;
+
+  static Widget build(BuildContext context, {required String label}) {
+    final tokens = AccountingTheme.of(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: tokens.muted,
+        borderRadius: BorderRadius.circular(accountingSmallRadius),
+        border: Border.all(color: tokens.border),
+      ),
+      child: Padding(
+        padding: padding,
+        child: Text(
+          label,
+          softWrap: false,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: textStyle(context),
+        ),
+      ),
     );
   }
 }
@@ -2293,6 +2401,7 @@ final class AccountingDialog {
         barrierDismissible: false,
         builder: (dialogContext) => alert(
           dialogContext,
+          widthFamily: AccountingPopoutWidthFamily.dialog,
           title: 'Discard unsaved changes?',
           onClose: () => Navigator.of(dialogContext).pop(false),
           closeKey: closeKey,
@@ -2441,7 +2550,7 @@ final class AccountingDialog {
     String? titleGuidance,
     required Widget Function(BuildContext, Size) contentBuilder,
     Key? key,
-    double maxContentWidth = 960,
+    double maxContentWidth = AccountingPopoutTokens.customContentWidth,
     double contentInset = AccountingPopoutTokens.contentInset,
     bool preserveTitleCase = false,
   }) => Dialog(
@@ -2493,6 +2602,7 @@ final class AccountingDialog {
     Key? contentScrollKey,
     double? maxContentWidth,
     double? fixedContentWidth,
+    AccountingPopoutWidthFamily? widthFamily,
     bool scrollable = true,
     bool formFooter = true,
     Widget? footerLeading,
@@ -2537,6 +2647,9 @@ final class AccountingDialog {
     // explicit custom/sized content authoritative; nested routes do not inherit
     // this route-local metadata or accidentally acquire their parent's width.
     final effectiveFixedWidth =
+        (widthFamily == null
+            ? null
+            : AccountingPopoutTokens.contentWidthFor(widthFamily)) ??
         fixedContentWidth ??
         (fittedContentWidth == null
             ? context
@@ -2545,6 +2658,9 @@ final class AccountingDialog {
                   >()
                   ?.contentWidth
             : null);
+    final body = widthFamily == null
+        ? content
+        : AccountingPopoutWidthScope(family: widthFamily, child: content);
     return AlertDialog(
       backgroundColor: backgroundColor,
       clipBehavior: Clip.antiAlias,
@@ -2582,7 +2698,7 @@ final class AccountingDialog {
                     padding: AccountingPopoutTokens.contentPadding(
                       contentInset,
                     ),
-                    child: content,
+                    child: body,
                   ),
                 ),
                 accountingFormFooter(
@@ -2594,8 +2710,8 @@ final class AccountingDialog {
               ],
             )
           : scrollable
-          ? SingleChildScrollView(key: contentScrollKey, child: content)
-          : content,
+          ? SingleChildScrollView(key: contentScrollKey, child: body)
+          : body,
       // Flutter's scrollable AlertDialog puts the title in the same scroll
       // view as the content. Keep the close control fixed in every dialog.
       scrollable: false,
@@ -5534,6 +5650,7 @@ Future<bool> confirmAttachmentDeletion(BuildContext context) async =>
       context: context,
       builder: (dialogContext) => AccountingDialog.alert(
         dialogContext,
+        widthFamily: AccountingPopoutWidthFamily.dialog,
         title: 'Delete attachment?',
         content: const Text('Are you sure you want to delete this attachment?'),
         actions: [

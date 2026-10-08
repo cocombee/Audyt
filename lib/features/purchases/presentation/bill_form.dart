@@ -211,6 +211,12 @@ PurchaseBillDraft billFromForm(
         'Choose an active expense or asset account for each line.',
       );
     }
+    final description = line['Description'] ?? '';
+    if (description.trim().isEmpty) {
+      throw FormatException(
+        'Enter a description for bill line ${lines.length + 1}.',
+      );
+    }
     final choice = (line['Tax Rate (%)'] ?? '').trim();
     final original = existing?.lines
         .where((s) => s.id.value == line['_lineId'])
@@ -237,7 +243,7 @@ PurchaseBillDraft billFromForm(
       SalesLineItem.category(
         id: EntityId.parse(line['_lineId']!),
         categoryId: EntityId.parse(account),
-        description: line['Description'] ?? '',
+        description: description,
         quantity: SalesQuantity.fromDecimal(line['Quantity'] ?? '1'),
         rate: Money.fromDecimal(line['Rate'] ?? line['Amount'] ?? '', currency),
         rateEnabled: line['Rate'] != null || !line.containsKey('Quantity'),

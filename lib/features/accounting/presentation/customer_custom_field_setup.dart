@@ -11,7 +11,7 @@ import '../../../app/field_row_trial.dart';
 Future<void> showCustomerCustomFieldSetup(BuildContext context) =>
     AccountingDialog.showFixed<void>(
       context: context,
-      contentWidth: 600,
+      contentWidth: AccountingPopoutTokens.normalContentWidth,
       builder: (_) => const CustomerCustomFieldSetup(),
     );
 
@@ -394,7 +394,7 @@ class _CustomerCustomFieldSetupState extends State<CustomerCustomFieldSetup> {
       ),
     ], actionLabel: 'Save Custom Field'),
     previewConfirmationEnabled: false,
-    contentWidth: 600,
+    contentWidth: AccountingPopoutTokens.normalContentWidth,
     leadingContentBuilder: (context, values, reviewing) => Padding(
       padding: const EdgeInsets.only(bottom: accountingContentInset),
       child: accountingHelperText(

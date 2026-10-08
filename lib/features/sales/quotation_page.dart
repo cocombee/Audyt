@@ -418,11 +418,12 @@ class _QuotationPageState extends State<QuotationPage> {
       context: context,
       builder: (context) => AccountingDialog.alert(
         context,
+        widthFamily: AccountingPopoutWidthFamily.custom,
         title: 'View Quotation',
-        maxContentWidth: 680,
+        maxContentWidth: AccountingPopoutTokens.widerContentWidth,
         content: SizedBox(
           key: ValueKey('quotation-details-${record.quotation.id}'),
-          width: 680,
+          width: AccountingPopoutTokens.widerContentWidth,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -502,6 +503,7 @@ class _QuotationPageState extends State<QuotationPage> {
       context: context,
       builder: (context) => AccountingDialog.alert(
         context,
+        widthFamily: AccountingPopoutWidthFamily.normal,
         title: label,
         content: AccountingInformationRows(
           rows: [

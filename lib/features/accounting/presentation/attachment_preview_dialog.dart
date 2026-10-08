@@ -316,12 +316,13 @@ class _AttachmentPreviewDialogState extends State<AttachmentPreviewDialog> {
     if (!widget.embedded) {
       return AccountingDialog.alert(
         context,
+        widthFamily: AccountingPopoutWidthFamily.dialog,
         key: const ValueKey('attachment-preview-notice'),
         title: widget.attachment.filename,
         preserveTitleCase: true,
         closeKey: const ValueKey('attachment-preview-notice-close'),
-        maxContentWidth: 360,
-        fixedContentWidth: 360,
+        maxContentWidth: AccountingPopoutTokens.dialogContentWidth,
+        fixedContentWidth: AccountingPopoutTokens.dialogContentWidth,
         content: message,
         actions: const [],
       );

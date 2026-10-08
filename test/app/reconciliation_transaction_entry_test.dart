@@ -192,7 +192,7 @@ void main() {
           final actualRowCount = 2 + (reference.top == original.top ? 1 : 0);
           expect(
             actualRowCount,
-            currency == 'JPY' ? 3 : 2,
+            2,
             reason:
                 'Verify all actual peers, not just a pair of matching tops.',
           );
@@ -204,7 +204,7 @@ void main() {
           expect(
             tester.getRect(amount),
             original,
-            reason: 'This independent Amount retains its declared ordinary fit. Two-field rows must not grow; the three-field JPY row keeps its fitted variant here.',
+            reason: 'This independent Amount retains its declared ordinary fit. Two-field rows must not grow; all currency variants use the normal two-field family.',
           );
           expect(
             tester

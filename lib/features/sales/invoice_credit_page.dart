@@ -175,6 +175,7 @@ class InvoiceCreditPage extends StatelessWidget {
         context: context,
         builder: (context) => AccountingDialog.alert(
           context,
+          widthFamily: AccountingPopoutWidthFamily.dialog,
           title: 'Credit Review Unavailable',
           content: Text(
             error is StateError ? error.message : 'Credit could not be reviewed. Reopen the saved draft and check its supporting evidence and accounts.',
@@ -201,9 +202,10 @@ class InvoiceCreditPage extends StatelessWidget {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AccountingDialog.alert(
           context,
+          widthFamily: AccountingPopoutWidthFamily.custom,
           title: 'Credit Draft History',
           content: SizedBox(
-            width: 600,
+            width: AccountingPopoutTokens.widerContentWidth,
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -431,6 +433,7 @@ class InvoiceCreditPage extends StatelessWidget {
         context: context,
         builder: (context) => AccountingDialog.alert(
           context,
+          widthFamily: AccountingPopoutWidthFamily.custom,
           title: removed
               ? 'Removed Credit Draft'
               : posted == null
@@ -439,8 +442,8 @@ class InvoiceCreditPage extends StatelessWidget {
           description: posted == null
               ? 'Draft only. No credit or refund has been posted.'
               : null,
-          fixedContentWidth: 680,
-          maxContentWidth: 680,
+          fixedContentWidth: AccountingPopoutTokens.widerContentWidth,
+          maxContentWidth: AccountingPopoutTokens.widerContentWidth,
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -481,6 +484,7 @@ class InvoiceCreditPage extends StatelessWidget {
         context: context,
         builder: (context) => AccountingDialog.alert(
           context,
+          widthFamily: AccountingPopoutWidthFamily.dialog,
           title: 'Credit Review Unavailable',
           content: Text(
             error is StateError

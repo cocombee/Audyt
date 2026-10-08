@@ -958,7 +958,9 @@ class DocumentOptimizationDialogState
     return Dialog(
       insetPadding: const EdgeInsets.all(20),
       child: SizedBox(
-        width: 900,
+        width:
+            AccountingPopoutTokens.customContentWidth +
+            accountingContentInset * 2,
         height: MediaQuery.sizeOf(context).height - 40,
         child: Stack(
           children: [

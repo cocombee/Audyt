@@ -30,7 +30,9 @@ class _PerspectiveState extends State<PerspectiveDialog> {
   Widget build(BuildContext context) => Dialog(
     insetPadding: const EdgeInsets.all(24),
     child: SizedBox(
-      width: 960,
+      width:
+          AccountingPopoutTokens.customContentWidth +
+          accountingContentInset * 2,
       height: MediaQuery.sizeOf(context).height - 48,
       child: Padding(
         padding: accountingContentPadding,

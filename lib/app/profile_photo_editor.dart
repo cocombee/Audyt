@@ -113,7 +113,11 @@ class _ProfilePhotoEditorState extends State<ProfilePhotoEditor> {
         side: BorderSide(color: tokens.border),
       ),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 560),
+        constraints: const BoxConstraints(
+          maxWidth:
+              AccountingPopoutTokens.normalContentWidth +
+              accountingContentInset * 2,
+        ),
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(

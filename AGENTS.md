@@ -1,4 +1,115 @@
+Account Tax/Group row (9 October 2026 latest user direction): only the shared
+New/Edit ledger Account form packs Default Tax Code and Group Account together
+through the existing measured ordinary-field planner. Align the compact checkbox
+with the selector control centre. Stack only when the complete measured selector
+and checkbox label do not fit. Parent and opening-balance controls retain their
+own responsive rows; keep tax/group facts, keys, validation and commands intact.
+This caller opts into bottom alignment; all other ordinary rows retain their
+existing top alignment, and unrelated checkbox groups remain unchanged.
+
 # Audyt workspace instructions
+
+Reminder Custom Dates controls (9 October 2026 latest user direction): only the
+Reminder custom-date list uses the existing accountingCompactAdd on its first row
+and accountingCompactRemove on later rows. Keep the shared painted size, artwork,
+colours and action-column gap. Remove the separate Add Date outline button. Retain
+entered dates, controller identity, validation and the existing reminder Save;
+Once/Repeating and unrelated addable/checkbox groups keep their owners.
+Saved Account Details spacing check: reuse AccountingInformationRows unchanged.
+AccountingSidewaysDetailsTokens.horizontalInset is 20px; columnGap is the single
+10px token before and after the aligned colon. Measure from the longest label
+column, not each shorter label's glyph end. Actual saved-caller checks at 720/1162
+verify these existing values; do not invent a new token or per-page offset.
+
+
+Popout width consolidation (9 October 2026 latest user direction): collapse nearby
+widths into four ordered families through AccountingPopoutTokens and each existing
+route owner. Content widths are Dialog 400px, Normal 600px (ordinary two-field cap),
+Wider 728px (up to four ordinary fields when measured minima fit), and Custom for
+transactional rows or genuinely long/many-column content. Custom callers retain
+measured width acquisition; the shared long-content baseline is 1000px. Fixed Assets and Reminders
+explicitly use Wider; record directories and saved account facts use Normal.
+Preserve existing content/window insets and reflow at available width before clipping.
+This rule owns popout width and declared ordinary-field packing only: checkbox groups,
+button widths, embedded Settings, main-page/tab geometry, independent amount growth,
+native window defaults and financial commands keep their own rules. Classify real
+callers explicitly, record justified Custom reasons, and keep source/build/install/
+actual visual acceptance separate. No random per-caller widths for equivalent roles.
+
+Saved account audit staging (9 October 2026): Chart Of Accounts View/Edit uses the
+existing New Account owner and compact record actions. View uses Normal width so
+account types and descriptions do not break into tiny fragments. Edit retains stored
+facts and shows actual posted balance as read-only information. Classification decline
+preserves both existing type and detail; dirty Close reuses Keep Editing/Discard.
+Saved Account Save remains disabled until its guarded metadata command is wired;
+opening balance, posted journals, schema and existing New Account Save are unchanged.
+
+
+Compact record action groups (9 October 2026 user correction): once a record
+row uses icon-only actions, every action in that same group uses the existing
+compact icon-only owner. Payment Methods' Run Report and Make Inactive/Active
+join its existing View/Edit icons. Preserve action order, keys, callbacks,
+eligibility and named tooltips; reuse established small artwork and frames.
+This rule belongs to the record action group, not page toolbars, green primary
+buttons, confirmation footers, fields or checkbox menus. Do not convert an
+unrelated text-only action group merely because it shares a button component.
+
+Activity report Columns layout (9 October 2026 user correction): the canonical
+Customise Activity Report column checkboxes use the existing measured report
+checkbox row planner, as the master report Columns group does. Treat the
+checkbox's left edge and complete label's right edge as each slot's measured
+content bounds; pack up to three per row when their minima fit and reflow on
+narrow widths. This caller alone opts into a three-slot cap; other ordinary
+field and checkbox groups retain their existing maximum.
+Preserve selected-column order, checkbox keys, drag targets, accessible reorder
+actions and Back To Report retention/discard. Only this Columns group is newly
+included; Number Format, filter enablers, selector menu choices and unrelated
+checkboxes retain their existing owners. No global checkbox, field or token rule.
+Source captures and installed actual caller acceptance remain separate.
+
+New Account Save error visibility (8 October 2026): only _NewAccountDialogState
+reveals its existing error after a failed Save using the existing
+Scrollable.ensureVisible pattern. Preserve error typography, entered facts,
+parent/type eligibility, opening-balance guard, atomic creation, focus and
+Close/Keep Editing behavior. A visible error is required at default/minimum
+source heights; source renders and actual installed inspection remain separate.
+No new function, global error style, field width or financial command.
+
+Prepare Closing dismissal (8 October 2026): only the existing Closing editor
+compares its opening Through Date and Equity Account before Close, focused Escape,
+Cancel or route/backdrop dismissal. Reuse AccountingDialog.confirmDiscardChanges;
+Keep Editing retains selections and validation errors, explicit Discard exits,
+and untouched or reverted input closes silently. Busy/save/account eligibility,
+pending-draft blockers, Closing review/posting and period-lock behavior remain
+unchanged. No new command, token or persistence rule.
+
+Manual Journal history readability (8 October 2026): only records linked to
+retained manual correction snapshots identify Original Posting, pending Journal
+Correction or Replacement Posting with its revision in the existing record detail
+text. Reuse that owner and typography; preserve Memo, dates, IDs, amounts, order,
+pagination, Closing roles and ordinary/source-owned journals. Reversals retain
+their existing descriptive Memo. No new badge/token, command or persistence rule.
+
+Manual Journal correction review (8 October 2026): only retained manual-Journal
+replacement Drafts identify the correction and expose the original posting and
+proposed replacement through the existing information rows and review tables.
+Use the existing section title, text inset and table owner; retain original dates,
+Memo, account IDs and exact amounts. Approval wording must identify the existing
+correction operation (original reversal plus replacement); no command, ledger,
+reconciliation guard, permission or persistence change. Ordinary Draft/Posted,
+Closing and Expense/Claim reviews keep their existing roles and presentation.
+Record source, installed and native acceptance separately in the existing ledgers.
+
+Journal saved-amount initialization correction (8 October 2026): only the
+canonical Journal editor's loaded Debit/Credit controllers use their existing
+AccountingMoneyInputFormatter rendering, with each saved amount's currency
+precision. Loaded Draft and posted manual current rows must display the same
+grouping as typing in that control. Opposite empty cells retain unstored zero
+hints; exact Money, dirty-state baseline, column growth, approval/correction,
+currency guards and persistence remain unchanged. This is initialization of
+existing monetary inputs, not a new formatter or a rule for quantities, rates,
+ordinary field widths, buttons, selectors or other form owners. Source, build,
+installation and native acceptance remain separate in the existing ledgers.
 
 ## Current goal order — 4 October 2026
 
@@ -844,6 +955,13 @@ keeps its ordinary width. Audit existing independent custom-money overrides
 against this clarification before changing them; money formatting/alignment and
 width growth are separate decisions. Buttons never inherit amount growth.
 
+Ordinary populated-money fit: the shared popup planner accepts explicit value-fit
+floors only from eligible ordinary monetary fields. Apply them only while the
+actual candidate row has at least three fields; falling back to two fields must
+restore static minima. Other planner callers opt out by default. Measure retained
+and edited formatted values with existing text/padding/border tokens, preserving
+the editor subtree and the independent one/two-field no-growth rule.
+
 Lone independent Amount and summary alignment — latest user correction
 (6 October 2026): an independent Amount at the end of a field run uses the
 ordinary half-row minimum, or the full row if its declared minimum cannot fit.
@@ -856,6 +974,10 @@ This supersedes the former three-row bottom-alignment rule. A single summary
 line retains its accepted bottom alignment; never invent extra summary lines.
 
 Button exception to responsive field sizing: buttons and fields share the established height token only, not width rules. Ordinary New Journal and other actions retain the existing content-fit button token even when alone. Field-title floors and lone-field half/full tracks apply to inputs, never stretch an ordinary action. Empty monetary totals use the currency formatter (0.00 for RM) in both current and saved-preview grids; genuinely unresolved nonzero calculations retain unavailable information rather than inventing zero.
+
+Journal Review toolbar correction (8 October 2026): Drafts, Posted and Memo Or Journal ID belong on the same line when their existing content-fit buttons and bounded search field fit. Wrap only when the actual available width requires it. Preserve the existing status-button peer gap, ordinary control-group gap, record-count visibility, Through/Clear filter, search/paging commands and title action. This is the JournalReviewPage toolbar owner only; do not change other buttons, fields or checkbox families.
+
+Main workspace tab resize correction (8 October 2026): only FrontendAreaPage explicitly enables selected-tab reveal in the outer horizontal viewport after available width, selected index, direction or measured tab widths change. Preserve the natural grey-band width, first inset and main-action right cap. Ordinary rebuilds must not reset manual tab browsing. Company-selector and embedded report tab callers do not opt in. Products & Services restores the existing accountingContentInset between its page header and record card; no new spacing token or other owner changes.
 
 Selector placeholder wording — latest user correction (6 October 2026): when
 an unset selector prompt is `Select` followed by two or more words, omit `Select`

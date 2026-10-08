@@ -387,12 +387,13 @@ class _AuditLogDialogState extends State<AuditLogDialog> {
     final eventWidth = accountingSelectorMinimumWidth(context, eventLabels);
     return AccountingDialog.alert(
       context,
+      widthFamily: AccountingPopoutWidthFamily.custom,
       title: 'Audit Log',
       description: 'Review recorded accounting changes.',
-      maxContentWidth: 900,
+      maxContentWidth: AccountingPopoutTokens.customContentWidth,
       contentScrollKey: const ValueKey('audit-content-scroll'),
       content: SizedBox(
-        width: 900,
+        width: AccountingPopoutTokens.customContentWidth,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -99,11 +99,12 @@ Future<void> showExpenseJournalReview(
     context: context,
     builder: (dialogContext) => AccountingDialog.alert(
       dialogContext,
+      widthFamily: AccountingPopoutWidthFamily.custom,
       title: 'Expense Posting',
       formFooter: true,
       titleGuidance: 'Select the journal prepared for this expense, then review its accounts and tax treatment before approval.',
       content: SizedBox(
-        width: 520,
+        width: AccountingPopoutTokens.widerContentWidth,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -367,8 +368,11 @@ class _JournalEditorState extends State<_JournalEditor> {
       _lines.clear();
       for (final line in existing.entry.lines) {
         final input = _JournalLineInput()..account = line.accountId;
-        (line.isDebit ? input.debit : input.credit).text = line.amount
-            .toDecimalString();
+        (line.isDebit ? input.debit : input.credit).text =
+            formatAccountingMoneyInputText(
+              line.amount.toDecimalString(),
+              Currency.parse(line.amount.currency).fractionDigits,
+            );
         _lines.add(input);
       }
     }
@@ -672,6 +676,7 @@ class _JournalEditorState extends State<_JournalEditor> {
         },
         child: AccountingDialog.alert(
           context,
+          widthFamily: AccountingPopoutWidthFamily.custom,
           title: widget.existing == null ? 'New Journal' : 'Edit Journal',
           onClose: _handleClose,
           closeKey: const ValueKey('journal-editor-close'),
@@ -1348,6 +1353,31 @@ class _JournalReviewPageState extends State<JournalReviewPage> {
     _load();
   }
 
+  String _recordDetails(StoredJournalEntry record) {
+    final entry = record.entry;
+    final details =
+        '${formatAccountingInputDate(entry.date)} · ${entry.lines.length} Lines';
+    if (entry.isClosing) {
+      return '$details · ${entry.reversesId == null ? 'Closing Entry' : 'Closing Reversal'}';
+    }
+    final database = widget.workspace.database;
+    final businessId = widget.workspace.identity.businessId;
+    final correction = database.manualJournalRevisionForDraft(
+      businessId,
+      entry.id,
+    );
+    if (correction != null) {
+      final role = entry.state == JournalEntryState.draft
+          ? 'Journal Correction'
+          : 'Replacement Posting';
+      return '$details · $role · Revision ${correction.revision}';
+    }
+    if (database.manualJournalCurrentRevision(businessId, entry.id) != null) {
+      return '$details · Original Posting';
+    }
+    return details;
+  }
+
   @override
   Widget build(BuildContext context) => AccountingPageShell(
     includeTopSafeArea: !widget.compact,
@@ -1377,57 +1407,54 @@ class _JournalReviewPageState extends State<JournalReviewPage> {
         const SizedBox(height: accountingContentInset),
         AccountingRecordControls(
           recordCount: _controlCount,
-          child: Wrap(
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: AccountingPageControlScope.runGapOf(context),
-            children: [
-              if (_through != null) ...[
-                Text(
-                  'Through ${formatAccountingInputDate(_through!)}',
-                  key: const ValueKey('journal-summary-through'),
-                  style: AccountingTypography.control(context),
-                ),
-                AccountingButton.outline(
-                  context,
-                  key: const ValueKey('clear-journal-summary-filter'),
-                  onPressed: () => _filter(() => _through = null),
-                  child: const Text('Clear'),
-                ),
-              ],
-              AccountingButton.outline(
-                context,
-                key: const ValueKey('review-drafts'),
-                onPressed: () => _filter(() => _posted = false),
-                leadingIcon: _posted
-                    ? Icons.edit_note_outlined
-                    : Icons.check_rounded,
-                child: const Text('Drafts'),
-              ),
-              AccountingButton.outline(
-                context,
-                key: const ValueKey('review-posted'),
-                onPressed: () => _filter(() => _posted = true),
-                leadingIcon: _posted
-                    ? Icons.check_rounded
-                    : Icons.inventory_2_outlined,
-                child: const Text('Posted'),
-              ),
-            ],
-          ),
-        ),
-        AccountingRecordControls(
-          recordCount: _controlCount,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: accountingContentInset),
-              SizedBox(
-                width: 280,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 280),
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: accountingContentInset),
+            child: LayoutBuilder(
+              builder: (context, constraints) => Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: accountingContentInset,
+                runSpacing: AccountingPageControlScope.runGapOf(context),
+                children: [
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: AccountingPageControlScope.runGapOf(context),
+                    children: [
+                      if (_through != null) ...[
+                        Text(
+                          'Through ${formatAccountingInputDate(_through!)}',
+                          key: const ValueKey('journal-summary-through'),
+                          style: AccountingTypography.control(context),
+                        ),
+                        AccountingButton.outline(
+                          context,
+                          key: const ValueKey('clear-journal-summary-filter'),
+                          onPressed: () => _filter(() => _through = null),
+                          child: const Text('Clear'),
+                        ),
+                      ],
+                      AccountingButton.outline(
+                        context,
+                        key: const ValueKey('review-drafts'),
+                        onPressed: () => _filter(() => _posted = false),
+                        leadingIcon: _posted
+                            ? Icons.edit_note_outlined
+                            : Icons.check_rounded,
+                        child: const Text('Drafts'),
+                      ),
+                      AccountingButton.outline(
+                        context,
+                        key: const ValueKey('review-posted'),
+                        onPressed: () => _filter(() => _posted = true),
+                        leadingIcon: _posted
+                            ? Icons.check_rounded
+                            : Icons.inventory_2_outlined,
+                        child: const Text('Posted'),
+                      ),
+                    ],
+                  ),
+                  SizedBox(
+                    width: constraints.maxWidth.clamp(0.0, 280.0),
                     child: TextField(
                       key: const ValueKey('journal-search'),
                       controller: _search,
@@ -1438,10 +1465,9 @@ class _JournalReviewPageState extends State<JournalReviewPage> {
                       ),
                     ),
                   ),
-                ),
+                ],
               ),
-              const SizedBox(height: accountingContentInset),
-            ],
+            ),
           ),
         ),
         if (_error != null) ...[
@@ -1507,9 +1533,7 @@ class _JournalReviewPageState extends State<JournalReviewPage> {
                 AccountingRecordRow(
                   key: ValueKey('journal-row-${record.entry.id.value}'),
                   title: record.entry.memo,
-                  details: Text(
-                    '${formatAccountingInputDate(record.entry.date)} · ${record.entry.lines.length} Lines${record.entry.isClosing ? (record.entry.reversesId == null ? ' · Closing Entry' : ' · Closing Reversal') : ''}',
-                  ),
+                  details: Text(_recordDetails(record)),
                   trailing: AccountingRecordActions(
                     trailing: [
                       if (widget.workspace.database.isManualJournalDraft(
@@ -1683,25 +1707,35 @@ class _JournalReviewDialogState extends State<_JournalReviewDialog> {
   @override
   Widget build(BuildContext context) {
     final entry = widget.record.entry;
+    final correction = entry.state == JournalEntryState.draft
+        ? widget.workspace.database.manualJournalRevisionForDraft(
+            widget.workspace.identity.businessId,
+            entry.id,
+          )
+        : null;
     final names = {
       for (final r in widget.accounts) r.account.id: r.account.displayName,
     };
     final guidance = [
+      if (correction != null) 'Approval preserves the original posting and posts its reversal together with the proposed replacement. Review both sets of accounts and amounts.',
       if (entry.isClosing) 'This transfers earnings between nominal accounts and equity; it does not change operating profit.',
-      if (entry.state == JournalEntryState.draft) 'Approve only when the accounts, amounts, date and supporting evidence are correct. Posting preserves this revision.',
+      if (entry.state == JournalEntryState.draft && correction == null) 'Approve only when the accounts, amounts, date and supporting evidence are correct. Posting preserves this revision.',
     ];
     return PopScope(
       canPop: !_busy,
       child: AccountingDialog.alert(
         context,
+        widthFamily: AccountingPopoutWidthFamily.custom,
         title: entry.state == JournalEntryState.posted
             ? 'Posted Journal'
-            : 'Review Journal',
+            : correction == null
+            ? 'Review Journal'
+            : 'Review Journal Correction',
         formFooter: entry.state == JournalEntryState.draft,
         titleGuidance: guidance.isEmpty ? null : guidance.join(' '),
         description: entry.memo,
         content: SizedBox(
-          width: 640,
+          width: AccountingPopoutTokens.widerContentWidth,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1710,6 +1744,14 @@ class _JournalReviewDialogState extends State<_JournalReviewDialog> {
                 child: AccountingInformationRows(
                   rows: [
                     ('Date', formatAccountingInputDate(entry.date)),
+                    if (correction != null) ...[
+                      ('Entry Type', 'Journal Correction'),
+                      (
+                        'Original Date',
+                        formatAccountingInputDate(correction.source.entry.date),
+                      ),
+                      ('Original Memo', correction.source.entry.memo),
+                    ],
                     if (widget.expense != null) ...[
                       ('Expense', widget.expense!.draft.payee),
                       ('Payment Account', widget.expense!.draft.paymentAccount),
@@ -1732,6 +1774,29 @@ class _JournalReviewDialogState extends State<_JournalReviewDialog> {
                 ),
               ),
               const SizedBox(height: accountingContentInset),
+              if (correction != null) ...[
+                Padding(
+                  padding: const EdgeInsets.only(left: accountingContentInset),
+                  child: accountingSectionTitle(context, 'Original Posting'),
+                ),
+                const SizedBox(height: accountingContentInset),
+                SelectionArea(
+                  child: _JournalLinesReview(
+                    lines: correction.source.entry.lines,
+                    names: names,
+                    keyPrefix: 'journal-original-review',
+                  ),
+                ),
+                const SizedBox(height: accountingContentInset),
+                Padding(
+                  padding: const EdgeInsets.only(left: accountingContentInset),
+                  child: accountingSectionTitle(
+                    context,
+                    'Proposed Replacement',
+                  ),
+                ),
+                const SizedBox(height: accountingContentInset),
+              ],
               SelectionArea(
                 child: _JournalLinesReview(lines: entry.lines, names: names),
               ),
@@ -1752,7 +1817,13 @@ class _JournalReviewDialogState extends State<_JournalReviewDialog> {
               context,
               key: const ValueKey('approve-journal'),
               onPressed: _busy ? null : _approve,
-              child: Text(_busy ? 'Posting…' : 'Approve & Post'),
+              child: Text(
+                _busy
+                    ? 'Posting…'
+                    : correction == null
+                    ? 'Approve & Post'
+                    : 'Approve & Post Correction',
+              ),
             ),
         ],
       ),
@@ -1763,9 +1834,14 @@ class _JournalReviewDialogState extends State<_JournalReviewDialog> {
 /// Uses Home's accepted table cells/header rhythm inside the shared record card.
 /// These are retained journal facts, not a second transaction editor.
 class _JournalLinesReview extends StatelessWidget {
-  const _JournalLinesReview({required this.lines, required this.names});
+  const _JournalLinesReview({
+    required this.lines,
+    required this.names,
+    this.keyPrefix = 'journal-review',
+  });
   final List<JournalLine> lines;
   final Map<EntityId, String> names;
+  final String keyPrefix;
 
   @override
   Widget build(BuildContext context) {
@@ -1839,12 +1915,12 @@ class _JournalLinesReview extends StatelessWidget {
                 debitWidth +
                 creditWidth;
             return SingleChildScrollView(
-              key: const ValueKey('journal-review-lines-scroll'),
+              key: ValueKey('$keyPrefix-lines-scroll'),
               scrollDirection: Axis.horizontal,
               child: SizedBox(
                 width: math.max(constraints.maxWidth, minimum),
                 child: Table(
-                  key: const ValueKey('journal-review-lines-table'),
+                  key: ValueKey('$keyPrefix-lines-table'),
                   columnWidths: {
                     0: const FlexColumnWidth(),
                     1: FixedColumnWidth(debitWidth),
@@ -1920,10 +1996,48 @@ class _ClosingEditorState extends State<_ClosingEditor> {
     text: formatAccountingInputDate(DateTime.now()),
   );
   EntityId? _equity;
+  final _editingFocus = FocusScopeNode();
+  late final String _openingInput;
+  bool _closePromptOpen = false;
   bool _busy = false;
   String? _error;
+  String _inputSnapshot() => jsonEncode([_date.text, _equity?.value]);
+
+  @override
+  void initState() {
+    super.initState();
+    _openingInput = _inputSnapshot();
+  }
+
+  Future<void> _handleClose() async {
+    if (_busy || _closePromptOpen) return;
+    if (_inputSnapshot() == _openingInput) {
+      Navigator.of(context).pop();
+      return;
+    }
+    _closePromptOpen = true;
+    try {
+      final discard = await AccountingDialog.confirmDiscardChanges(
+        context,
+        closeKey: const ValueKey('closing-discard-close'),
+        keepEditingKey: const ValueKey('closing-keep-editing'),
+        discardKey: const ValueKey('closing-discard-changes'),
+      );
+      if (mounted) {
+        if (discard) {
+          Navigator.of(context).pop();
+        } else {
+          _editingFocus.requestFocus();
+        }
+      }
+    } finally {
+      _closePromptOpen = false;
+    }
+  }
+
   @override
   void dispose() {
+    _editingFocus.dispose();
     _date.dispose();
     super.dispose();
   }
@@ -1959,134 +2073,154 @@ class _ClosingEditorState extends State<_ClosingEditor> {
   }
 
   @override
-  Widget build(BuildContext context) => PopScope(
-    canPop: !_busy,
-    child: AccountingDialog.alert(
-      context,
-      title: 'Prepare Closing',
-      formFooter: true,
-      titleGuidance: 'Transfer remaining income and expense balances through this date to equity. Review and approve the draft separately. This does not lock the period.',
-      content: SizedBox(
-        width: 320,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AccountingOrdinaryFields(
-              fields: [
-                AccountingOrdinaryFieldSlot(
-                  label: 'Through Date',
-                  date: true,
-                  contentSample: '00-00-0000',
-                  builder: (_) => Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      accountingFieldLabel(
-                        context,
-                        'Through Date',
-                        alignToField: true,
-                      ),
-                      const SizedBox(height: accountingFieldLabelGap),
-                      SizedBox(
-                        key: const ValueKey('closing-date-frame'),
-                        height: accountingControlHeight,
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: accountingDateFieldFrame(
-                            child: TextField(
-                              key: const ValueKey('closing-date'),
-                              controller: _date,
-                              enableInteractiveSelection: true,
-                              enabled: !_busy,
-                              inputFormatters: [const DateInputFormatter()],
-                              decoration:
-                                  accountingSingleLineInputDecoration(
-                                    context,
-                                    hintText: 'DD-MM-YYYY',
-                                  ).copyWith(
-                                    suffixIcon: accountingCalendarButton(
+  Widget build(BuildContext context) => FocusScope(
+    node: _editingFocus,
+    autofocus: true,
+    onKeyEvent: (node, event) {
+      if (event is KeyDownEvent &&
+          event.logicalKey == LogicalKeyboardKey.escape) {
+        _handleClose();
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    },
+    child: PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) _handleClose();
+      },
+      child: AccountingDialog.alert(
+        context,
+        widthFamily: AccountingPopoutWidthFamily.normal,
+        title: 'Prepare Closing',
+        onClose: _handleClose,
+        closeKey: const ValueKey('closing-editor-close'),
+        canClose: !_busy,
+        formFooter: true,
+        titleGuidance: 'Transfer remaining income and expense balances through this date to equity. Review and approve the draft separately. This does not lock the period.',
+        content: SizedBox(
+          width: AccountingPopoutTokens.normalContentWidth,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AccountingOrdinaryFields(
+                fields: [
+                  AccountingOrdinaryFieldSlot(
+                    label: 'Through Date',
+                    date: true,
+                    contentSample: '00-00-0000',
+                    builder: (_) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        accountingFieldLabel(
+                          context,
+                          'Through Date',
+                          alignToField: true,
+                        ),
+                        const SizedBox(height: accountingFieldLabelGap),
+                        SizedBox(
+                          key: const ValueKey('closing-date-frame'),
+                          height: accountingControlHeight,
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: accountingDateFieldFrame(
+                              child: TextField(
+                                key: const ValueKey('closing-date'),
+                                controller: _date,
+                                enableInteractiveSelection: true,
+                                enabled: !_busy,
+                                inputFormatters: [const DateInputFormatter()],
+                                decoration:
+                                    accountingSingleLineInputDecoration(
                                       context,
-                                      controller: _date,
-                                      label: 'Through Date',
-                                      enabled: !_busy,
+                                      hintText: 'DD-MM-YYYY',
+                                    ).copyWith(
+                                      suffixIcon: accountingCalendarButton(
+                                        context,
+                                        controller: _date,
+                                        label: 'Through Date',
+                                        enabled: !_busy,
+                                      ),
                                     ),
-                                  ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                AccountingOrdinaryFieldSlot(
-                  label: 'Equity Account',
-                  choices: [
-                    'Select Account',
-                    for (final record in widget.accounts)
-                      if (record.account.type == AccountType.equity &&
-                          record.account.status == AccountStatus.active &&
-                          !record.account.isParent)
-                        record.account.displayName,
-                  ],
-                  builder: (assignedWidth) => Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      accountingFieldLabel(
-                        context,
-                        'Equity Account',
-                        alignToField: true,
-                      ),
-                      const SizedBox(height: 8),
-                      AccountingSelector<EntityId>(
-                        assignedWidth: assignedWidth,
-                        triggerKey: const ValueKey('closing-equity'),
-                        value: _equity,
-                        enabled: !_busy,
-                        searchable: true,
-                        hintText: 'Select Account',
-                        onChanged: (value) => setState(() => _equity = value),
-                        options: [
-                          for (final record in widget.accounts)
-                            if (record.account.type == AccountType.equity &&
-                                record.account.status == AccountStatus.active &&
-                                !record.account.isParent)
-                              AccountingSelectorOption(
-                                value: record.account.id,
-                                label: record.account.displayName,
-                                preserveLabelCase: true,
-                              ),
-                        ],
-                      ),
+                  AccountingOrdinaryFieldSlot(
+                    label: 'Equity Account',
+                    choices: [
+                      'Select Account',
+                      for (final record in widget.accounts)
+                        if (record.account.type == AccountType.equity &&
+                            record.account.status == AccountStatus.active &&
+                            !record.account.isParent)
+                          record.account.displayName,
                     ],
+                    builder: (assignedWidth) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        accountingFieldLabel(
+                          context,
+                          'Equity Account',
+                          alignToField: true,
+                        ),
+                        const SizedBox(height: 8),
+                        AccountingSelector<EntityId>(
+                          assignedWidth: assignedWidth,
+                          triggerKey: const ValueKey('closing-equity'),
+                          value: _equity,
+                          enabled: !_busy,
+                          searchable: true,
+                          hintText: 'Select Account',
+                          onChanged: (value) => setState(() => _equity = value),
+                          options: [
+                            for (final record in widget.accounts)
+                              if (record.account.type == AccountType.equity &&
+                                  record.account.status ==
+                                      AccountStatus.active &&
+                                  !record.account.isParent)
+                                AccountingSelectorOption(
+                                  value: record.account.id,
+                                  label: record.account.displayName,
+                                  preserveLabelCase: true,
+                                ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
+                ],
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _error!,
+                  style: AccountingTypography.helper(context)
+                      .copyWith(color: AccountingTheme.of(context).destructive),
                 ),
               ],
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                _error!,
-                style: AccountingTypography.helper(context)
-                    .copyWith(color: AccountingTheme.of(context).destructive),
-              ),
             ],
-          ],
+          ),
         ),
+        actions: [
+          AccountingButton.ghost(
+            context,
+            key: null,
+            onPressed: _busy ? null : _handleClose,
+            child: const Text('Cancel'),
+          ),
+          AccountingButton.primary(
+            context,
+            key: const ValueKey('save-closing-draft'),
+            onPressed: _busy ? null : _prepare,
+            child: Text(_busy ? 'Preparing…' : 'Save Draft'),
+          ),
+        ],
       ),
-      actions: [
-        AccountingButton.ghost(
-          context,
-          key: null,
-          onPressed: _busy ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        AccountingButton.primary(
-          context,
-          key: const ValueKey('save-closing-draft'),
-          onPressed: _busy ? null : _prepare,
-          child: Text(_busy ? 'Preparing…' : 'Save Draft'),
-        ),
-      ],
     ),
   );
 }

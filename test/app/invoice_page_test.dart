@@ -11,6 +11,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:audyt/app/accounting_theme.dart';
+import 'package:audyt/app/demo_company.dart';
 import 'package:audyt/app/accounting_image_zoom.dart';
 import 'package:audyt/features/sales/invoice_page.dart';
 import 'package:audyt/features/sales/invoice_form.dart';
@@ -23,7 +24,87 @@ import 'package:audyt/features/accounting/domain/account.dart';
 import 'package:audyt/features/accounting/domain/customer.dart';
 import 'package:audyt/features/sales/domain/invoice.dart';
 
+import 'claim_receipts_proposal_test.dart' show prepare, capture, tap;
+import 'restored_page_routes_test.dart' show tables;
+
 void main() {
+  for (final width in [720.0, 1162.0]) {
+    testWidgets('invoice archive warning cancel and recovery at $width', (
+      t,
+    ) async {
+      await prepare(t, width);
+      t.view.physicalSize = Size(width, 809);
+      final w = await createDemoWorkspace(includeRowReview: true);
+      addTearDown(w.dispose);
+      final draft = w.invoiceDrafts().first.invoice;
+      final original = draft.draftSnapshot();
+      final before = tables(w);
+      await t.pumpWidget(
+        RepaintBoundary(
+          key: const ValueKey('workspace-capture'),
+          child: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: AccountingTheme.light(),
+            home: Scaffold(body: InvoicePage(workspace: w)),
+          ),
+        ),
+      );
+      await t.pumpAndSettle();
+      final action = find.byKey(ValueKey('archive-invoice-${draft.id.value}'));
+      final confirm = find.byKey(const ValueKey('confirm-invoice-archive'));
+      final close = find.byKey(const ValueKey('cancel-invoice-archive'));
+      await tap(t, action);
+      expect(find.text('Archive Invoice Draft'), findsOneWidget);
+      expect(find.text('Cancel'), findsNothing);
+      await capture(t, 'Invoice Archive Warning ${width.toInt()}');
+      await tap(t, close);
+      expect(tables(w), before);
+      await tap(t, action);
+      await tap(t, confirm);
+      expect(
+        w.invoiceDrafts(archived: true).single.invoice.draftSnapshot(),
+        original,
+      );
+      await tap(t, find.byKey(const ValueKey('invoice-status-filter')));
+      await tap(t, find.text('Archived').last);
+      await tap(t, action);
+      expect(find.text('Restore Invoice Draft'), findsOneWidget);
+      await capture(t, 'Invoice Restore Warning ${width.toInt()}');
+      final archived = tables(w);
+      await tap(t, close);
+      expect(tables(w), archived);
+      await tap(t, action);
+      await tap(t, confirm);
+      expect(w.invoiceDrafts(archived: true), isEmpty);
+      expect(
+        w
+            .invoiceDrafts()
+            .singleWhere((r) => r.invoice.id == draft.id)
+            .invoice
+            .draftSnapshot(),
+        original,
+      );
+      final after = tables(w);
+      for (final entry in before.entries) {
+        if (entry.key == 'invoice_drafts' || entry.key == 'ledger_audit') {
+          continue;
+        }
+        expect(after[entry.key], entry.value, reason: entry.key);
+      }
+      final priorAudit = before['ledger_audit']['rows'] as List;
+      final currentAudit = after['ledger_audit']['rows'] as List;
+      expect(currentAudit.take(priorAudit.length).toList(), priorAudit);
+      expect(currentAudit.length, priorAudit.length + 2);
+      expect(
+        currentAudit[currentAudit.length - 2][4],
+        'invoice_draft_archived',
+      );
+      expect(currentAudit.last[4], 'invoice_draft_restored');
+      expect(t.takeException(), isNull);
+      await t.pumpWidget(const SizedBox.shrink());
+    });
+  }
+
   testWidgets('invoice form edits and posts through the operational page', (
     tester,
   ) async {

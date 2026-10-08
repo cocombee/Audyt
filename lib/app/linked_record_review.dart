@@ -56,6 +56,7 @@ class _LinkedRecordReviewState extends State<LinkedRecordReview> {
     final width = (MediaQuery.sizeOf(context).width - 96).clamp(220.0, 680.0);
     return AccountingDialog.alert(
       context,
+      widthFamily: AccountingPopoutWidthFamily.custom,
       title: widget.workflow,
       formFooter: true,
       maxContentWidth: width,

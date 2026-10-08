@@ -113,12 +113,19 @@ class _UsersPageState extends State<UsersPage> {
       builder: (context) => StatefulBuilder(
         builder: (context, update) => AccountingDialog.alert(
           context,
+          widthFamily: action == UserBatchAction.approve
+              ? AccountingPopoutWidthFamily.normal
+              : AccountingPopoutWidthFamily.dialog,
           title: '$verb ${users.length} Employees',
-          maxContentWidth: 400,
+          maxContentWidth: action == UserBatchAction.approve
+              ? AccountingPopoutTokens.normalContentWidth
+              : AccountingPopoutTokens.dialogContentWidth,
           formFooter: true,
           contentInset: 20,
           content: SizedBox(
-            width: 400,
+            width: action == UserBatchAction.approve
+                ? AccountingPopoutTokens.normalContentWidth
+                : AccountingPopoutTokens.dialogContentWidth,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -230,13 +237,14 @@ class _UsersPageState extends State<UsersPage> {
       builder: (context) => StatefulBuilder(
         builder: (context, update) => AccountingDialog.alert(
           context,
+          widthFamily: AccountingPopoutWidthFamily.normal,
           title: approving ? 'Approve Employee' : 'Change Role',
           description: '${user.name} · ${user.email}',
-          maxContentWidth: 400,
+          maxContentWidth: AccountingPopoutTokens.normalContentWidth,
           formFooter: true,
           contentInset: 20,
           content: SizedBox(
-            width: 400,
+            width: AccountingPopoutTokens.normalContentWidth,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -322,10 +330,11 @@ class _UsersPageState extends State<UsersPage> {
           context: context,
           builder: (context) => AccountingDialog.alert(
             context,
+            widthFamily: AccountingPopoutWidthFamily.dialog,
             title: users.length == 1
                 ? 'Appoint Director?'
                 : 'Appoint Directors?',
-            maxContentWidth: 400,
+            maxContentWidth: AccountingPopoutTokens.dialogContentWidth,
             formFooter: true,
             contentInset: 20,
             content: Text(
@@ -359,8 +368,9 @@ class _UsersPageState extends State<UsersPage> {
       context: context,
       builder: (context) => AccountingDialog.alert(
         context,
+        widthFamily: AccountingPopoutWidthFamily.dialog,
         title: removing ? 'Delete Employee' : 'Reject Registration',
-        maxContentWidth: 400,
+        maxContentWidth: AccountingPopoutTokens.dialogContentWidth,
         formFooter: true,
         contentInset: 20,
         content: Text(

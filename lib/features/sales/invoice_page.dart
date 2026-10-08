@@ -73,6 +73,7 @@ class _InvoicePageState extends State<InvoicePage> {
         context: context,
         builder: (dialogContext) => AccountingDialog.alert(
           dialogContext,
+          widthFamily: AccountingPopoutWidthFamily.dialog,
           title: 'Invoice Review Required',
           content: Text(message),
           actions: [],
@@ -103,6 +104,7 @@ class _InvoicePageState extends State<InvoicePage> {
       context: context,
       builder: (dialogContext) => AccountingDialog.alert(
         dialogContext,
+        widthFamily: AccountingPopoutWidthFamily.dialog,
         title: archived ? 'Archive Invoice Draft' : 'Restore Invoice Draft',
         content: Text(
           archived
@@ -116,12 +118,20 @@ class _InvoicePageState extends State<InvoicePage> {
             child: const Text('Cancel'),
             onPressed: () => Navigator.pop(dialogContext, false),
           ),
-          AccountingButton.secondary(
-            dialogContext,
-            key: const ValueKey('confirm-invoice-archive'),
-            child: Text(archived ? 'Archive' : 'Restore'),
-            onPressed: () => Navigator.pop(dialogContext, true),
-          ),
+          if (archived)
+            AccountingButton.destructive(
+              dialogContext,
+              key: const ValueKey('confirm-invoice-archive'),
+              child: const Text('Archive'),
+              onPressed: () => Navigator.pop(dialogContext, true),
+            )
+          else
+            AccountingButton.primary(
+              dialogContext,
+              key: const ValueKey('confirm-invoice-archive'),
+              child: const Text('Restore'),
+              onPressed: () => Navigator.pop(dialogContext, true),
+            ),
         ],
       ),
     );
@@ -446,6 +456,7 @@ class _InvoicePageState extends State<InvoicePage> {
         context: context,
         builder: (dialogContext) => AccountingDialog.alert(
           dialogContext,
+          widthFamily: AccountingPopoutWidthFamily.dialog,
           title: 'Set Up A Payment Account',
           content: const Text(
             'In Banking, link a bank or cash payment account to an active ledger account in the invoice currency, then return to receive payment.',

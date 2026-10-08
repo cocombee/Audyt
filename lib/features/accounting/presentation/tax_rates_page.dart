@@ -182,9 +182,10 @@ class _TaxRatesPageState extends State<TaxRatesPage> {
 
   Future<void> view(CompanyTaxRate rate) => AccountingDialog.showFixed<void>(
     context: context,
-    contentWidth: 600,
+    contentWidth: AccountingPopoutTokens.normalContentWidth,
     builder: (context) => AccountingDialog.alert(
       context,
+      widthFamily: AccountingPopoutWidthFamily.normal,
       title: rate.name,
       content: AccountingInformationRows(
         rows: [
