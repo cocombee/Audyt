@@ -18,10 +18,19 @@ import 'package:audyt/features/accounting/application/accounting_workspace.dart'
 import 'package:audyt/features/accounting/presentation/audit_log_dialog.dart';
 import 'package:audyt/app/accounting_theme.dart';
 
+Finder auditFrame() => find
+    .descendant(
+      of: find.byType(AlertDialog),
+      matching: find.byWidgetPredicate(
+        (widget) => widget is Material && widget.type == MaterialType.card,
+      ),
+    )
+    .first;
+
 void main() {
   setUp(AccountingRecordPageSizes.reset);
   tearDown(AccountingRecordPageSizes.reset);
-  for (final width in [720.0, 1224.0]) {
+  for (final width in [720.0, 1162.0, 1224.0]) {
     for (final count in [0, 5, 6]) {
       testWidgets('Audit $count records and growing details at $width', (
         tester,
@@ -58,6 +67,18 @@ void main() {
         );
         await tester.pumpWidget(host());
         await tester.pumpAndSettle();
+        if (count == 0) {
+          expect(
+            tester.getSize(auditFrame()).width,
+            closeTo(
+              AccountingPopoutTokens.dialogContentWidth +
+                  AccountingPopoutTokens.contentInset * 2,
+              .01,
+            ),
+          );
+          await captureUi(tester, 'Audit Empty Dialog ${width.toInt()}');
+        }
+        final loadedWidth = tester.getSize(auditFrame()).width;
         final visible = count >= 6;
         expect(
           find.byKey(const ValueKey('audit-kind')),
@@ -116,6 +137,12 @@ void main() {
           await tester.tap(find.text('Journal Posted').last);
           await tester.pumpAndSettle();
           expect(find.text('No accounting events recorded.'), findsOneWidget);
+          expect(tester.getSize(auditFrame()).width, closeTo(loadedWidth, .01));
+          await captureUi(
+            tester,
+            'Audit Filtered Empty Custom ${width.toInt()}',
+          );
+
           expect(find.byKey(const ValueKey('audit-kind')), findsOneWidget);
           expect(find.byKey(const ValueKey('audit-page-next')), findsOneWidget);
           await tester.tap(find.byKey(const ValueKey('audit-kind')));

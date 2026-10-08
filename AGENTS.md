@@ -1,3 +1,10 @@
+Empty Audit Log width (9 October 2026): only an authoritatively loaded Audit Log
+with no unfiltered events and no load error uses the existing 400px Dialog family.
+Populated logs and filtered zero-result views keep their existing Custom width,
+filters, paging and expanded evidence. Loading/error behavior, recorded events,
+permissions, timestamps and refresh commands remain unchanged. Do not propagate
+this conditional footprint to other record lists without inspecting their owner.
+
 Account Tax/Group row (9 October 2026 latest user direction): only the shared
 New/Edit ledger Account form packs Default Tax Code and Group Account together
 through the existing measured ordinary-field planner. Align the compact checkbox

@@ -383,17 +383,23 @@ class _AuditLogDialogState extends State<AuditLogDialog> {
     final showControls = AccountingRecordControlsPolicy.visible(
       _unfilteredTotal,
     );
+    final empty = !_loading && _error == null && _unfilteredTotal == 0;
+    final contentWidth = empty
+        ? AccountingPopoutTokens.dialogContentWidth
+        : AccountingPopoutTokens.customContentWidth;
     final eventLabels = ['All Events', ..._kinds.map(_label)];
     final eventWidth = accountingSelectorMinimumWidth(context, eventLabels);
     return AccountingDialog.alert(
       context,
-      widthFamily: AccountingPopoutWidthFamily.custom,
+      widthFamily: empty
+          ? AccountingPopoutWidthFamily.dialog
+          : AccountingPopoutWidthFamily.custom,
       title: 'Audit Log',
       description: 'Review recorded accounting changes.',
-      maxContentWidth: AccountingPopoutTokens.customContentWidth,
+      maxContentWidth: contentWidth,
       contentScrollKey: const ValueKey('audit-content-scroll'),
       content: SizedBox(
-        width: AccountingPopoutTokens.customContentWidth,
+        width: contentWidth,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
