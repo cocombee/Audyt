@@ -65,6 +65,7 @@ cd "$wiring_project"
   test/app/ledger_reports_ui_test.dart \
   test/app/report_company_switch_test.dart \
   test/app/catalogue_report_period_test.dart \
+  test/app/cash_flow_account_type_test.dart \
   test/app/report_layout_spacing_test.dart \
   test/app/record_alignment_test.dart \
   test/app/record_status_fit_test.dart \

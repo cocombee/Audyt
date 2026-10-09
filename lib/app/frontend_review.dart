@@ -6237,18 +6237,21 @@ class _FrontendAreaPageState extends State<FrontendAreaPage> {
             others.every(
               (account) =>
                   account.type == AccountType.equity ||
-                  RegExp(
-                    r'loan|borrow',
-                    caseSensitive: false,
-                  ).hasMatch(account.name),
+                  account.type == AccountType.liability &&
+                      RegExp(
+                        r'loan|borrow',
+                        caseSensitive: false,
+                      ).hasMatch(account.name),
             )) {
           category = 'Financing Activities';
         } else if (others.isNotEmpty &&
             others.every(
-              (account) => RegExp(
-                r'fixed|equipment|investment|property',
-                caseSensitive: false,
-              ).hasMatch(account.name),
+              (account) =>
+                  account.type == AccountType.asset &&
+                  RegExp(
+                    r'fixed|equipment|investment|property',
+                    caseSensitive: false,
+                  ).hasMatch(account.name),
             )) {
           category = 'Investing Activities';
         } else if (others.isNotEmpty &&

@@ -1,3 +1,16 @@
+Cash Flow account-type guard (9 October 2026): the existing report must not
+classify ordinary income/expense cash journals as investing or financing merely
+because an account name contains equipment/property or loan/borrow. Apply the
+existing loan-name fallback only to liability accounts and the existing
+capital-asset-name fallback only to asset accounts. Preserve equity financing,
+ordinary operating logic, period cutoffs, cash links, exact balances and the
+incomplete-classification disclosure. No new fields, styling, schema, posting or
+saved preferences. Full asset/liability reporting-profile classification,
+mixed-entry attribution and equity movement completeness remain unconfirmed.
+Use isolated name-change regression evidence; run the complete gate, freeze,
+build/sign/install and inspect actual native reports. Exact native dimensions
+and QuickBooks remain deferred until last per the user's latest direction.
+
 Report period repair (9 October 2026): the user defers blocked native resizing
 and QuickBooks access until last and requests other work first. Cash Flow,
 Changes In Equity and Management Report Pack reuse FrontendFormDialog and the
