@@ -1,3 +1,13 @@
+Authentication entry buttons (10 October 2026 user direction): Sign In and
+Register use the existing green primary face, matching the full row width of
+their Google entry button, with centered text. Google Sign In/Sign Up uses the
+existing white outline face and centers its icon/text group; its original SVG
+inherits the button foreground for idle, hover and disabled states. The existing
+outline factory accepts opt-in fullWidth; all ordinary callers remain content-fit.
+Keep 20px card insets and the 10px gap between entry buttons. Verify/Send Code/
+Save Password retain existing width and roles. No new registration fields,
+authentication service, terms publication, permissions or backend changes.
+
 Tax allocation dismissal (10 October 2026): Record Tax Payment and Link Existing
 Tax Payment include their staged allocations in FrontendFormDialog's existing
 inputValuesForComparison callback. Allocation-only additions or reviewed edits

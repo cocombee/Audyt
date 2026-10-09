@@ -139,7 +139,7 @@ void main() {
   }
 
   authWidgets(
-    'sign-in uses established card and full-width Google button underneath',
+    'sign-in uses matching button widths and centered primary label',
     (tester) async {
       await open(tester);
       final submit = tester.getRect(find.byKey(const ValueKey('auth-submit')));
@@ -149,10 +149,10 @@ void main() {
       );
       expect(google.left, submit.left);
       expect(google.right, card.right - 20);
-      expect(submit.right, lessThanOrEqualTo(google.right));
+      expect(submit.right, google.right);
       expect(
-        submit.width,
-        closeTo(tester.getRect(find.text('Sign In').last).width + 40, 0.1),
+        tester.getRect(find.text('Sign In').last).center.dx,
+        closeTo(submit.center.dx, 0.1),
       );
       expect(google.height, submit.height);
       expect(google.top - submit.bottom, 10);
@@ -441,7 +441,7 @@ void main() {
       expect(find.byKey(const ValueKey('password-save')), findsNothing);
     },
   );
-  for (final width in [1224.0, 720.0, 430.0]) {
+  for (final width in [1224.0, 1162.0, 720.0, 430.0]) {
     authWidgets('auth flows render with product font at $width', (
       tester,
     ) async {
@@ -469,7 +469,16 @@ void main() {
           expect(google.right, card.right - 20);
           expect(google.height, 44);
           expect(google.top - submit.bottom, 10);
-          expect(submit.width, lessThan(google.width));
+          expect(submit.width, google.width);
+          expect(
+            tester
+                .getRect(
+                  find.text(label == 'Sign In' ? 'Sign In' : 'Register').last,
+                )
+                .center
+                .dx,
+            closeTo(submit.center.dx, 0.1),
+          );
         }
         final boundary = tester.renderObject<RenderRepaintBoundary>(
           find.byKey(const ValueKey('auth-capture')),
@@ -478,7 +487,7 @@ void main() {
           final image = await boundary.toImage(pixelRatio: 1);
           final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
           await File(
-            '${Platform.environment['AUDYT_UI_CAPTURE_DIR']}/$label ${width.toInt()}.png',
+            '${Platform.environment['AUDYT_UI_CAPTURE_DIR']}/Authentication Equal Width $label ${width.toInt()}.png',
           ).writeAsBytes(bytes!.buffer.asUint8List());
           image.dispose();
         });

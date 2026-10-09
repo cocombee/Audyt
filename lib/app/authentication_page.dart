@@ -377,6 +377,7 @@ class _AudytSignInPageState extends State<AudytSignInPage> {
           AccountingButton.primary(
             context,
             key: const ValueKey('auth-submit'),
+            fullWidth: step == _AuthStep.signIn || step == _AuthStep.register,
             onPressed:
                 disabled ||
                     !session.emailAvailable ||
@@ -390,7 +391,7 @@ class _AudytSignInPageState extends State<AudytSignInPage> {
         if (step == _AuthStep.signIn || step == _AuthStep.register) ...[
           const SizedBox(height: 10),
           fullButton(
-            AccountingButton.primary(
+            AccountingButton.outline(
               context,
               key: const ValueKey('auth-google'),
               fullWidth: true,
@@ -398,13 +399,16 @@ class _AudytSignInPageState extends State<AudytSignInPage> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  SvgPicture.asset(
-                    'assets/icons/063-google.svg',
-                    width: 20,
-                    height: 20,
-                    colorFilter: const ColorFilter.mode(
-                      Colors.white,
-                      BlendMode.srcIn,
+                  Builder(
+                    builder: (context) => SvgPicture.asset(
+                      'assets/icons/063-google.svg',
+                      width: 20,
+                      height: 20,
+                      colorFilter: ColorFilter.mode(
+                        IconTheme.of(context).color ??
+                            AccountingTheme.of(context).foreground,
+                        BlendMode.srcIn,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),

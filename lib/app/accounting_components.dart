@@ -254,6 +254,7 @@ final class AccountingButton {
     required Widget child,
     IconData? leadingIcon,
     IconData? trailingIcon,
+    bool fullWidth = false,
   }) {
     return _button(
       context,
@@ -263,6 +264,7 @@ final class AccountingButton {
       child: child,
       leadingIcon: leadingIcon,
       trailingIcon: trailingIcon,
+      fullWidth: fullWidth,
     );
   }
 
@@ -726,7 +728,7 @@ final class AccountingButton {
             child: content,
           ),
         };
-        // Only an explicit owner exception (the authentication Google button)
+        // Only an explicit owner exception (authentication entry buttons)
         // fills its row. Ordinary buttons share field height, not field width.
         if (fullWidth) return SizedBox(width: double.infinity, child: button);
         return Align(
