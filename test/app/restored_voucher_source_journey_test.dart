@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:convert';
 
 import 'package:audyt/app/app.dart';
+import 'package:audyt/app/accounting_theme.dart';
 import 'package:audyt/app/demo_company.dart';
 import 'package:audyt/features/accounting/application/accounting_workspace.dart';
 import 'package:audyt/features/accounting/domain/expense_draft.dart';
@@ -18,11 +20,11 @@ import 'restored_page_routes_test.dart' show tables;
 import '../support/accounting_test_finders.dart' show accountingCloseIcon;
 
 void main() {
-  for (final width in [720.0, 1224.0]) {
+  for (final width in [720.0, 1162.0, 1224.0]) {
     testWidgets('restored voucher saved-source journey at $width', (
       tester,
     ) async {
-      tester.view.physicalSize = Size(width, 1100);
+      tester.view.physicalSize = Size(width, 809);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
@@ -93,8 +95,42 @@ void main() {
         await tester.pumpAndSettle();
       }
 
-      Future<void> capture(String state) =>
-          captureUi(tester, 'Voucher Source $state ${width.toInt()}');
+      Future<void> capture(String state) async {
+        if (find.byType(PaymentVoucherEditorDialog).evaluate().isNotEmpty) {
+          final frame = find
+              .descendant(
+                of: find.byKey(const ValueKey('payment-voucher-editor-dialog')),
+                matching: find.byWidgetPredicate(
+                  (v) => v is Material && v.type == MaterialType.card,
+                ),
+              )
+              .first;
+          final rect = tester.getRect(frame);
+          expect(
+            rect.width,
+            closeTo(
+              math.min(
+                AccountingPopoutTokens.widerContentWidth +
+                    AccountingPopoutTokens.contentInset * 2,
+                width - AccountingPopoutTokens.windowInsets.horizontal,
+              ),
+              .01,
+            ),
+          );
+          expect(
+            rect.left,
+            greaterThanOrEqualTo(AccountingPopoutTokens.windowInsets.left),
+          );
+          expect(
+            rect.right,
+            lessThanOrEqualTo(
+              width - AccountingPopoutTokens.windowInsets.right,
+            ),
+          );
+        }
+        await captureUi(tester, 'Voucher Source $state ${width.toInt()}');
+      }
+
       Future<void> page() async {
         await tester.pumpWidget(
           RepaintBoundary(
@@ -177,6 +213,18 @@ void main() {
       expect(tables(w), initial);
       await tap(find.byKey(const ValueKey('payment-voucher-clear-filters')));
       await tap(find.text('New Voucher'));
+      final typeRect = tester.getRect(
+        find.byKey(const ValueKey('voucher-source-type-control')),
+      );
+      final sourceRect = tester.getRect(
+        find.byKey(const ValueKey('voucher-source-control')),
+      );
+      if (width >= 1162) {
+        expect(typeRect.top, closeTo(sourceRect.top, .01));
+      } else {
+        expect(sourceRect.top, greaterThan(typeRect.top));
+      }
+      await capture('Wider Initial Fields');
       expect(find.byKey(const ValueKey('voucher-source-id')), findsNothing);
       await tap(find.byKey(const ValueKey('voucher-source-type')));
       expect(find.text('Bill Settlement').hitTestable(), findsNothing);

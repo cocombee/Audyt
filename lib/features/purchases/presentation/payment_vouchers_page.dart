@@ -901,12 +901,12 @@ class _PaymentVoucherEditorDialogState
   @override
   Widget build(BuildContext context) {
     final viewport = MediaQuery.sizeOf(context);
-    final width = math.min(880.0, math.max(280.0, viewport.width - 128));
+    const width = AccountingPopoutTokens.widerContentWidth;
     final maxHeight = math.min(720.0, math.max(280.0, viewport.height - 240));
     return _guardInput(
       AccountingDialog.alert(
         context,
-        widthFamily: AccountingPopoutWidthFamily.custom,
+        widthFamily: AccountingPopoutWidthFamily.wider,
         key: const ValueKey('payment-voucher-editor-dialog'),
         onClose: _handleClose,
         closeKey: const ValueKey('voucher-editor-close'),

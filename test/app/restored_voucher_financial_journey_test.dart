@@ -1,6 +1,8 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:audyt/app/app.dart';
+import 'package:audyt/app/accounting_theme.dart';
 import 'package:audyt/app/accounting_components.dart';
 import 'package:audyt/app/demo_company.dart';
 import 'package:audyt/features/accounting/application/accounting_workspace.dart';
@@ -17,11 +19,11 @@ import '../features/purchases/voucher_financial_evidence_test.dart'
 import '../support/accounting_test_finders.dart' show accountingCloseIcon;
 
 void main() {
-  for (final width in [720.0, 1224.0]) {
+  for (final width in [720.0, 1162.0, 1224.0]) {
     testWidgets('restored voucher payment and current bank status at $width', (
       tester,
     ) async {
-      tester.view.physicalSize = Size(width, 1100);
+      tester.view.physicalSize = Size(width, 809);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
@@ -62,8 +64,42 @@ void main() {
         await tester.pumpAndSettle();
       }
 
-      Future<void> capture(String state) =>
-          captureUi(tester, 'Voucher Financial $state ${width.toInt()}');
+      Future<void> capture(String state) async {
+        if (find.byType(PaymentVoucherEditorDialog).evaluate().isNotEmpty) {
+          final frame = find
+              .descendant(
+                of: find.byKey(const ValueKey('payment-voucher-editor-dialog')),
+                matching: find.byWidgetPredicate(
+                  (v) => v is Material && v.type == MaterialType.card,
+                ),
+              )
+              .first;
+          final rect = tester.getRect(frame);
+          expect(
+            rect.width,
+            closeTo(
+              math.min(
+                AccountingPopoutTokens.widerContentWidth +
+                    AccountingPopoutTokens.contentInset * 2,
+                width - AccountingPopoutTokens.windowInsets.horizontal,
+              ),
+              .01,
+            ),
+          );
+          expect(
+            rect.left,
+            greaterThanOrEqualTo(AccountingPopoutTokens.windowInsets.left),
+          );
+          expect(
+            rect.right,
+            lessThanOrEqualTo(
+              width - AccountingPopoutTokens.windowInsets.right,
+            ),
+          );
+        }
+        await captureUi(tester, 'Voucher Financial $state ${width.toInt()}');
+      }
+
       Future<void> action(String suffix) async {
         final target = find.byKey(ValueKey('voucher-$suffix-${voucher.id}'));
         if (target.evaluate().isEmpty) {

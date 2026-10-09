@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'journal_workspace_integration_test.dart'
     show captureUi, loadJournalLayoutFonts;
 
@@ -11,7 +13,7 @@ import 'package:audyt/app/frontend_catalog.dart';
 import 'frontend_catalog_test.dart' show openForm;
 
 void main() {
-  for (final width in [720.0, 1162.0]) {
+  for (final width in [720.0, 1162.0, 1224.0]) {
     for (final workflow in [
       'Refunds',
       'Credit Notes',
@@ -33,6 +35,29 @@ void main() {
                 .singleWhere((f) => f.title == workflow),
           );
           expect(find.byType(LinkedRecordReview), findsOneWidget);
+          final frame = find
+              .descendant(
+                of: find.byType(AlertDialog).last,
+                matching: find.byWidgetPredicate(
+                  (v) => v is Material && v.type == MaterialType.card,
+                ),
+              )
+              .first;
+          expect(
+            tester.getSize(frame).width,
+            closeTo(
+              math.min(
+                AccountingPopoutTokens.normalContentWidth +
+                    AccountingPopoutTokens.contentInset * 2,
+                width - AccountingPopoutTokens.windowInsets.horizontal,
+              ),
+              .01,
+            ),
+          );
+          await captureUi(
+            tester,
+            'Linked $workflow Normal Initial ${width.toInt()}',
+          );
           await tester.tap(find.byKey(const ValueKey('load-linked-examples')));
           await tester.pumpAndSettle();
           await tester.tap(find.byKey(const ValueKey('linked-source')));
@@ -76,6 +101,10 @@ void main() {
               findsOneWidget,
             );
           }
+          await captureUi(
+            tester,
+            'Linked $workflow Normal Selected ${width.toInt()}',
+          );
           expect(
             tester
                 .widget<TextField>(find.byKey(const ValueKey('linked-amount')))

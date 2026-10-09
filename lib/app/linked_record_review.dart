@@ -53,10 +53,10 @@ class _LinkedRecordReviewState extends State<LinkedRecordReview> {
 
   @override
   Widget build(BuildContext context) {
-    final width = (MediaQuery.sizeOf(context).width - 96).clamp(220.0, 680.0);
+    const width = AccountingPopoutTokens.normalContentWidth;
     return AccountingDialog.alert(
       context,
-      widthFamily: AccountingPopoutWidthFamily.custom,
+      widthFamily: AccountingPopoutWidthFamily.normal,
       title: widget.workflow,
       formFooter: true,
       maxContentWidth: width,

@@ -1,3 +1,15 @@
+Ordinary Custom width collapse (9 October 2026): only the existing Payment Voucher
+New/Edit/View owner replaces Custom880 with the existing Wider728 family. The
+actual-font saved-source first pair measures about631px, so Normal600 cannot keep
+that pair together; preserve its measured field planner and narrow reflow. The
+separate frontend-only LinkedRecordReview example preview replaces Custom680 with
+Normal600. Its preview identity and disabled live completion remain unchanged.
+Reuse existing content/window insets, fonts, selectors, amount/date controls,
+helpers, attachments, scrolling, dismissal and save/payment/reconciliation guards.
+No shared token change, global width override or financial-command change. Actual
+installed caller acceptance, source render evidence and unavailable native saved
+bank-review states remain separate; preserve saved companies and Safe Build.
+
 Empty history widths (9 October 2026): the authoritative empty Reconciliation
 History (account and statement callers), Match History and Bill Payments use the
 existing Dialog400 family. The Removed Transactions owner uses Dialog400 only

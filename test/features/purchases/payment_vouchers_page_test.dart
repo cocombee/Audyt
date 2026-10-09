@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/services.dart';
 
 import '../../app/journal_workspace_integration_test.dart'
@@ -16,12 +18,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  for (final width in [720.0, 1224.0]) {
+  for (final width in [720.0, 1162.0, 1224.0]) {
     for (final existing in [false, true]) {
       testWidgets(
         'actual voucher ${existing ? 'Edit' : 'New'} guards focused Reference and backdrop at $width',
         (t) async {
-          t.view.physicalSize = Size(width, 1000);
+          t.view.physicalSize = Size(width, 809);
           t.view.devicePixelRatio = 1;
           addTearDown(t.view.resetPhysicalSize);
           addTearDown(t.view.resetDevicePixelRatio);
@@ -81,6 +83,40 @@ void main() {
             findsOneWidget,
           );
           await tap(open);
+          final frame = find
+              .descendant(
+                of: find.byKey(const ValueKey('payment-voucher-editor-dialog')),
+                matching: find.byWidgetPredicate(
+                  (v) => v is Material && v.type == MaterialType.card,
+                ),
+              )
+              .first;
+          final rect = t.getRect(frame);
+          expect(
+            rect.width,
+            closeTo(
+              math.min(
+                AccountingPopoutTokens.widerContentWidth +
+                    AccountingPopoutTokens.contentInset * 2,
+                width - AccountingPopoutTokens.windowInsets.horizontal,
+              ),
+              .01,
+            ),
+          );
+          expect(
+            rect.left,
+            greaterThanOrEqualTo(AccountingPopoutTokens.windowInsets.left),
+          );
+          expect(
+            rect.right,
+            lessThanOrEqualTo(
+              width - AccountingPopoutTokens.windowInsets.right,
+            ),
+          );
+          await captureUi(
+            t,
+            'Voucher ${existing ? 'Edit' : 'New'} Wider Initial ${width.toInt()}',
+          );
           final sourceHelp = find.byWidgetPredicate(
             (widget) =>
                 widget is AccountingFieldHelp &&
