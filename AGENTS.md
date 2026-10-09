@@ -1,3 +1,13 @@
+Tax allocation dismissal (10 October 2026): Record Tax Payment and Link Existing
+Tax Payment include their staged allocations in FrontendFormDialog's existing
+inputValuesForComparison callback. Allocation-only additions or reviewed edits
+must show the original Keep Editing / Discard warning. Removing all staged rows
+returns to the unchanged opening baseline. Retain exact agency revision, account,
+period, amount and currency facts; Keep Editing preserves them and Discard writes
+nothing. No new generic guard, layout, schema, posting or financial functionality.
+Verify both real callers at720/1162, required gate, freeze/build/sign/install and
+native reinspection. Exact native sizing and QuickBooks remain deferred last.
+
 Cheque/Document amount packing (9 October 2026): only the Cheques and Documents
 For Review catalogue Amount declarations explicitly join the existing ordinary
 popout planner via monetary metadata. Keep Payee Or Payer/Amount and Merchant /

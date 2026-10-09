@@ -137,6 +137,64 @@ Future<void> selectPayment(WidgetTester t) async {
 }
 
 void main() {
+  for (final width in [720.0, 1162.0]) {
+    for (final link in [false, true]) {
+      testWidgets(
+        'allocation-only dismissal guards ${link ? 'link' : 'record'} caller at $width',
+        (t) async {
+          final f = await setup(), w = f.w;
+          addTearDown(w.dispose);
+          await host(t, w, width);
+          final before = tables(w);
+          final caller = ValueKey(
+            link ? 'tax-payment-link' : 'tax-payment-record',
+          );
+          await tap(t, find.byKey(caller));
+          await allocation(t, f, 'RMCD', '10.00');
+          await tap(t, accountingCloseIcon());
+          expect(
+            find.byKey(const ValueKey('design-discard-changes')),
+            findsOneWidget,
+          );
+          await capture(
+            t,
+            'Tax Allocation Only Close ${link ? 'Link' : 'Record'} ${width.toInt()}',
+          );
+          await tap(t, find.text('Keep Editing'));
+          expect(find.text('RM 10.00'), findsOneWidget);
+          await tap(t, find.byKey(const ValueKey('tax-allocation-edit-0')));
+          await t.enterText(field('Amount'), '20.00');
+          await tap(t, find.byKey(const ValueKey('design-review')).last);
+          await tap(t, find.byKey(const ValueKey('design-review')).last);
+          await tap(t, accountingCloseIcon());
+          expect(
+            find.byKey(const ValueKey('design-discard-changes')),
+            findsOneWidget,
+          );
+          await tap(t, find.text('Keep Editing'));
+          expect(find.text('RM 20.00'), findsOneWidget);
+          await capture(
+            t,
+            'Tax Allocation Kept Editing ${link ? 'Link' : 'Record'} ${width.toInt()}',
+          );
+          await tap(t, accountingCloseIcon());
+          await tap(t, find.byKey(const ValueKey('design-discard-changes')));
+          expect(tables(w), before);
+          await tap(t, find.byKey(caller));
+          expect(find.byKey(const ValueKey('tax-allocation-0')), findsNothing);
+          await allocation(t, f, 'RMCD', '10.00');
+          await tap(t, find.byKey(const ValueKey('tax-allocation-remove-0')));
+          await tap(t, accountingCloseIcon());
+          expect(
+            find.byKey(const ValueKey('design-discard-changes')),
+            findsNothing,
+          );
+          expect(find.byKey(caller), findsOneWidget);
+          expect(tables(w), before);
+        },
+      );
+    }
+  }
   for (final width in [720.0, 1224.0]) {
     testWidgets(
       'actual record/multi-agency review/save/view/correction/cancel/restart at $width',

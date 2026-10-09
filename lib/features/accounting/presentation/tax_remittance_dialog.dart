@@ -357,6 +357,10 @@ class _TaxRemittanceEditorState extends State<TaxRemittanceEditor> {
           : 'Record a tax payment already made outside Audyt. Review the liability and bank posting before saving.',
     ),
     initial: widget.initial,
+    inputValuesForComparison: (values) => {
+      ...values,
+      '_taxAllocations': [for (final a in _allocations) a.toJson()],
+    },
     reviewInformationRowsBuilder: _review,
     onCommit: (_) async =>
         (_reviewedCommit ??
