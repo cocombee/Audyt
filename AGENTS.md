@@ -1,3 +1,16 @@
+Report period repair (9 October 2026): the user defers blocked native resizing
+and QuickBooks access until last and requests other work first. Cash Flow,
+Changes In Equity and Management Report Pack reuse FrontendFormDialog and the
+existing ledger query to apply a reviewed valid date range. Preserve the last
+successful report and edited values after invalid input; discard does not apply
+changes. Report period controls are independent of preview-record counts. Reuse
+the existing Normal width, ordinary field planner, dates, selectors, warnings and
+review rows. This batch does not certify account-name activity classifications,
+financial-year preferences, comparison/export options or whole-goal acceptance.
+No posting, schema, saved preference or backend change. Required source/gate,
+freeze/build/install and actual current-size caller checks remain; exact native
+default/minimum/forced sizes and working QuickBooks comparison stay pending last.
+
 Ordinary Custom width collapse (9 October 2026): only the existing Payment Voucher
 New/Edit/View owner replaces Custom880 with the existing Wider728 family. The
 actual-font saved-source first pair measures about631px, so Normal600 cannot keep

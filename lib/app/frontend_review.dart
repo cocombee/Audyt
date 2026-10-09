@@ -5774,6 +5774,95 @@ class _FrontendAreaPageState extends State<FrontendAreaPage> {
   final _customThrough = TextEditingController();
   Future<LedgerReport>? _ledgerFuture;
   String? _ledgerRangeKey;
+  final _appliedReportRanges = <String, (DateTime, DateTime)>{};
+  final _reportInputs = <String, Map<String, Object?>>{};
+
+  bool _hasLivePeriod(String title) =>
+      widget.workspace != null &&
+      const {
+        'Cash Flow',
+        'Changes In Equity',
+        'Management Report Pack',
+      }.contains(title);
+
+  (DateTime, DateTime) _reportPeriodRange(Map<String, Object?> values) {
+    final now = DateTime.now();
+    final through = DateTime.utc(now.year, now.month, now.day);
+    return switch (values['Period']) {
+      'All Dates' => (DateTime.utc(1900), through),
+      'This Month' => (DateTime.utc(now.year, now.month), through),
+      'This Quarter' => (
+        DateTime.utc(now.year, ((now.month - 1) ~/ 3) * 3 + 1),
+        through,
+      ),
+      'Custom' => switch ((
+        parseAccountingInputDate('${values['From Date'] ?? ''}'),
+        parseAccountingInputDate('${values['Through Date'] ?? ''}'),
+      )) {
+        (final DateTime from, final DateTime end) when !from.isAfter(end) => (
+          from,
+          end,
+        ),
+        _ => throw const FormatException(
+          'Enter valid dates with the start on or before the end.',
+        ),
+      },
+      _ => throw const FormatException('Choose a report period.'),
+    };
+  }
+
+  Future<void> _openReportPeriod(DesignForm form) async {
+    final workspace = widget.workspace!;
+    DesignForm periodForm(Map<String, Object?> values) => DesignForm(
+      form.title,
+      [
+        const DesignField(
+          'Period',
+          required: true,
+          options: ['All Dates', 'This Month', 'This Quarter', 'Custom'],
+        ),
+        if (values['Period'] == 'Custom') ...[
+          const DesignField('From Date', required: true),
+          const DesignField('Through Date', required: true),
+        ],
+      ],
+      description: 'Choose the period for this report.',
+      actionLabel: 'Run Report',
+    );
+    final initial = _reportInputs[form.title] ?? {'Period': 'All Dates'};
+    await showDialog<Map<String, Object?>>(
+      context: context,
+      builder: (_) => FrontendFormDialog(
+        form: periodForm(initial),
+        initial: initial,
+        valuesFormBuilder: periodForm,
+        reviewInformationRowsBuilder: (values) {
+          final range = _reportPeriodRange(values);
+          return [
+            ('From Date', formatAccountingInputDate(range.$1)),
+            ('Through Date', formatAccountingInputDate(range.$2)),
+          ];
+        },
+        onCommit: (values) async {
+          final range = _reportPeriodRange(values);
+          final report = await workspace.report(
+            from: range.$1,
+            through: range.$2,
+          );
+          if (!mounted || widget.workspace != workspace) {
+            throw StateError('The company changed. Reopen this report.');
+          }
+          setState(() {
+            _reportInputs[form.title] = Map.of(values);
+            _appliedReportRanges[form.title] = range;
+            _ledgerRangeKey =
+                '${range.$1.toIso8601String()}|${range.$2.toIso8601String()}';
+            _ledgerFuture = Future.value(report);
+          });
+        },
+      ),
+    );
+  }
 
   void _invalidateLedger() {
     if (mounted) {
@@ -6038,7 +6127,7 @@ class _FrontendAreaPageState extends State<FrontendAreaPage> {
         null,
       );
     }
-    final range = _reportDateRange();
+    final range = _appliedReportRanges[title] ?? _reportDateRange();
     if (range == null) {
       return table(const {}, 'Choose a valid date range.', null);
     }
@@ -6301,6 +6390,8 @@ class _FrontendAreaPageState extends State<FrontendAreaPage> {
     if (oldWidget.workspace != widget.workspace) {
       _drafts.clear();
       _removedPreviews.clear();
+      _reportInputs.clear();
+      _appliedReportRanges.clear();
       oldWidget.workspace?.removeListener(_invalidateLedger);
       widget.workspace?.addListener(_invalidateLedger);
       _ledgerFuture = null;
@@ -6406,7 +6497,9 @@ class _FrontendAreaPageState extends State<FrontendAreaPage> {
                         routeLabel: widget.title,
                         title: form.title,
                         titleKey: 'page-title-${widget.area}',
-                        description: form.description ?? 'Explore this accounting workflow before backend approval.',
+                        description: _hasLivePeriod(form.title)
+                            ? 'Posted ledger activity for the selected period.'
+                            : form.description ?? 'Explore this accounting workflow before backend approval.',
                         action: AccountingButton.primary(
                           context,
                           key: const ValueKey('design-open-form'),
@@ -6416,6 +6509,10 @@ class _FrontendAreaPageState extends State<FrontendAreaPage> {
                               ? Icons.add_rounded
                               : null,
                           onPressed: () async {
+                            if (_hasLivePeriod(form.title)) {
+                              await _openReportPeriod(form);
+                              return;
+                            }
                             final accounts =
                                 await widget.loadAccountNames?.call() ??
                                 <String>[];
@@ -6433,7 +6530,9 @@ class _FrontendAreaPageState extends State<FrontendAreaPage> {
                             }
                           },
                           child: Text(
-                            _drafts.containsKey(form.title)
+                            _hasLivePeriod(form.title)
+                                ? 'Run Report'
+                                : _drafts.containsKey(form.title)
                                 ? 'Edit Preview'
                                 : form.primaryAction,
                           ),
