@@ -1,3 +1,15 @@
+Cheque/Document amount packing (9 October 2026): only the Cheques and Documents
+For Review catalogue Amount declarations explicitly join the existing ordinary
+popout planner via monetary metadata. Keep Payee Or Payer/Amount and Merchant /
+Supplier/Amount together when measured minima fit. Preserve source order, Normal
+width, narrow reflow, independent two-field amount tracks, formatting and guarded
+cancellation. Existing Transfer participation stays unchanged. Tax Returns has
+an odd final field and requires no forced pairing; settlement/custom amounts,
+transactional columns and real Accounting Review Queue keep their existing owners.
+Actual New and retained callers, entered values and no-write Discard must pass the
+required gate, freeze/build/sign/install and native reinspection. Exact native
+sizes and QuickBooks remain deferred last; no new financial functionality.
+
 Transfer Date/Amount packing (9 October 2026): the Transfers Amount declaration
 explicitly participates in the existing ordinary popout planner through monetary
 metadata. Keep Transfer Date and Amount together when their measured minima fit;

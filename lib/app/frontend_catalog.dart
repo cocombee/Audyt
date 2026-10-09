@@ -710,7 +710,7 @@ const frontendAreas = <String, List<DesignForm>>{
       ),
       DesignField('Extracted Date'),
       DesignField('Merchant / Supplier'),
-      DesignField('Amount'),
+      DesignField('Amount', monetary: true),
       DesignField('Document Reference'),
       DesignField('Category'),
       DesignField('Category Code'),
@@ -1004,7 +1004,7 @@ const frontendAreas = <String, List<DesignForm>>{
         DesignField('Cheque Number', required: true),
         DesignField('Cheque Date', required: true),
         DesignField('Payee Or Payer', required: true),
-        DesignField('Amount', required: true),
+        DesignField('Amount', required: true, monetary: true),
         DesignField('Linked Payment Or Receipt'),
         DesignField(
           'Cheque Status',

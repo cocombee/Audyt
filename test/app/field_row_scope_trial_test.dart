@@ -25,72 +25,115 @@ import 'journal_workspace_integration_test.dart'
 import 'restored_page_routes_test.dart' show tables;
 
 void main() {
-  for (final width in [720.0, 1162.0]) {
-    testWidgets('actual Transfer date and amount pack together at $width', (
-      t,
-    ) async {
-      t.view.physicalSize = Size(width, 809);
-      t.view.devicePixelRatio = 1;
-      addTearDown(t.view.resetPhysicalSize);
-      addTearDown(t.view.resetDevicePixelRatio);
-      installFixedPopoutHost(t);
-      await loadJournalLayoutFonts();
-      final workspace = await createDemoWorkspace();
-      addTearDown(workspace.dispose);
-      final before = tables(workspace);
-      await t.pumpWidget(
-        RepaintBoundary(
-          key: const ValueKey('workspace-capture'),
-          child: DemoCompany(
-            child: AudytApp(initialPath: '/banking', workspace: workspace),
-          ),
-        ),
+  for (final caller in [
+    (
+      name: 'Transfer',
+      path: '/banking',
+      tab: 'Transfers',
+      action: 'Record Transfer',
+      companion: 'Transfer Date',
+      record: 'DEMO-TRANSFERS-1',
+    ),
+    (
+      name: 'Cheque',
+      path: '/banking',
+      tab: 'Cheques',
+      action: 'Record Cheque',
+      companion: 'Payee Or Payer',
+      record: 'DEMO-CHEQUES-1',
+    ),
+    (
+      name: 'Document',
+      path: '/documents',
+      tab: 'For Review',
+      action: 'Review Documents',
+      companion: 'Merchant / Supplier',
+      record: 'DEMO-FORREVIEW-1',
+    ),
+  ]) {
+    for (final width in [720.0, 1162.0]) {
+      testWidgets(
+        'actual ${caller.name} companion and amount pack together at $width',
+        (t) async {
+          t.view.physicalSize = Size(width, 809);
+          t.view.devicePixelRatio = 1;
+          addTearDown(t.view.resetPhysicalSize);
+          addTearDown(t.view.resetDevicePixelRatio);
+          installFixedPopoutHost(t);
+          await loadJournalLayoutFonts();
+          final workspace = await createDemoWorkspace();
+          addTearDown(workspace.dispose);
+          final before = tables(workspace);
+          await t.pumpWidget(
+            RepaintBoundary(
+              key: const ValueKey('workspace-capture'),
+              child: DemoCompany(
+                child: AudytApp(initialPath: caller.path, workspace: workspace),
+              ),
+            ),
+          );
+          await t.pumpAndSettle();
+          final tabs = t.widget<AccountingTabs>(
+            find.byType(AccountingTabs).first,
+          );
+          final index = tabs.labels.indexOf(caller.tab);
+          expect(index, greaterThanOrEqualTo(0));
+          await t.ensureVisible(
+            find.byKey(ValueKey('${tabs.keyPrefix}-$index')),
+          );
+          await t.tap(find.byKey(ValueKey('${tabs.keyPrefix}-$index')));
+          await t.pumpAndSettle();
+          await t.tap(find.text(caller.action));
+          await t.pumpAndSettle();
+          final companion = find.byKey(
+            ValueKey('design-field-${caller.companion}'),
+          );
+          final amount = find.byKey(const ValueKey('design-field-Amount'));
+          expect(t.getRect(companion).top, closeTo(t.getRect(amount).top, .1));
+          expect(t.getRect(companion).right, lessThan(t.getRect(amount).left));
+          await captureUi(
+            t,
+            '${caller.name} Fluid Companion Amount Empty ${width.toInt()}',
+          );
+          final original = t.getRect(amount);
+          await t.enterText(amount, '1234567.89');
+          await t.pumpAndSettle();
+          expect(
+            t.getRect(amount),
+            original,
+            reason: 'Independent amounts retain their two-field track.',
+          );
+          await captureUi(
+            t,
+            '${caller.name} Fluid Companion Amount Typed ${width.toInt()}',
+          );
+          await t.tap(find.byKey(const ValueKey('design-close')));
+          await t.pumpAndSettle();
+          await t.tap(find.text('Keep Editing'));
+          await t.pumpAndSettle();
+          expect(
+            t.widget<TextFormField>(amount).controller!.text,
+            '1,234,567.89',
+          );
+          await t.tap(find.byKey(const ValueKey('design-close')));
+          await t.pumpAndSettle();
+          await t.tap(find.text('Discard'));
+          await t.pumpAndSettle();
+          await t.tap(find.byKey(ValueKey('view-record-${caller.record}')));
+          await t.pumpAndSettle();
+          expect(t.getRect(companion).top, closeTo(t.getRect(amount).top, .1));
+          expect(t.widget<TextFormField>(amount).controller!.text, '12,000.00');
+          await captureUi(
+            t,
+            '${caller.name} Fluid Companion Amount Retained ${width.toInt()}',
+          );
+          await t.tap(find.byKey(const ValueKey('design-close')));
+          await t.pumpAndSettle();
+          expect(tables(workspace), before);
+          expect(t.takeException(), isNull);
+        },
       );
-      await t.pumpAndSettle();
-      final tabs = t.widget<AccountingTabs>(find.byType(AccountingTabs).first);
-      final index = tabs.labels.indexOf('Transfers');
-      expect(index, greaterThanOrEqualTo(0));
-      await t.ensureVisible(find.byKey(ValueKey('${tabs.keyPrefix}-$index')));
-      await t.tap(find.byKey(ValueKey('${tabs.keyPrefix}-$index')));
-      await t.pumpAndSettle();
-      await t.tap(find.text('Record Transfer'));
-      await t.pumpAndSettle();
-      final date = find.byKey(const ValueKey('design-field-Transfer Date'));
-      final amount = find.byKey(const ValueKey('design-field-Amount'));
-      expect(t.getRect(date).top, closeTo(t.getRect(amount).top, .1));
-      expect(t.getRect(date).right, lessThan(t.getRect(amount).left));
-      await captureUi(t, 'Transfer Fluid Date Amount Empty ${width.toInt()}');
-      final original = t.getRect(amount);
-      await t.enterText(amount, '1234567.89');
-      await t.pumpAndSettle();
-      expect(
-        t.getRect(amount),
-        original,
-        reason: 'Independent amounts retain their two-field track.',
-      );
-      await captureUi(t, 'Transfer Fluid Date Amount Typed ${width.toInt()}');
-      await t.tap(find.byKey(const ValueKey('design-close')));
-      await t.pumpAndSettle();
-      await t.tap(find.text('Keep Editing'));
-      await t.pumpAndSettle();
-      expect(t.widget<TextFormField>(amount).controller!.text, '1,234,567.89');
-      await t.tap(find.byKey(const ValueKey('design-close')));
-      await t.pumpAndSettle();
-      await t.tap(find.text('Discard'));
-      await t.pumpAndSettle();
-      await t.tap(find.byKey(const ValueKey('view-record-DEMO-TRANSFERS-1')));
-      await t.pumpAndSettle();
-      expect(t.getRect(date).top, closeTo(t.getRect(amount).top, .1));
-      expect(t.widget<TextFormField>(amount).controller!.text, '12,000.00');
-      await captureUi(
-        t,
-        'Transfer Fluid Date Amount Retained ${width.toInt()}',
-      );
-      await t.tap(find.byKey(const ValueKey('design-close')));
-      await t.pumpAndSettle();
-      expect(tables(workspace), before);
-      expect(t.takeException(), isNull);
-    });
+    }
   }
 
   test('ordinary money growth uses the actual three-or-more row only', () {
