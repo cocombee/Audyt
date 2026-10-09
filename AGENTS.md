@@ -1,3 +1,14 @@
+Empty history widths (9 October 2026): the authoritative empty Reconciliation
+History (account and statement callers), Match History and Bill Payments use the
+existing Dialog400 family. The Removed Transactions owner uses Dialog400 only
+after its final record is restored and it is idle/error-free. Populated lists,
+approved evidence, paging and Removed busy/error states retain their existing
+Custom728 geometry. Reuse existing width tokens and content/window insets; no
+global empty-list rule. Preserve all records, company scope, financial commands,
+reopen/restore/payment permissions and return destinations. Isolated route tests
+and installed actual acceptance remain separate; unavailable native records are
+pending evidence, not permission to alter the saved company for screenshots.
+
 Account Activity text edges (9 October 2026): only the existing ledger report
 activity popout aligns opening/ending/operating balance labels and its standalone
 operating, empty and credit-balance notes with AccountingInformationRows' 20px

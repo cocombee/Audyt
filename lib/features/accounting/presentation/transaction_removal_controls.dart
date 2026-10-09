@@ -236,13 +236,19 @@ class _RemovedTransactionsDialogState extends State<RemovedTransactionsDialog> {
         offset: offset,
         limit: _pageSize,
       );
+      final empty = page.total == 0 && _changing == null && _error == null;
+      final contentWidth = empty
+          ? AccountingPopoutTokens.dialogContentWidth
+          : AccountingPopoutTokens.widerContentWidth;
       return AccountingDialog.alert(
         context,
-        widthFamily: AccountingPopoutWidthFamily.custom,
+        widthFamily: empty
+            ? AccountingPopoutWidthFamily.dialog
+            : AccountingPopoutWidthFamily.custom,
         title: 'Removed ${removalFamilyLabel(widget.kind, plural: true)}',
         description: 'Details and receipts are retained. Restore a record to return it to the active list.',
-        fixedContentWidth: AccountingPopoutTokens.widerContentWidth,
-        maxContentWidth: AccountingPopoutTokens.widerContentWidth,
+        fixedContentWidth: contentWidth,
+        maxContentWidth: contentWidth,
         actions: const [],
         content: Column(
           mainAxisSize: MainAxisSize.min,

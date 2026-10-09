@@ -444,14 +444,20 @@ class _PayBillsPageState extends State<PayBillsPage> {
             offset: offset,
             limit: pageSize,
           );
+          final empty = total == 0;
+          final contentWidth = empty
+              ? AccountingPopoutTokens.dialogContentWidth
+              : AccountingPopoutTokens.widerContentWidth;
           return AccountingDialog.alert(
             context,
-            widthFamily: AccountingPopoutWidthFamily.custom,
+            widthFamily: empty
+                ? AccountingPopoutWidthFamily.dialog
+                : AccountingPopoutWidthFamily.custom,
             title: 'Bill Payments',
-            maxContentWidth: AccountingPopoutTokens.widerContentWidth,
+            maxContentWidth: contentWidth,
             actions: const [],
             content: SizedBox(
-              width: AccountingPopoutTokens.widerContentWidth,
+              width: contentWidth,
               child: total == 0
                   ? const Text('No payments recorded for this bill.')
                   : AccountingRecordList(

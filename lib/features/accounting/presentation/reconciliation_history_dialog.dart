@@ -565,13 +565,19 @@ class _ReconciliationHistoryDialogState
             widget.workspace.identity.businessId,
             widget.paymentAccountId!,
           );
+    final empty = history.isEmpty;
+    final contentWidth = empty
+        ? AccountingPopoutTokens.dialogContentWidth
+        : AccountingPopoutTokens.widerContentWidth;
     return AccountingDialog.alert(
       context,
-      widthFamily: AccountingPopoutWidthFamily.custom,
+      widthFamily: empty
+          ? AccountingPopoutWidthFamily.dialog
+          : AccountingPopoutWidthFamily.custom,
       title: 'Reconciliation History',
       description: 'Review approvals, their evidence and any later reopening.',
       content: SizedBox(
-        width: AccountingPopoutTokens.widerContentWidth,
+        width: contentWidth,
         child: SingleChildScrollView(
           child: AccountingRecordList(
             paginationKey: 'reconciliation-history',

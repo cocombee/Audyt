@@ -794,17 +794,23 @@ class _BankingPageState extends State<BankingPage> {
       widget.workspace.identity.businessId,
       statementId,
     );
+    final empty = history.isEmpty;
+    final contentWidth = empty
+        ? AccountingPopoutTokens.dialogContentWidth
+        : AccountingPopoutTokens.widerContentWidth;
     var offset = 0;
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, update) => AccountingDialog.alert(
           context,
-          widthFamily: AccountingPopoutWidthFamily.custom,
+          widthFamily: empty
+              ? AccountingPopoutWidthFamily.dialog
+              : AccountingPopoutWidthFamily.custom,
           title: 'Match History',
           description: 'Review accepted connections and any later corrections.',
           content: SizedBox(
-            width: AccountingPopoutTokens.widerContentWidth,
+            width: contentWidth,
             child: SingleChildScrollView(
               child: AccountingCard.surface(
                 context,

@@ -287,6 +287,7 @@ cd "$wiring_project"
   test/features/accounting/presentation/accounting_control_contract_test.dart \
   test/app/optimization_editor_test.dart \
   test/app/audit_log_access_test.dart \
+  test/app/empty_history_dialog_width_test.dart \
   test/features/accounting/data/audit_event_page_test.dart \
   test/core/documents/local_folder_document_adapter_test.dart \
   test/core/documents/folder_placement_plan_test.dart \
