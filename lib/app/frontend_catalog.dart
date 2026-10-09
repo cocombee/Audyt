@@ -882,7 +882,7 @@ const frontendAreas = <String, List<DesignForm>>{
         DesignField('From Account', required: true),
         DesignField('To Account', required: true),
         DesignField('Transfer Date', required: true),
-        DesignField('Amount', required: true),
+        DesignField('Amount', required: true, monetary: true),
         DesignField('Bank Reference'),
         DesignField('Linked Transaction'),
         DesignField(

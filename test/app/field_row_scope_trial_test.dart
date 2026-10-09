@@ -22,8 +22,77 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'journal_workspace_integration_test.dart'
     show captureUi, loadJournalLayoutFonts;
+import 'restored_page_routes_test.dart' show tables;
 
 void main() {
+  for (final width in [720.0, 1162.0]) {
+    testWidgets('actual Transfer date and amount pack together at $width', (
+      t,
+    ) async {
+      t.view.physicalSize = Size(width, 809);
+      t.view.devicePixelRatio = 1;
+      addTearDown(t.view.resetPhysicalSize);
+      addTearDown(t.view.resetDevicePixelRatio);
+      installFixedPopoutHost(t);
+      await loadJournalLayoutFonts();
+      final workspace = await createDemoWorkspace();
+      addTearDown(workspace.dispose);
+      final before = tables(workspace);
+      await t.pumpWidget(
+        RepaintBoundary(
+          key: const ValueKey('workspace-capture'),
+          child: DemoCompany(
+            child: AudytApp(initialPath: '/banking', workspace: workspace),
+          ),
+        ),
+      );
+      await t.pumpAndSettle();
+      final tabs = t.widget<AccountingTabs>(find.byType(AccountingTabs).first);
+      final index = tabs.labels.indexOf('Transfers');
+      expect(index, greaterThanOrEqualTo(0));
+      await t.ensureVisible(find.byKey(ValueKey('${tabs.keyPrefix}-$index')));
+      await t.tap(find.byKey(ValueKey('${tabs.keyPrefix}-$index')));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Record Transfer'));
+      await t.pumpAndSettle();
+      final date = find.byKey(const ValueKey('design-field-Transfer Date'));
+      final amount = find.byKey(const ValueKey('design-field-Amount'));
+      expect(t.getRect(date).top, closeTo(t.getRect(amount).top, .1));
+      expect(t.getRect(date).right, lessThan(t.getRect(amount).left));
+      await captureUi(t, 'Transfer Fluid Date Amount Empty ${width.toInt()}');
+      final original = t.getRect(amount);
+      await t.enterText(amount, '1234567.89');
+      await t.pumpAndSettle();
+      expect(
+        t.getRect(amount),
+        original,
+        reason: 'Independent amounts retain their two-field track.',
+      );
+      await captureUi(t, 'Transfer Fluid Date Amount Typed ${width.toInt()}');
+      await t.tap(find.byKey(const ValueKey('design-close')));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Keep Editing'));
+      await t.pumpAndSettle();
+      expect(t.widget<TextFormField>(amount).controller!.text, '1,234,567.89');
+      await t.tap(find.byKey(const ValueKey('design-close')));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Discard'));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const ValueKey('view-record-DEMO-TRANSFERS-1')));
+      await t.pumpAndSettle();
+      expect(t.getRect(date).top, closeTo(t.getRect(amount).top, .1));
+      expect(t.widget<TextFormField>(amount).controller!.text, '12,000.00');
+      await captureUi(
+        t,
+        'Transfer Fluid Date Amount Retained ${width.toInt()}',
+      );
+      await t.tap(find.byKey(const ValueKey('design-close')));
+      await t.pumpAndSettle();
+      expect(tables(workspace), before);
+      expect(t.takeException(), isNull);
+    });
+  }
+
   test('ordinary money growth uses the actual three-or-more row only', () {
     const base = [80.0, 120.0, 120.0, 120.0];
     const grown = [210.0, null, null, null];

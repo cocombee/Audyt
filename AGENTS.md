@@ -1,3 +1,14 @@
+Transfer Date/Amount packing (9 October 2026): the Transfers Amount declaration
+explicitly participates in the existing ordinary popout planner through monetary
+metadata. Keep Transfer Date and Amount together when their measured minima fit;
+retain source order, Normal width, narrow reflow and independent amount tracks.
+Do not change shared money recognition, custom amounts, transactional columns,
+other catalogue forms or page/tab fields. Preserve money formatting, draft facts,
+preview-only availability and guarded cancellation. Verify real New and retained
+Transfer callers, entered amounts and no-write Discard, then the required gate,
+freeze/build/sign/install and actual native reinspection. Exact native dimensions
+and QuickBooks remain deferred last; full Accounting goal stays active.
+
 Removed Credit retained-tax display (9 October 2026): the actual installed
 Removed Credits View displayed null% for a legacy invoice with no saved tax rate.
 Reuse existing Legacy / Review Required and Not Retained wording for missing
