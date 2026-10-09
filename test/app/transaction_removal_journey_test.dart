@@ -1,4 +1,5 @@
 import 'package:audyt/app/app.dart';
+import 'package:audyt/app/demo_company.dart';
 import 'package:audyt/app/accounting_components.dart';
 import 'package:audyt/core/ids/entity_id.dart';
 import 'package:audyt/features/accounting/application/accounting_workspace.dart';
@@ -65,6 +66,86 @@ Future<void> tap(WidgetTester tester, Finder target) async {
 }
 
 void main() {
+  for (final width in [720.0, 1162.0]) {
+    testWidgets('removed legacy credit retains unknown tax facts at $width', (
+      tester,
+    ) async {
+      tester.view.physicalSize = Size(width, 809);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await (FontLoader(
+        'Inter',
+      )..addFont(rootBundle.load('assets/fonts/Inter-Variable.woff2'))).load();
+      final w = await createDemoWorkspace(
+        asOf: DateTime(2026, 10, 9),
+        includeRowReview: true,
+      );
+      addTearDown(w.dispose);
+      final credit = w.creditDrafts().first;
+      final invoice = w
+          .postedInvoices()
+          .singleWhere((i) => i.sourceDraft.id == credit.invoiceId)
+          .sourceDraft;
+      expect(invoice.taxMode, isEmpty);
+      expect(invoice.lines.single.taxRatePercent, isNull);
+      final originalAttachments = credit.attachments
+          .map((a) => a.toJson())
+          .toList();
+      final originalInvoice = invoice.draftSnapshot();
+      final journalIds = (await w.journals()).map((j) => j.entry.id).toList();
+      w.setTransactionRemoved(
+        reviewed: w.reviewTransactionRemoval(
+          TransactionRecordKind.invoiceCredit,
+          credit.id.value,
+        ),
+        removed: true,
+        changedAt: DateTime.now().toUtc(),
+      );
+      await openPage(tester, w, TransactionRecordKind.invoiceCredit);
+      await tap(
+        tester,
+        find.byKey(const ValueKey('removed-invoiceCredit-open')),
+      );
+      await tap(
+        tester,
+        find.byKey(ValueKey('removed-view-${credit.id.value}')),
+      );
+      expect(
+        find.text('Legacy / Review Required · Not Retained'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('null%'), findsNothing);
+      expect(find.text('RM 100.00'), findsWidgets);
+      expect(find.byType(AccountingInformationRows), findsWidgets);
+      expect(find.widgetWithText(TextButton, 'Save Draft'), findsNothing);
+      final retained = w
+          .creditDrafts(includeRemoved: true)
+          .singleWhere((d) => d.id == credit.id);
+      expect(retained.invoiceId, credit.invoiceId);
+      expect(retained.revision, credit.revision);
+      expect(retained.savedAt, credit.savedAt);
+      expect(retained.reason, credit.reason);
+      expect(retained.date, credit.date);
+      expect(retained.lineCredits, credit.lineCredits);
+      expect(
+        retained.attachments.map((a) => a.toJson()).toList(),
+        originalAttachments,
+      );
+      expect(
+        w
+            .postedInvoices()
+            .singleWhere((i) => i.sourceDraft.id == credit.invoiceId)
+            .sourceDraft
+            .draftSnapshot(),
+        originalInvoice,
+      );
+      expect((await w.journals()).map((j) => j.entry.id).toList(), journalIds);
+      await captureUi(tester, 'Removed Credit Missing Tax ${width.toInt()}');
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   for (final width in [720.0, 1224.0]) {
     for (final state in [
       'claim returned',

@@ -367,6 +367,16 @@ class InvoiceCreditPage extends StatelessWidget {
       final originalInvoice = workspace.postedInvoices().singleWhere(
         (invoice) => invoice.sourceDraft.id == draft.invoiceId,
       );
+      final savedTaxMode = originalInvoice.sourceDraft.taxMode;
+      final taxModeLabel = savedTaxMode.isEmpty
+          ? 'Legacy / Review Required'
+          : savedTaxMode;
+      final retainedTaxRates = {
+        for (final line in originalInvoice.sourceDraft.lines)
+          line.id: line.taxRatePercent == null
+              ? 'Not Retained'
+              : '${line.taxRatePercent}%',
+      };
       final rows = <(String, String)>[
         ('Reason', draft.reason),
         ('Revision', '${posted?.revision ?? draft.revision}'),
@@ -403,7 +413,7 @@ class InvoiceCreditPage extends StatelessWidget {
             ),
             (
               'Line ${i + 1} Tax',
-              '${originalInvoice.sourceDraft.taxMode} · ${originalInvoice.sourceDraft.lines.singleWhere((line) => line.id == draft.lineCredits.keys.elementAt(i)).taxRatePercent}%',
+              '$taxModeLabel · ${retainedTaxRates[draft.lineCredits.keys.elementAt(i)]}',
             ),
           ],
         ] else ...[

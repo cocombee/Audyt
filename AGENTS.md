@@ -1,3 +1,13 @@
+Removed Credit retained-tax display (9 October 2026): the actual installed
+Removed Credits View displayed null% for a legacy invoice with no saved tax rate.
+Reuse existing Legacy / Review Required and Not Retained wording for missing
+facts, retaining explicit saved tax modes and rates unchanged. This is read-only
+formatting only: no inferred zero, tax normalization, posting, refund, schema,
+geometry or saved preference change. Prove legacy unknown facts and original
+credit/invoice/evidence preservation through actual caller regression at720/1162,
+then required gate, freeze, build/sign/install and reinspection. Native exact
+window sizes and QuickBooks remain deferred last; full goal remains active.
+
 Cash Flow account-type guard (9 October 2026): the existing report must not
 classify ordinary income/expense cash journals as investing or financing merely
 because an account name contains equipment/property or loan/borrow. Apply the
