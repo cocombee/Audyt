@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:audyt/features/accounting/data/accounting_database.dart';
 import 'package:audyt/app/app.dart';
 import 'package:audyt/app/accounting_theme.dart';
@@ -8,8 +10,10 @@ import 'package:audyt/core/money/money.dart';
 import 'package:audyt/core/storage/record_metadata.dart';
 import 'package:audyt/features/accounting/application/accounting_workspace.dart';
 import 'package:audyt/features/accounting/domain/account.dart';
+import 'package:audyt/features/accounting/domain/bank_statement_import.dart';
 import 'package:audyt/features/accounting/domain/customer.dart';
 import 'package:audyt/features/accounting/domain/journal_entry.dart';
+import 'package:audyt/features/accounting/domain/payment_account.dart';
 import 'package:audyt/features/accounting/presentation/banking_page.dart';
 import 'package:audyt/features/accounting/presentation/record_expense_page.dart';
 import 'package:audyt/features/accounting/presentation/reconciliation_adjustment_dialog.dart';
@@ -128,6 +132,475 @@ Future<Invoice> postedInvoice(Fixture f) async {
 }
 
 void main() {
+  testWidgets(
+    'dirty embedded reconciliation keeps or discards before account and statement navigation',
+    (tester) async {
+      await prepare(tester, 720);
+      installFixedPopoutHost(tester);
+      for (final width in [720.0, 1162.0]) {
+        tester.view.physicalSize = Size(width, 1000);
+        final f = Fixture();
+        await f.open();
+        await f.w.createAccount(
+          code: '2100',
+          name: 'Fictional Card Payable',
+          type: AccountType.liability,
+        );
+        final cardLedger = (await f.w.accounts())
+            .singleWhere((record) => record.account.code == '2100')
+            .account
+            .id;
+        f.w.savePaymentAccount(
+          PaymentAccount.create(
+            id: 'card',
+            name: 'Fictional Card',
+            type: PaymentAccountType.card,
+            currencyCode: 'MYR',
+          ),
+        );
+        f.w.database.linkPaymentLedgerAccount(f.business, 'card', cardLedger);
+        f.w.savePaymentAccount(
+          PaymentAccount.create(
+            id: 'empty-card',
+            name: 'Fictional Empty Card',
+            type: PaymentAccountType.card,
+            currencyCode: 'MYR',
+          ),
+        );
+        final expectedSources = <String, Uint8List>{};
+        EntityId importStatement(String paymentId, String filename, int day) {
+          final bytes = Uint8List.fromList(
+            utf8.encode(
+              'Date,Description,Amount\n2026-09-${day.toString().padLeft(2, '0')},Fictional $filename,1.00',
+            ),
+          );
+          final id = EntityId.random();
+          f.w.database.importBankStatement(
+            id: id,
+            businessId: f.business,
+            paymentAccountId: paymentId,
+            importedAt: DateTime.utc(2026, 10, 10),
+            statement: BankStatementImport.csv(
+              filename: filename,
+              currency: 'MYR',
+              bytes: bytes,
+            ),
+          );
+          expectedSources[id.value] = bytes;
+          return id;
+        }
+
+        final firstBankStatement = importStatement('bank', 'bank-one.csv', 2);
+        final secondBankStatement = importStatement('bank', 'bank-two.csv', 3);
+        importStatement('card', 'card-one.csv', 4);
+
+        Future<void> makeDirty(String evidence) async {
+          if (keyed('reconciliation-evidence').evaluate().isEmpty) {
+            await input(tester, 'reconciliation-opening', '0.00');
+            await input(tester, 'reconciliation-closing', '1.00');
+            await tap(tester, keyed('review-reconciliation'));
+          }
+          expect(keyed('reconciliation-evidence'), findsOneWidget);
+          await input(tester, 'reconciliation-evidence', evidence);
+        }
+
+        void expectDirtyInputs(String evidence) {
+          expect(
+            tester
+                .widget<TextField>(keyed('reconciliation-opening'))
+                .controller!
+                .text,
+            '0.00',
+          );
+          expect(
+            tester
+                .widget<TextField>(keyed('reconciliation-closing'))
+                .controller!
+                .text,
+            '1.00',
+          );
+          expect(
+            tester
+                .widget<TextField>(keyed('reconciliation-evidence'))
+                .controller!
+                .text,
+            evidence,
+          );
+        }
+
+        await tester.pumpWidget(
+          RepaintBoundary(
+            key: const ValueKey('workspace-capture'),
+            child: MaterialApp(
+              debugShowCheckedModeBanner: false,
+              theme: AccountingTheme.light(),
+              home: Scaffold(body: BankingPage(workspace: f.w, compact: true)),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final before = f.w.database.exportDataArchive(
+          f.business,
+          DateTime.utc(2026, 10, 10),
+        );
+        await tap(
+          tester,
+          keyed('reconcile-statement-${firstBankStatement.value}'),
+        );
+        expect(
+          tester
+              .widget<StatementReconciliationDialog>(
+                find.byType(StatementReconciliationDialog),
+              )
+              .statementId,
+          firstBankStatement,
+        );
+        await makeDirty('Keep the bank draft');
+
+        // Re-selecting the active account is an exact no-op, even with a draft.
+        await tap(tester, keyed('banking-account-switcher'));
+        await tap(tester, keyed('banking-account-option-bank'));
+        expect(keyed('reconciliation-discard-changes'), findsNothing);
+        expectDirtyInputs('Keep the bank draft');
+
+        // The summary Account menu shares the dialog-owned Keep/Discard guard.
+        await tap(tester, keyed('banking-account-switcher'));
+        await tap(tester, keyed('banking-account-option-card'));
+        expect(keyed('reconciliation-discard-changes'), findsOneWidget);
+        await capture(
+          tester,
+          'Reconciliation Navigation Prompt ${width.toInt()}',
+        );
+        await tap(tester, keyed('reconciliation-keep-editing'));
+        expect(
+          tester
+              .widget<StatementReconciliationDialog>(
+                find.byType(StatementReconciliationDialog),
+              )
+              .statementId,
+          firstBankStatement,
+        );
+        expectDirtyInputs('Keep the bank draft');
+        await capture(
+          tester,
+          'Reconciliation Navigation Kept ${width.toInt()}',
+        );
+
+        await tap(tester, keyed('banking-account-switcher'));
+        await tap(tester, keyed('banking-account-option-card'));
+        await tap(tester, keyed('reconciliation-discard-changes'));
+        final cardStatement = tester
+            .widget<StatementReconciliationDialog>(
+              find.byType(StatementReconciliationDialog),
+            )
+            .statementId!;
+        expect(cardStatement, isNot(firstBankStatement));
+        expect(cardStatement, isNot(secondBankStatement));
+        expect(find.text('card-one.csv'), findsWidgets);
+        await capture(
+          tester,
+          'Reconciliation Navigation Discarded ${width.toInt()}',
+        );
+
+        // The embedded Account action uses the same guard.
+        await makeDirty('Keep the card draft');
+        await tap(tester, keyed('reconciliation-account-switcher'));
+        await tap(tester, keyed('reconciliation-account-option-bank'));
+        expect(keyed('reconciliation-discard-changes'), findsOneWidget);
+        await tap(tester, keyed('reconciliation-keep-editing'));
+        expect(
+          tester
+              .widget<StatementReconciliationDialog>(
+                find.byType(StatementReconciliationDialog),
+              )
+              .statementId,
+          cardStatement,
+        );
+        expectDirtyInputs('Keep the card draft');
+        await tap(tester, keyed('reconciliation-account-switcher'));
+        await tap(tester, keyed('reconciliation-account-option-bank'));
+        await tap(tester, keyed('reconciliation-discard-changes'));
+        expect(
+          tester
+              .widget<StatementReconciliationDialog>(
+                find.byType(StatementReconciliationDialog),
+              )
+              .statementId,
+          firstBankStatement,
+        );
+
+        // A same-document selection stays in place without opening the prompt.
+        await makeDirty('Switch to another statement');
+        await tap(tester, keyed('reconciliation-statement-switcher'));
+        await tap(
+          tester,
+          keyed('reconciliation-statement-option-${firstBankStatement.value}'),
+        );
+        expect(keyed('reconciliation-discard-changes'), findsNothing);
+        expectDirtyInputs('Switch to another statement');
+
+        await tap(tester, keyed('reconciliation-statement-switcher'));
+        await tap(
+          tester,
+          keyed('reconciliation-statement-option-${secondBankStatement.value}'),
+        );
+        expect(keyed('reconciliation-discard-changes'), findsOneWidget);
+        await tap(tester, keyed('reconciliation-keep-editing'));
+        expect(
+          tester
+              .widget<StatementReconciliationDialog>(
+                find.byType(StatementReconciliationDialog),
+              )
+              .statementId,
+          firstBankStatement,
+        );
+        expectDirtyInputs('Switch to another statement');
+        await tap(tester, keyed('reconciliation-statement-switcher'));
+        await tap(
+          tester,
+          keyed('reconciliation-statement-option-${secondBankStatement.value}'),
+        );
+        await tap(tester, keyed('reconciliation-discard-changes'));
+        expect(
+          tester
+              .widget<StatementReconciliationDialog>(
+                find.byType(StatementReconciliationDialog),
+              )
+              .statementId,
+          secondBankStatement,
+        );
+
+        // An account with no imported statement still asks before leaving.
+        await makeDirty('Keep the empty-account draft');
+        await tap(tester, keyed('banking-account-switcher'));
+        await tap(tester, keyed('banking-account-option-empty-card'));
+        expect(keyed('reconciliation-discard-changes'), findsOneWidget);
+        await tap(tester, keyed('reconciliation-keep-editing'));
+        expect(find.byType(StatementReconciliationDialog), findsOneWidget);
+        expectDirtyInputs('Keep the empty-account draft');
+        await tap(tester, keyed('banking-account-switcher'));
+        await tap(tester, keyed('banking-account-option-empty-card'));
+        await tap(tester, keyed('reconciliation-discard-changes'));
+        expect(find.byType(StatementReconciliationDialog), findsNothing);
+        expect(find.text('No statements imported yet.'), findsOneWidget);
+        await tap(tester, keyed('banking-account-switcher'));
+        await tap(tester, keyed('banking-account-option-bank'));
+        await tap(
+          tester,
+          keyed('reconcile-statement-${secondBankStatement.value}'),
+        );
+
+        // Review Connections leaves only after explicit Discard.
+        await makeDirty('Keep the review draft');
+        await tap(tester, keyed('reconciliation-review-connections'));
+        expect(keyed('reconciliation-discard-changes'), findsOneWidget);
+        await tap(tester, keyed('reconciliation-keep-editing'));
+        expect(find.byType(StatementReconciliationDialog), findsOneWidget);
+        expectDirtyInputs('Keep the review draft');
+        await tap(tester, keyed('reconciliation-review-connections'));
+        await tap(tester, keyed('reconciliation-discard-changes'));
+        expect(find.byType(StatementReconciliationDialog), findsNothing);
+        expect(keyed('matching-window-switch'), findsOneWidget);
+
+        expect(
+          f.w.database.exportDataArchive(
+            f.business,
+            DateTime.utc(2026, 10, 10),
+          ),
+          before,
+        );
+        for (final entry in expectedSources.entries) {
+          expect(
+            f.w.database
+                .bankStatement(f.business, EntityId.parse(entry.key))!
+                .sourceBytes,
+            orderedEquals(entry.value),
+          );
+        }
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+        f.w.dispose();
+      }
+    },
+  );
+
+  for (final width in [720.0, 1162.0, 1224.0]) {
+    for (final switcher in ['banking', 'documents']) {
+      testWidgets(
+        'mixed bank and card directory reaches card reconciliation via $switcher at $width',
+        (tester) async {
+          await prepare(tester, width);
+          installFixedPopoutHost(tester);
+          final f = Fixture();
+          await f.open(liability: true);
+          f.w.savePaymentAccount(
+            PaymentAccount.create(
+              id: 'bank',
+              name: 'Fictional Card',
+              type: PaymentAccountType.card,
+              currencyCode: 'MYR',
+            ),
+          );
+          await f.w.createAccount(
+            code: '1010',
+            name: 'Fictional Deposit Bank',
+            type: AccountType.asset,
+          );
+          final ledger = (await f.w.accounts())
+              .singleWhere((a) => a.account.code == '1010')
+              .account
+              .id;
+          f.w.savePaymentAccount(
+            PaymentAccount.create(
+              id: 'deposit-bank',
+              name: 'Fictional Deposit Bank',
+              type: PaymentAccountType.bank,
+              currencyCode: 'MYR',
+            ),
+          );
+          f.w.database.linkPaymentLedgerAccount(
+            f.business,
+            'deposit-bank',
+            ledger,
+          );
+          for (final type in [
+            PaymentAccountType.cash,
+            PaymentAccountType.wallet,
+            PaymentAccountType.other,
+          ]) {
+            f.w.savePaymentAccount(
+              PaymentAccount.create(
+                id: type.name,
+                name: 'Excluded ${type.label}',
+                type: type,
+                currencyCode: 'MYR',
+              ),
+            );
+          }
+          final statements = <String, EntityId>{};
+          for (final payment in ['bank', 'deposit-bank']) {
+            statements[payment] = f.w.database.importBankStatement(
+              id: EntityId.random(),
+              businessId: f.business,
+              paymentAccountId: payment,
+              importedAt: DateTime.utc(2026, 10, 10),
+              statement: BankStatementImport.csv(
+                filename: '$payment.csv',
+                currency: 'MYR',
+                bytes: Uint8List.fromList(
+                  utf8.encode(
+                    'Date,Description,Amount\n2026-09-02,Fictional $payment,1.00',
+                  ),
+                ),
+              ),
+            );
+          }
+          final before = f.w.database.exportDataArchive(
+            f.business,
+            DateTime.utc(2026, 10, 10),
+          );
+          await tester.pumpWidget(
+            RepaintBoundary(
+              key: const ValueKey('workspace-capture'),
+              child: MaterialApp(
+                debugShowCheckedModeBanner: false,
+                theme: AccountingTheme.light(),
+                home: Scaffold(
+                  body: BankingPage(workspace: f.w, compact: true),
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          expect(find.text('Bank Balance'), findsOneWidget);
+          await tap(tester, keyed('$switcher-account-switcher'));
+          expect(keyed('$switcher-account-option-bank'), findsOneWidget);
+          for (final type in ['cash', 'wallet', 'other']) {
+            expect(keyed('$switcher-account-option-$type'), findsNothing);
+          }
+          await capture(
+            tester,
+            'Reconciliation Account Access $switcher Choices ${width.toInt()}',
+          );
+          await tap(tester, keyed('$switcher-account-option-bank'));
+          expect(find.text('Card Balance'), findsOneWidget);
+          await accountMenu(tester, 'Reconcile Account');
+          expect(
+            tester
+                .widget<StatementReconciliationDialog>(
+                  find.byType(StatementReconciliationDialog),
+                )
+                .paymentAccountId,
+            'bank',
+          );
+          await input(tester, 'reconciliation-closing', '0.00');
+          await tap(tester, keyed('review-reconciliation'));
+          await tap(tester, keyed('reconciliation-add-transaction'));
+          expect(find.text('Payments/Refunds'), findsOneWidget);
+          expect(
+            tester
+                .widget<FilledButton>(keyed('save-reconciliation-adjustment'))
+                .onPressed,
+            isNull,
+          );
+          await capture(
+            tester,
+            'Reconciliation Account Access $switcher Card Entry ${width.toInt()}',
+          );
+          await tap(tester, keyed('adjustment-editor-close'));
+          await tap(tester, accountingCloseIcon().last);
+          await tap(tester, keyed('reconciliation-discard-changes'));
+          expect(find.byType(StatementReconciliationDialog), findsNothing);
+          expect(find.text('Card Balance'), findsOneWidget);
+          if (switcher == 'banking') {
+            await tap(
+              tester,
+              keyed('statement-matches-${statements['bank']!.value}'),
+            );
+            await tap(tester, keyed('review-account-switcher'));
+            expect(keyed('review-account-option-bank'), findsOneWidget);
+            expect(keyed('review-account-option-cash'), findsNothing);
+            await capture(
+              tester,
+              'Reconciliation Account Access Matching Choices ${width.toInt()}',
+            );
+            await tap(tester, keyed('review-account-option-deposit-bank'));
+            expect(find.text('deposit-bank.csv'), findsWidgets);
+            await tap(tester, keyed('review-back-to-documents'));
+            await tap(
+              tester,
+              keyed('reconcile-statement-${statements['deposit-bank']!.value}'),
+            );
+            await tap(tester, keyed('reconciliation-account-switcher'));
+            expect(keyed('reconciliation-account-option-bank'), findsOneWidget);
+            expect(keyed('reconciliation-account-option-cash'), findsNothing);
+            await capture(
+              tester,
+              'Reconciliation Account Access Statement Choices ${width.toInt()}',
+            );
+            await tap(tester, keyed('reconciliation-account-option-bank'));
+            expect(
+              tester
+                  .widget<StatementReconciliationDialog>(
+                    find.byType(StatementReconciliationDialog),
+                  )
+                  .statementId,
+              statements['bank'],
+            );
+          }
+          expect(
+            f.w.database.exportDataArchive(
+              f.business,
+              DateTime.utc(2026, 10, 10),
+            ),
+            before,
+          );
+          expect(tester.takeException(), isNull);
+          await tester.pumpWidget(const SizedBox());
+        },
+      );
+    }
+  }
   for (final width in [720.0, 1224.0]) {
     for (final (currency, zero, entered) in [
       ('MYR', '0.00', '123456789012345678901234567890.56'),
@@ -159,6 +632,7 @@ void main() {
                         context,
                         accounts: accounts,
                         bankLedgerId: f.bank,
+                        paymentAccountType: PaymentAccountType.bank,
                         bankLabel: 'Fictional Bank',
                         currency: currency,
                         initialDate: DateTime.utc(2026, 9, 30),
@@ -255,146 +729,189 @@ void main() {
       );
     }
   }
+  for (final width in [720.0, 1162.0, 1224.0]) {
+    for (final card in [false, true]) {
+      testWidgets(
+        'actual ${card ? 'card' : 'bank'} reconciliation opens reference adjustment design without saving at $width',
+        (tester) async {
+          await prepare(tester, width);
+          await tester.binding.setSurfaceSize(Size(width, 1000));
+          addTearDown(() => tester.binding.setSurfaceSize(null));
+          installFixedPopoutHost(tester);
+          final f = Fixture();
+          await f.open(liability: card);
+          await f.post(8, 31, card ? -10000 : 10000);
+          final incoming = card ? 'Payments/Refunds' : 'Deposits';
+          final outgoing = card ? 'Charges' : 'Withdrawals';
+          final family = card ? 'Card' : 'Bank';
+          await f.w.createAccount(
+            code: '4000',
+            name: 'Sales',
+            type: AccountType.income,
+          );
+          await start(tester, f);
+          final before = f.w.database.exportDataArchive(
+            f.business,
+            DateTime.utc(2026, 10, 1),
+          );
+          await tap(tester, keyed('reconciliation-add-transaction'));
+          expect(find.text('Add Transaction'), findsOneWidget);
+          expect(find.text('Apply To'), findsOneWidget);
+          expect(
+            find.descendant(
+              of: keyed('adjustment-direction'),
+              matching: find.text(incoming),
+            ),
+            findsOneWidget,
+          );
+          if (card) {
+            expect(
+              find.descendant(
+                of: keyed('adjustment-direction'),
+                matching: find.text('Deposits'),
+              ),
+              findsNothing,
+            );
+          }
+          expect(find.text('Amount (RM)'), findsOneWidget);
+          expect(find.text('*'), findsNWidgets(3));
+          expect(find.text('Reference #'), findsOneWidget);
+          expect(find.textContaining('cannot be saved yet'), findsOneWidget);
+          expect(
+            tester
+                .renderObject<RenderParagraph>(find.text('Reference'))
+                .didExceedMaxLines,
+            isFalse,
+          );
+          expect(
+            tester.widget<TextField>(keyed('adjustment-date')).controller!.text,
+            '30-09-2026',
+          );
+          await tap(tester, keyed('adjustment-today'));
+          expect(
+            tester.widget<TextField>(keyed('adjustment-date')).controller!.text,
+            formatAccountingInputDate(DateTime.now()),
+          );
+          await input(tester, 'adjustment-date', '30-09-2026');
+          expect(
+            tester
+                .widget<FilledButton>(keyed('save-reconciliation-adjustment'))
+                .onPressed,
+            isNull,
+          );
+          await capture(
+            tester,
+            'Reconciliation Card Context $family Incoming ${width.toInt()}',
+          );
+          await tap(tester, keyed('adjustment-account'));
+          expect(find.text('4000 · Sales'), findsWidgets);
+          expect(find.text('5000 · Fictional Supplies'), findsNothing);
+          expect(find.text('1000 · Fictional Bank'), findsNothing);
+          await tap(tester, find.text('4000 · Sales').last);
+          await input(tester, 'adjustment-amount', '12.34');
+          await input(tester, 'adjustment-reference', 'FIC-BANK-REFERENCE');
+          await tap(tester, keyed('adjustment-direction'));
+          final directionMenu = find.byKey(
+            const ValueKey('accounting-selector-menu-scroll'),
+          );
+          expect(
+            find.descendant(of: directionMenu, matching: find.text(incoming)),
+            findsOneWidget,
+          );
+          expect(
+            find.descendant(of: directionMenu, matching: find.text(outgoing)),
+            findsOneWidget,
+          );
+          await capture(
+            tester,
+            'Reconciliation Card Context $family Direction Choices ${width.toInt()}',
+          );
+          await tap(
+            tester,
+            find.descendant(of: directionMenu, matching: find.text(outgoing)),
+          );
+          expect(find.text('4000 · Sales'), findsNothing);
+          expect(
+            tester
+                .widget<TextField>(keyed('adjustment-amount'))
+                .controller!
+                .text,
+            '12.34',
+          );
+          await tap(tester, keyed('adjustment-account'));
+          expect(find.text('5000 · Fictional Supplies'), findsWidgets);
+          expect(find.text('1000 · Fictional Bank'), findsNothing);
+          await capture(
+            tester,
+            'Reconciliation Card Context $family Outgoing Accounts ${width.toInt()}',
+          );
+          await tap(tester, find.text('5000 · Fictional Supplies').last);
+          await capture(
+            tester,
+            'Reconciliation Card Context $family Outgoing ${width.toInt()}',
+          );
+          await tester.binding.setSurfaceSize(Size(width, 613));
+          tester.view.physicalSize = Size(width, 613);
+          await tester.pumpAndSettle();
+          await capture(
+            tester,
+            'Reconciliation Card Context $family Outgoing Short ${width.toInt()}',
+          );
+          await tester.binding.setSurfaceSize(Size(width, 1000));
+          tester.view.physicalSize = Size(width, 1000);
+          await tester.pumpAndSettle();
+          await tester.tap(keyed('adjustment-reference'));
+          await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+          await tester.pumpAndSettle();
+          expect(keyed('adjustment-discard-changes'), findsOneWidget);
+          await capture(
+            tester,
+            'Reconciliation Card Context $family Discard Warning ${width.toInt()}',
+          );
+          await tester.binding.setSurfaceSize(Size(width, 613));
+          tester.view.physicalSize = Size(width, 613);
+          await tester.pumpAndSettle();
+          await capture(
+            tester,
+            'Reconciliation Card Context $family Discard Short ${width.toInt()}',
+          );
+          await tap(tester, keyed('adjustment-keep-editing'));
+          expect(
+            tester
+                .widget<TextField>(keyed('adjustment-reference'))
+                .controller!
+                .text,
+            'FIC-BANK-REFERENCE',
+          );
+          await tap(tester, keyed('adjustment-editor-close'));
+          await tap(tester, keyed('adjustment-discard-changes'));
+          retained(tester);
+          final after = f.w.database.exportDataArchive(
+            f.business,
+            DateTime.utc(2026, 10, 1),
+          );
+          expect(
+            after,
+            before,
+            reason: 'Design inspection never creates a journal or clears a movement.',
+          );
+          await tap(tester, keyed('reconciliation-add-transaction'));
+          expect(
+            tester
+                .widget<TextField>(keyed('adjustment-reference'))
+                .controller!
+                .text,
+            isEmpty,
+          );
+          await tap(tester, keyed('adjustment-editor-close'));
+          expect(keyed('adjustment-discard-changes'), findsNothing);
+          await tester.pumpWidget(const SizedBox());
+          f.w.dispose();
+        },
+      );
+    }
+  }
   for (final width in [720.0, 1224.0]) {
-    testWidgets(
-      'actual reconciliation opens reference adjustment design without saving at $width',
-      (tester) async {
-        await prepare(tester, width);
-        await tester.binding.setSurfaceSize(Size(width, 1000));
-        addTearDown(() => tester.binding.setSurfaceSize(null));
-        installFixedPopoutHost(tester);
-        final f = Fixture();
-        await f.open();
-        await f.post(8, 31, 10000);
-        await f.w.createAccount(
-          code: '4000',
-          name: 'Sales',
-          type: AccountType.income,
-        );
-        await start(tester, f);
-        final before = f.w.database.exportDataArchive(
-          f.business,
-          DateTime.utc(2026, 10, 1),
-        );
-        await tap(tester, keyed('reconciliation-add-transaction'));
-        expect(find.text('Add Transaction'), findsOneWidget);
-        expect(find.text('Apply To'), findsOneWidget);
-        expect(find.text('Amount (RM)'), findsOneWidget);
-        expect(find.text('*'), findsNWidgets(3));
-        expect(find.text('Reference #'), findsOneWidget);
-        expect(find.textContaining('cannot be saved yet'), findsOneWidget);
-        expect(
-          tester
-              .renderObject<RenderParagraph>(find.text('Reference'))
-              .didExceedMaxLines,
-          isFalse,
-        );
-        expect(
-          tester.widget<TextField>(keyed('adjustment-date')).controller!.text,
-          '30-09-2026',
-        );
-        await tap(tester, keyed('adjustment-today'));
-        expect(
-          tester.widget<TextField>(keyed('adjustment-date')).controller!.text,
-          formatAccountingInputDate(DateTime.now()),
-        );
-        await input(tester, 'adjustment-date', '30-09-2026');
-        expect(
-          tester
-              .widget<FilledButton>(keyed('save-reconciliation-adjustment'))
-              .onPressed,
-          isNull,
-        );
-        await capture(
-          tester,
-          'Reconciliation Adjustment Deposits ${width.toInt()}',
-        );
-        await tap(tester, keyed('adjustment-account'));
-        expect(find.text('4000 · Sales'), findsWidgets);
-        expect(find.text('5000 · Fictional Supplies'), findsNothing);
-        expect(find.text('1000 · Fictional Bank'), findsNothing);
-        await tap(tester, find.text('4000 · Sales').last);
-        await input(tester, 'adjustment-amount', '12.34');
-        await input(tester, 'adjustment-reference', 'FIC-BANK-REFERENCE');
-        await tap(tester, keyed('adjustment-direction'));
-        await tap(tester, find.text('Withdrawals').last);
-        expect(find.text('4000 · Sales'), findsNothing);
-        expect(
-          tester.widget<TextField>(keyed('adjustment-amount')).controller!.text,
-          '12.34',
-        );
-        await tap(tester, keyed('adjustment-account'));
-        expect(find.text('5000 · Fictional Supplies'), findsWidgets);
-        expect(find.text('1000 · Fictional Bank'), findsNothing);
-        await capture(
-          tester,
-          'Reconciliation Adjustment Withdrawal Accounts ${width.toInt()}',
-        );
-        await tap(tester, find.text('5000 · Fictional Supplies').last);
-        await capture(
-          tester,
-          'Reconciliation Adjustment Withdrawals ${width.toInt()}',
-        );
-        await tester.binding.setSurfaceSize(Size(width, 613));
-        tester.view.physicalSize = Size(width, 613);
-        await tester.pumpAndSettle();
-        await capture(
-          tester,
-          'Reconciliation Adjustment Withdrawals Short ${width.toInt()}',
-        );
-        await tester.binding.setSurfaceSize(Size(width, 1000));
-        tester.view.physicalSize = Size(width, 1000);
-        await tester.pumpAndSettle();
-        await tester.tap(keyed('adjustment-reference'));
-        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
-        await tester.pumpAndSettle();
-        expect(keyed('adjustment-discard-changes'), findsOneWidget);
-        await capture(
-          tester,
-          'Reconciliation Adjustment Discard Warning ${width.toInt()}',
-        );
-        await tester.binding.setSurfaceSize(Size(width, 613));
-        tester.view.physicalSize = Size(width, 613);
-        await tester.pumpAndSettle();
-        await capture(
-          tester,
-          'Reconciliation Adjustment Discard Short ${width.toInt()}',
-        );
-        await tap(tester, keyed('adjustment-keep-editing'));
-        expect(
-          tester
-              .widget<TextField>(keyed('adjustment-reference'))
-              .controller!
-              .text,
-          'FIC-BANK-REFERENCE',
-        );
-        await tap(tester, keyed('adjustment-editor-close'));
-        await tap(tester, keyed('adjustment-discard-changes'));
-        retained(tester);
-        final after = f.w.database.exportDataArchive(
-          f.business,
-          DateTime.utc(2026, 10, 1),
-        );
-        expect(
-          after,
-          before,
-          reason:
-              'Design inspection never creates a journal or clears a movement.',
-        );
-        await tap(tester, keyed('reconciliation-add-transaction'));
-        expect(
-          tester
-              .widget<TextField>(keyed('adjustment-reference'))
-              .controller!
-              .text,
-          isEmpty,
-        );
-        await tap(tester, keyed('adjustment-editor-close'));
-        expect(keyed('adjustment-discard-changes'), findsNothing);
-        await tester.pumpWidget(const SizedBox());
-        f.w.dispose();
-      },
-    );
     for (final income in [false, true]) {
       testWidgets(
         'actual reconciliation creates and approves ${income ? 'incoming' : 'outgoing'} journal at $width',

@@ -2407,8 +2407,9 @@ final class AccountingDialog {
           title: 'Discard unsaved changes?',
           onClose: () => Navigator.of(dialogContext).pop(false),
           closeKey: closeKey,
-          content: const Text(
-            'Your changes haven’t been saved and will be lost.',
+          content: const Align(
+            alignment: Alignment.centerLeft,
+            child: Text('Your changes haven’t been saved and will be lost.'),
           ),
           actions: [
             AccountingButton.ghost(

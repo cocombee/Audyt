@@ -13,6 +13,7 @@ import '../../../../core/money/currency_presentation.dart';
 import '../../../../core/money/money.dart';
 import '../application/account_repository.dart';
 import '../domain/account.dart';
+import '../domain/payment_account.dart';
 import 'widgets/accounting_formatters.dart';
 
 /// Physical reconciliation adjustment owner. Saving remains unavailable until
@@ -21,6 +22,7 @@ Future<void> showReconciliationAdjustment(
   BuildContext context, {
   required List<StoredAccount> accounts,
   required EntityId bankLedgerId,
+  required PaymentAccountType paymentAccountType,
   required String bankLabel,
   required String currency,
   required DateTime initialDate,
@@ -29,6 +31,7 @@ Future<void> showReconciliationAdjustment(
   builder: (_) => _ReconciliationAdjustmentDialog(
     accounts: accounts,
     bankLedgerId: bankLedgerId,
+    paymentAccountType: paymentAccountType,
     bankLabel: bankLabel,
     currency: currency,
     initialDate: initialDate,
@@ -41,6 +44,7 @@ class _ReconciliationAdjustmentDialog extends StatefulWidget {
   const _ReconciliationAdjustmentDialog({
     required this.accounts,
     required this.bankLedgerId,
+    required this.paymentAccountType,
     required this.bankLabel,
     required this.currency,
     required this.initialDate,
@@ -48,6 +52,7 @@ class _ReconciliationAdjustmentDialog extends StatefulWidget {
 
   final List<StoredAccount> accounts;
   final EntityId bankLedgerId;
+  final PaymentAccountType paymentAccountType;
   final String bankLabel;
   final String currency;
   final DateTime initialDate;
@@ -147,6 +152,9 @@ class _ReconciliationAdjustmentDialogState
   @override
   Widget build(BuildContext context) {
     final accounts = _accounts;
+    final card = widget.paymentAccountType == PaymentAccountType.card;
+    final incomingLabel = card ? 'Payments/Refunds' : 'Deposits';
+    final outgoingLabel = card ? 'Charges' : 'Withdrawals';
     final amountZeroHint = formatAccountingInputAmount(
       Money.zero(widget.currency),
     );
@@ -184,7 +192,7 @@ class _ReconciliationAdjustmentDialogState
                 fields: [
                   AccountingOrdinaryFieldSlot(
                     label: 'Apply To',
-                    choices: const ['Deposits', 'Withdrawals'],
+                    choices: [incomingLabel, outgoingLabel],
                     builder: (width) => _field(
                       'Apply To',
                       AccountingSelector<_AdjustmentDirection>(
@@ -193,14 +201,16 @@ class _ReconciliationAdjustmentDialogState
                         value: _direction,
                         hintText: 'Select Direction',
                         searchable: false,
-                        options: const [
+                        options: [
                           AccountingSelectorOption(
                             value: _AdjustmentDirection.deposits,
-                            label: 'Deposits',
+                            label: incomingLabel,
+                            preserveLabelCase: true,
                           ),
                           AccountingSelectorOption(
                             value: _AdjustmentDirection.withdrawals,
-                            label: 'Withdrawals',
+                            label: outgoingLabel,
+                            preserveLabelCase: true,
                           ),
                         ],
                         onChanged: (value) => setState(() {

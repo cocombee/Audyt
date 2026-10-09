@@ -1,3 +1,23 @@
+Discard warning alignment (10 October 2026 user correction): the shared
+AccountingDialog.confirmDiscardChanges message begins on the title's left
+content axis. Keep existing typography, insets, width family and actions; do not
+change centered authentication headers or unrelated alert compositions.
+
+Bank/Card reconciliation access (10 October 2026 actual-caller audit): Banking's
+existing summary, document, matching and reconciliation account switchers expose
+maintained Bank and Card accounts. Preserve the bank-first opening default and
+each page's independent selection; Cash, Wallet and Other remain excluded. Reuse
+the original compact menu, keys, icon and label sizing. A mixed Bank/Card directory
+must reach the actual card Account Reconciliation and its Payments/Refunds/Charges
+adjustment owner. Keep unsaved-work guards, exact account/currency identity and
+unavailable adjustment Save. No Home preference, posting, schema or backend change.
+Source fixtures with only a card do not prove this mixed-account navigation.
+In an embedded statement reconciliation, summary Account, embedded Account,
+document and Review Statement Connections navigation share the dialog's existing
+dirty-input guard. Keep Editing retains the full draft; Discard allows navigation;
+same-target selections do not prompt, and busy work blocks navigation. Preserve
+the existing prompt and input snapshot; matching-review filters remain transient.
+
 Authentication arrangement (10 October 2026 supplied reference): reuse Audyt
 colours, typography, padding and controls; adopt only the reference arrangement.
 Every authentication box centers the existing page-title/helper tokens, using the
@@ -20,6 +40,15 @@ FormField validation stays active and shared helper errors live below the frame.
 This same owner serves profile password change; preserve its reauthentication.
 Existing six-digit code contract stays unchanged. No Apple/Facebook sign-in, split-code fields,
 phone-country controls, service, agreement acceptance or backend changes.
+
+Reconciliation card context (10 October 2026): the existing Add Transaction
+owner receives the maintained PaymentAccountType through its actual account-period
+caller. Card choices are Payments/Refunds and Charges; bank choices remain Deposits
+and Withdrawals. Pass both displayed choices to the existing ordinary-field planner
+and selector; preserve their label case and shared menu sizing. Retain direction
+values, account eligibility, entered values, discard guard and unavailable Save.
+No adjustment posting, currency policy, persistence, reconciliation approval or
+backend change. Verify real Bank/Card callers at720/1162/1224 and short height.
 
 Authentication entry buttons (10 October 2026 user direction): Sign In and
 Register use the existing green primary face, matching the full row width of

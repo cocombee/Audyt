@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:audyt/app/field_row_trial.dart';
 
 import '../../../../app/accounting_theme.dart';
@@ -80,9 +82,13 @@ class _BankingPageState extends State<BankingPage> {
   DateTime? _documentFrom;
   DateTime? _documentThrough;
 
-  List<PaymentAccount> get _bankAccounts =>
+  List<PaymentAccount> get _statementAccounts =>
       (_payments ?? const <PaymentAccount>[])
-          .where((account) => account.type == PaymentAccountType.bank)
+          .where(
+            (account) =>
+                account.type == PaymentAccountType.bank ||
+                account.type == PaymentAccountType.card,
+          )
           .toList(growable: false);
 
   String? get _displayPaymentId {
@@ -122,11 +128,33 @@ class _BankingPageState extends State<BankingPage> {
   final Map<String, String> _selectedStatementIds = {};
   final Set<String> _expandedStatementAccounts = {};
   ({EntityId id, String currency, String paymentId})? _activeReconciliation;
+  Object? _activeReconciliationGuardOwner;
+  ReconciliationNavigationGuard? _activeReconciliationNavigationGuard;
   Widget? _activeMatchReview;
   bool _reconciliationReturnsToReview = false;
   final Map<String, StatementMatchWindow> _matchingWindows = {};
   String? _error;
   int _generation = 0;
+
+  void _updateReconciliationNavigationGuard(
+    Object owner,
+    ReconciliationNavigationGuard? guard,
+  ) {
+    if (guard == null) {
+      if (identical(_activeReconciliationGuardOwner, owner)) {
+        _activeReconciliationGuardOwner = null;
+        _activeReconciliationNavigationGuard = null;
+      }
+      return;
+    }
+    _activeReconciliationGuardOwner = owner;
+    _activeReconciliationNavigationGuard = guard;
+  }
+
+  void _runGuardedReconciliationNavigation(VoidCallback navigate) {
+    final guard = _activeReconciliationNavigationGuard;
+    if (guard != null) unawaited(guard(navigate));
+  }
 
   @override
   void initState() {
@@ -1604,7 +1632,7 @@ class _BankingPageState extends State<BankingPage> {
                   iconAsset: '086-change-account-normalized.svg',
                   value: account.id,
                   options: [
-                    for (final bank in _bankAccounts)
+                    for (final bank in _statementAccounts)
                       AccountingSelectorOption(
                         value: bank.id,
                         label: bank.shortName,
@@ -2591,7 +2619,7 @@ class _BankingPageState extends State<BankingPage> {
                 ),
               ),
             ) +
-            (i == 0 && _bankAccounts.length > 1 ? 40 : 0),
+            (i == 0 && _statementAccounts.length > 1 ? 40 : 0),
     ];
     Widget metric(int index) => Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2636,14 +2664,14 @@ class _BankingPageState extends State<BankingPage> {
             ),
           ),
         ),
-        if (index == 0 && _bankAccounts.length > 1) ...[
+        if (index == 0 && _statementAccounts.length > 1) ...[
           const SizedBox(width: 8),
           AccountingCompactChoiceMenu<String>(
             triggerKey: const ValueKey('banking-account-switcher'),
-            tooltip: 'Select bank account',
+            tooltip: 'Select Account',
             value: payment.id,
             options: [
-              for (final account in _bankAccounts)
+              for (final account in _statementAccounts)
                 AccountingSelectorOption(
                   value: account.id,
                   label: account.shortName,
@@ -2653,7 +2681,10 @@ class _BankingPageState extends State<BankingPage> {
             ],
             onChanged: (id) {
               if (_activeReconciliation != null) {
-                _switchReviewAccount(id, reconciliation: true);
+                if (_activeReconciliation?.paymentId == id) return;
+                _runGuardedReconciliationNavigation(
+                  () => _switchReviewAccount(id, reconciliation: true),
+                );
               } else if (_activeMatchReview != null) {
                 _switchReviewAccount(id, reconciliation: false);
               } else {
@@ -2753,6 +2784,9 @@ class _BankingPageState extends State<BankingPage> {
   }
 
   void _switchReviewAccount(String accountId, {required bool reconciliation}) {
+    if (reconciliation && _activeReconciliation?.paymentId == accountId) {
+      return;
+    }
     final payment = _paymentById(accountId);
     if (payment == null) return;
     final selected = _selectedStatement(payment);
@@ -2790,11 +2824,11 @@ class _BankingPageState extends State<BankingPage> {
     required ValueChanged<String> onChanged,
   }) => AccountingCompactChoiceMenu<String>(
     triggerKey: ValueKey('$keyPrefix-account-switcher'),
-    tooltip: 'Switch Bank',
+    tooltip: 'Change Account',
     iconAsset: '086-change-account-normalized.svg',
     value: payment.id,
     options: [
-      for (final bank in _bankAccounts)
+      for (final bank in _statementAccounts)
         AccountingSelectorOption(
           value: bank.id,
           label: bank.shortName,
@@ -2821,7 +2855,12 @@ class _BankingPageState extends State<BankingPage> {
         context,
         payment,
         keyPrefix: 'reconciliation',
-        onChanged: (id) => _switchReviewAccount(id, reconciliation: true),
+        onChanged: (id) {
+          if (_activeReconciliation?.paymentId == id) return;
+          _runGuardedReconciliationNavigation(
+            () => _switchReviewAccount(id, reconciliation: true),
+          );
+        },
       ),
       AccountingCompactChoiceMenu<String>(
         triggerKey: const ValueKey('reconciliation-statement-switcher'),
@@ -2837,14 +2876,21 @@ class _BankingPageState extends State<BankingPage> {
               preserveLabelCase: true,
             ),
         ],
-        onChanged: (value) =>
-            _openReconciliation(EntityId.parse(value), payment),
+        onChanged: (value) {
+          if (value == statementId.value) return;
+          final target = EntityId.parse(value);
+          _runGuardedReconciliationNavigation(
+            () => _openReconciliation(target, payment),
+          );
+        },
       ),
       AccountingButton.iconOnly(
         context,
         key: const ValueKey('reconciliation-review-connections'),
         compact: true,
-        onPressed: () => _matches(statementId, payment),
+        onPressed: () => _runGuardedReconciliationNavigation(
+          () => _matches(statementId, payment),
+        ),
         icon: Icons.link_outlined,
         tooltip: 'Review Statement Connections',
       ),
@@ -2915,6 +2961,7 @@ class _BankingPageState extends State<BankingPage> {
               currency: reconciliation.currency,
               embedded: true,
               compactEmbedded: true,
+              onNavigationGuardChanged: _updateReconciliationNavigationGuard,
               formActions: payment == null
                   ? const []
                   : _reconciliationStatementActions(

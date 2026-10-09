@@ -23,6 +23,10 @@ import 'receipt_attachment_picker.dart';
 import 'journal_workspace_page.dart';
 import 'reconciliation_adjustment_dialog.dart';
 
+typedef ReconciliationNavigationGuard = Future<void> Function(
+  VoidCallback navigate,
+);
+
 class StatementReconciliationDialog extends StatefulWidget {
   const StatementReconciliationDialog({
     super.key,
@@ -35,6 +39,7 @@ class StatementReconciliationDialog extends StatefulWidget {
     this.formActions = const [],
     this.onBack,
     this.onAttachmentsPick,
+    this.onNavigationGuardChanged,
   }) : paymentAccountId = null,
        sourceLabel = null,
        onRecordExpense = null,
@@ -52,6 +57,7 @@ class StatementReconciliationDialog extends StatefulWidget {
     this.formActions = const [],
     this.onBack,
     this.onAttachmentsPick,
+    this.onNavigationGuardChanged,
     this.onRecordExpense,
     this.onReceivePayment,
   }) : statementId = null;
@@ -66,6 +72,8 @@ class StatementReconciliationDialog extends StatefulWidget {
   final List<Widget> formActions;
   final VoidCallback? onBack;
   final ExpenseAttachmentsPicker? onAttachmentsPick;
+  final void Function(Object owner, ReconciliationNavigationGuard? guard)?
+  onNavigationGuardChanged;
   final Future<void> Function(DateTime date)? onRecordExpense;
   final Future<void> Function(DateTime date)? onReceivePayment;
   @override
@@ -136,6 +144,7 @@ class _StatementReconciliationDialogState
   @override
   void initState() {
     super.initState();
+    widget.onNavigationGuardChanged?.call(this, _guardNavigation);
     if (_accountMode) {
       _loadAccountInputs();
       _savedInput = _inputSnapshot();
@@ -177,6 +186,15 @@ class _StatementReconciliationDialogState
       _error = 'The saved draft could not be loaded. Reopen the statement before continuing.';
     }
     _savedInput = _inputSnapshot();
+  }
+
+  @override
+  void didUpdateWidget(covariant StatementReconciliationDialog oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.onNavigationGuardChanged != widget.onNavigationGuardChanged) {
+      oldWidget.onNavigationGuardChanged?.call(this, null);
+      widget.onNavigationGuardChanged?.call(this, _guardNavigation);
+    }
   }
 
   void _loadAccountInputs() {
@@ -229,6 +247,7 @@ class _StatementReconciliationDialogState
 
   @override
   void dispose() {
+    widget.onNavigationGuardChanged?.call(this, null);
     _editingFocus.dispose();
     for (final controller in [_start, _end, _opening, _closing, _evidence]) {
       controller.dispose();
@@ -250,7 +269,7 @@ class _StatementReconciliationDialogState
     ],
   ]);
 
-  Future<void> _handleClose() async {
+  Future<void> _guardNavigation(VoidCallback navigate) async {
     if (_filesBusy || _transactionBusy || _closePromptOpen) return;
     if (!_approved && _inputSnapshot() != _savedInput) {
       _closePromptOpen = true;
@@ -271,11 +290,17 @@ class _StatementReconciliationDialogState
       }
     }
     if (!mounted) return;
-    if (widget.embedded) {
-      widget.onBack?.call();
-    } else {
-      Navigator.of(context).pop();
-    }
+    navigate();
+  }
+
+  Future<void> _handleClose() async {
+    await _guardNavigation(() {
+      if (widget.embedded) {
+        widget.onBack?.call();
+      } else {
+        Navigator.of(context).pop();
+      }
+    });
   }
 
   Widget _guardInput(Widget child) => FocusScope(
@@ -860,12 +885,16 @@ class _StatementReconciliationDialogState
     if (linked == null) {
       throw StateError('Link the bank account before adding an adjustment.');
     }
+    final payment = workspace.database
+        .readPaymentAccounts(workspace.identity.businessId)
+        .singleWhere((account) => account.id == widget.paymentAccountId);
     final accounts = await workspace.accounts();
     if (!mounted) return;
     await showReconciliationAdjustment(
       context,
       accounts: accounts,
       bankLedgerId: linked,
+      paymentAccountType: payment.type,
       bankLabel: widget.sourceLabel!,
       currency: widget.currency,
       initialDate: date,
