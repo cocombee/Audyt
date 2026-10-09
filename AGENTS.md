@@ -1,3 +1,12 @@
+Account Activity text edges (9 October 2026): only the existing ledger report
+activity popout aligns opening/ending/operating balance labels and its standalone
+operating, empty and credit-balance notes with AccountingInformationRows' 20px
+text line. Reuse AccountingReportValueRow, AccountingPageText and the existing
+inset, retaining the dialog's original inherited typography. Other report rows
+keep their existing 12px row inset. Preserve report dates, exact amounts, entries,
+Custom width, scrolling and
+return destinations; other report rows and their geometry remain unchanged.
+
 Empty Audit Log width (9 October 2026): only an authoritatively loaded Audit Log
 with no unfiltered events and no load error uses the existing 400px Dialog family.
 Populated logs and filtered zero-result views keep their existing Custom width,

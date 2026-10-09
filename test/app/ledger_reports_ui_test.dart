@@ -26,6 +26,131 @@ import 'package:audyt/features/accounting/domain/bank_statement_import.dart';
 import 'package:audyt/features/accounting/presentation/ledger_reports_page.dart';
 
 void main() {
+  for (final width in [720.0, 1162.0, 1224.0]) {
+    testWidgets('activity text follows its information-card inset at $width', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(Size(width, 809));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await loadJournalLayoutFonts();
+      final workspace = await createDemoWorkspace(asOf: DateTime(2026, 10, 9));
+      addTearDown(workspace.dispose);
+      final accounts = await workspace.accounts();
+      Finder accountRow(String code) => find.byKey(
+        ValueKey(
+          'report-account-${accounts.singleWhere((a) => a.account.code == code).account.id.value}',
+        ),
+      );
+      await tester.pumpWidget(
+        RepaintBoundary(
+          key: const ValueKey('workspace-capture'),
+          child: MaterialApp(
+            theme: AccountingTheme.light(),
+            home: Scaffold(
+              body: LedgerReportsPage(workspace: workspace, compact: true),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      Future<void> open(String code) async {
+        await tester.ensureVisible(accountRow(code));
+        await tester.tap(accountRow(code));
+        await tester.pumpAndSettle();
+      }
+
+      Finder activityText(String text) => find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text(text),
+      );
+      const creditNote =
+          'Negative net debit amounts represent credit balances.';
+      void aligned(double edge, List<String> labels) {
+        for (final label in labels) {
+          expect(tester.getRect(activityText(label)).left, closeTo(edge, .1));
+          final paragraph = tester.renderObject<RenderParagraph>(
+            activityText(label),
+          );
+          final originalStyle = Theme.of(tester.element(activityText(label)))
+              .dialogTheme
+              .contentTextStyle!;
+          expect(paragraph.text.style!.fontSize, originalStyle.fontSize);
+          expect(paragraph.text.style!.color, originalStyle.color);
+        }
+      }
+
+      await open('1000');
+      final factsEdge =
+          tester.getRect(find.byType(AccountingInformationRows).first).left +
+          accountingContentInset;
+      aligned(factsEdge, ['Opening Net Debit', 'Ending Net Debit', creditNote]);
+      expect(activityText('RM 1,147,985.00'), findsOneWidget);
+      await captureUi(
+        tester,
+        'Account Activity Balance Edges ${width.toInt()}',
+      );
+      await tester.ensureVisible(activityText(creditNote));
+      await tester.pumpAndSettle();
+      await captureUi(tester, 'Account Activity Ending Edges ${width.toInt()}');
+      await tester.tap(accountingCloseIcon().last);
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.byKey(const ValueKey('report-tab-1')));
+      await tester.tap(find.byKey(const ValueKey('report-tab-1')));
+      await tester.pumpAndSettle();
+      await open('5000');
+      final operatingEdge =
+          tester.getRect(find.byType(AccountingInformationRows).first).left +
+          accountingContentInset;
+      aligned(operatingEdge, [
+        'Operating activity only; closing entries are excluded.',
+        'Operating Net Debit',
+        creditNote,
+      ]);
+      await captureUi(
+        tester,
+        'Account Activity Operating Edges ${width.toInt()}',
+      );
+      await tester.ensureVisible(activityText(creditNote));
+      await tester.pumpAndSettle();
+      await captureUi(
+        tester,
+        'Account Activity Operating Ending Edges ${width.toInt()}',
+      );
+      await tester.tap(accountingCloseIcon().last);
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.byKey(const ValueKey('report-tab-0')));
+      await tester.tap(find.byKey(const ValueKey('report-tab-0')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('report-from')),
+        '10-10-2026',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('report-through')),
+        '11-10-2026',
+      );
+      await tester.ensureVisible(find.byKey(const ValueKey('run-report')));
+      await tester.tap(find.byKey(const ValueKey('run-report')));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Report period: 10-10-2026 – 11-10-2026'),
+        findsOneWidget,
+      );
+      await open('1000');
+      expect(find.byType(AccountingInformationRows), findsNothing);
+      final emptyEdge = tester.getRect(activityText('Opening Net Debit')).left;
+      aligned(emptyEdge, [
+        'No posted activity in this period.',
+        'Ending Net Debit',
+        creditNote,
+      ]);
+      expect(activityText('RM 1,147,985.00'), findsNWidgets(2));
+      await captureUi(tester, 'Account Activity Empty Edges ${width.toInt()}');
+      expect(tester.takeException(), isNull);
+    });
+  }
   testWidgets('reconciliation progress follows the selected imported statement', (
     tester,
   ) async {

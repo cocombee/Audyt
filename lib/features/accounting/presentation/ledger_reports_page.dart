@@ -401,9 +401,13 @@ class _LedgerReportsPageState extends State<LedgerReportsPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (!operatingOnly)
-                  _row('Opening Net Debit', row.openingNetDebit),
+                  AccountingReportValueRow(
+                    label: 'Opening Net Debit',
+                    value: _amount(row.openingNetDebit),
+                    horizontalInset: accountingContentInset,
+                  ),
                 if (operatingOnly)
-                  const Text(
+                  const AccountingPageText(
                     'Operating activity only; closing entries are excluded.',
                   ),
                 for (final entry in entries) ...[
@@ -429,13 +433,20 @@ class _LedgerReportsPageState extends State<LedgerReportsPage> {
                   ),
                 ],
                 if (entries.isEmpty)
-                  const Text('No posted activity in this period.'),
+                  const AccountingPageText(
+                    'No posted activity in this period.',
+                  ),
                 const Divider(),
-                _row(
-                  operatingOnly ? 'Operating Net Debit' : 'Ending Net Debit',
-                  operatingOnly ? row.operatingNetDebit : row.endingNetDebit,
+                AccountingReportValueRow(
+                  label: operatingOnly
+                      ? 'Operating Net Debit'
+                      : 'Ending Net Debit',
+                  value: _amount(
+                    operatingOnly ? row.operatingNetDebit : row.endingNetDebit,
+                  ),
+                  horizontalInset: accountingContentInset,
                 ),
-                const Text(
+                const AccountingPageText(
                   'Negative net debit amounts represent credit balances.',
                 ),
               ],
@@ -1047,18 +1058,20 @@ class AccountingReportValueRow extends StatelessWidget {
     required this.value,
     this.emphasized = false,
     this.onTap,
+    this.horizontalInset = 12,
   });
   final String label, value;
   final bool emphasized;
   final VoidCallback? onTap;
+  final double horizontalInset;
 
   @override
   Widget build(BuildContext context) {
     final row = emphasized
         ? AccountingTotalRow(label: label, value: value)
         : Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12,
+            padding: EdgeInsets.symmetric(
+              horizontal: horizontalInset,
               vertical: accountingUndividedRowVerticalInset,
             ),
             child: Row(
