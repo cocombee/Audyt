@@ -1,11 +1,34 @@
+Authentication arrangement (10 October 2026 supplied reference): reuse Audyt
+colours, typography, padding and controls; adopt only the reference arrangement.
+Every authentication box centers the existing page-title/helper tokens, using the
+shared titleSubtitleGap and pageTitleOuterGap above/below the heading block.
+The same pageTitleOuterGap owns the card bottom; horizontal inset stays20px.
+Back chevrons sit on the title line with a symmetric title reserve; their44px
+hit target must not enlarge title/subtitle spacing. Retain left fields/right recovery link, then
+full-width primary, separator, existing full-width white Google button and a
+small inline account-switch link. Registration places the existing Terms link
+above Register and retains the published-version acceptance gate. Recovery follows email→code→new password/confirmation→actual service success,
+using shared back/title/helper/field/primary tokens. Code Continue only advances
+local input; the existing reset-password call verifies it atomically when saving.
+Never claim code verification or password success before that response. All auth
+primary actions fill the field width; resend/cooldown uses a small text link.
+Terms uses 12px regular grey text,
+foreground on hover/focus, opening only the existing popout. Recovery and account
+switch use 13px regular link text with no action fill/padding. Preserve 20px card
+insets and existing group gaps. AuthTextField keeps the existing 44px decoration/eye/font/insets in invalid states;
+FormField validation stays active and shared helper errors live below the frame.
+This same owner serves profile password change; preserve its reauthentication.
+Existing six-digit code contract stays unchanged. No Apple/Facebook sign-in, split-code fields,
+phone-country controls, service, agreement acceptance or backend changes.
+
 Authentication entry buttons (10 October 2026 user direction): Sign In and
 Register use the existing green primary face, matching the full row width of
 their Google entry button, with centered text. Google Sign In/Sign Up uses the
 existing white outline face and centers its icon/text group; its original SVG
 inherits the button foreground for idle, hover and disabled states. The existing
 outline factory accepts opt-in fullWidth; all ordinary callers remain content-fit.
-Keep 20px card insets and the 10px gap between entry buttons. Verify/Send Code/
-Save Password retain existing width and roles. No new registration fields,
+Keep 20px card insets. The later reference arrangement adds a separator between
+entry buttons and full-width primary actions; service roles remain unchanged. No new registration fields,
 authentication service, terms publication, permissions or backend changes.
 
 Tax allocation dismissal (10 October 2026): Record Tax Payment and Link Existing

@@ -9,9 +9,18 @@ import 'accounting_icons.dart';
 import 'accounting_theme.dart';
 import 'email_authentication_service.dart';
 import 'google_account_session.dart';
+import 'responsive.dart';
 import 'terms_and_conditions.dart';
 
-enum _AuthStep { signIn, register, verify, recover, reset }
+enum _AuthStep {
+  signIn,
+  register,
+  verify,
+  recover,
+  resetCode,
+  reset,
+  resetDone,
+}
 
 class AudytSignInPage extends StatefulWidget {
   const AudytSignInPage({super.key, required this.session});
@@ -26,7 +35,8 @@ class _AudytSignInPageState extends State<AudytSignInPage> {
       password = TextEditingController(),
       name = TextEditingController(),
       phone = TextEditingController(),
-      code = TextEditingController();
+      code = TextEditingController(),
+      confirmation = TextEditingController();
   _AuthStep step = _AuthStep.signIn;
   String? challenge, error, notice;
   bool saving = false, accepted = false;
@@ -39,7 +49,9 @@ class _AudytSignInPageState extends State<AudytSignInPage> {
     _AuthStep.verify =>
       session.linkChallenge == null ? 'Verify Email' : 'Link Your Account',
     _AuthStep.recover => 'Forgot Password',
-    _AuthStep.reset => 'Reset Password',
+    _AuthStep.resetCode => 'Check Your Email',
+    _AuthStep.reset => 'Set A New Password',
+    _AuthStep.resetDone => 'Password Changed',
   };
   String get subtitle => switch (step) {
     _AuthStep.signIn => 'Welcome back to Audyt.',
@@ -49,12 +61,14 @@ class _AudytSignInPageState extends State<AudytSignInPage> {
           ? 'Enter the six-digit code sent to your email.'
           : 'Verify your existing email account to link Google.',
     _AuthStep.recover => 'Request a code to reset your Audyt password.',
-    _AuthStep.reset => 'Enter your email code and choose a new password.',
+    _AuthStep.resetCode => 'If eligible, a reset code will arrive shortly.',
+    _AuthStep.reset => 'Choose a new password and confirm it below.',
+    _AuthStep.resetDone => 'Sign in with your new password.',
   };
   @override
   void dispose() {
     timer?.cancel();
-    for (final c in [email, password, name, phone, code]) {
+    for (final c in [email, password, name, phone, code, confirmation]) {
       c.dispose();
     }
     super.dispose();
@@ -67,9 +81,25 @@ class _AudytSignInPageState extends State<AudytSignInPage> {
       error = null;
       notice = null;
       password.clear();
+      confirmation.clear();
       code.clear();
     });
     form.currentState?.reset();
+  }
+
+  void _back() {
+    if (step == _AuthStep.reset) {
+      setState(() {
+        step = _AuthStep.resetCode;
+        error = null;
+        notice = null;
+        password.clear();
+        confirmation.clear();
+      });
+      form.currentState?.reset();
+    } else {
+      _go(step == _AuthStep.resetCode ? _AuthStep.recover : _AuthStep.signIn);
+    }
   }
 
   void _cooldown() {
@@ -114,6 +144,18 @@ class _AudytSignInPageState extends State<AudytSignInPage> {
     if (saving || session.busy || !(form.currentState?.validate() ?? false)) {
       return;
     }
+    if (step == _AuthStep.resetCode) {
+      setState(() {
+        step = _AuthStep.reset;
+        error = null;
+        notice = null;
+      });
+      return;
+    }
+    if (step == _AuthStep.resetDone) {
+      _go(_AuthStep.signIn);
+      return;
+    }
     final service = session.authenticationService;
     if (service == null) return;
     setState(() {
@@ -153,23 +195,37 @@ class _AudytSignInPageState extends State<AudytSignInPage> {
           challenge = await service.forgotPassword(email.text);
           if (mounted) {
             setState(() {
-              step = _AuthStep.reset;
+              step = _AuthStep.resetCode;
               notice = 'If this email has an Audyt password account, a reset code will arrive shortly.';
             });
           }
           _cooldown();
         case _AuthStep.reset:
           await service.resetPassword(challenge!, code.text, password.text);
-          _go(_AuthStep.signIn);
           if (mounted) {
-            setState(
-              () =>
-                  notice = 'Password changed. Sign in with your new password.',
-            );
+            setState(() {
+              step = _AuthStep.resetDone;
+              password.clear();
+              confirmation.clear();
+              code.clear();
+              notice = null;
+            });
           }
+        case _AuthStep.resetCode:
+        case _AuthStep.resetDone:
+          break;
       }
     } catch (failure) {
       if (mounted) {
+        if (step == _AuthStep.reset &&
+            failure is AuthenticationFailure &&
+            failure.code == 'invalid_code') {
+          setState(() {
+            step = _AuthStep.resetCode;
+            password.clear();
+            confirmation.clear();
+          });
+        }
         setState(
           () => error = failure is AuthenticationFailure
               ? failure.toString()
@@ -223,7 +279,7 @@ class _AudytSignInPageState extends State<AudytSignInPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           accountingFieldLabel(context, label, guidance: guidance),
-          const SizedBox(height: 8),
+          const SizedBox(height: accountingFieldLabelGap),
           AuthTextField(
             fieldKey: ValueKey(key),
             controller: controller,
@@ -239,6 +295,9 @@ class _AudytSignInPageState extends State<AudytSignInPage> {
             validator: (v) {
               final value = v ?? '';
               if (required && value.trim().isEmpty) return 'Enter $label.';
+              if (key == 'auth-confirm-password' && value != password.text) {
+                return 'The passwords do not match.';
+              }
               if (label == 'Email' &&
                   !RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$')
                       .hasMatch(value.trim())) {
@@ -265,19 +324,21 @@ class _AudytSignInPageState extends State<AudytSignInPage> {
         _AuthStep.register => 'Register',
         _AuthStep.verify => 'Verify',
         _AuthStep.recover => 'Send Code',
-        _AuthStep.reset => 'Save Password',
+        _AuthStep.resetCode => 'Continue',
+        _AuthStep.reset => 'Update Password',
+        _AuthStep.resetDone => 'Sign In',
       };
+      final entry = step == _AuthStep.signIn || step == _AuthStep.register;
       final children = <Widget>[
-        Text(
-          'Audyt',
-          style: Theme.of(context).textTheme.titleLarge
-              ?.copyWith(fontSize: 22, fontWeight: FontWeight.w600),
+        _AuthHeader(
+          title: title,
+          subtitle: subtitle,
+          onBack: !entry && step != _AuthStep.resetDone
+              ? (disabled ? null : _back)
+              : null,
+          showBack: !entry && step != _AuthStep.resetDone,
         ),
-        const SizedBox(height: 20),
-        Text(title, style: AccountingTypography.sectionTitle(context)),
-        const SizedBox(height: 4),
-        Text(subtitle, style: AccountingTypography.helper(context)),
-        const SizedBox(height: 20),
+        const SizedBox(height: AccountingResponsive.pageTitleOuterGap),
         if (!session.emailAvailable)
           AccountingAlert.build(
             context,
@@ -294,7 +355,7 @@ class _AudytSignInPageState extends State<AudytSignInPage> {
             destructive: true,
             bottomGap: 20,
           ),
-        if (notice != null)
+        if (notice != null && step != _AuthStep.resetCode)
           AccountingAlert.build(
             context,
             title: 'Account Update',
@@ -313,17 +374,22 @@ class _AudytSignInPageState extends State<AudytSignInPage> {
           ),
           const SizedBox(height: 20),
         ],
-        if (step != _AuthStep.verify && step != _AuthStep.reset) ...[
+        if (step == _AuthStep.signIn ||
+            step == _AuthStep.register ||
+            step == _AuthStep.recover) ...[
           field('Email', 'auth-email', email),
           const SizedBox(height: 20),
         ],
-        if (step == _AuthStep.verify || step == _AuthStep.reset) ...[
+        if (step == _AuthStep.verify || step == _AuthStep.resetCode) ...[
           field(
             'Verification Code',
             'auth-code',
             code,
             numeric: true,
             limit: 6,
+            guidance: step == _AuthStep.resetCode
+                ? 'Enter the six-digit email code. It is checked when saving your new password.'
+                : null,
           ),
           const SizedBox(height: 20),
         ],
@@ -342,42 +408,65 @@ class _AudytSignInPageState extends State<AudytSignInPage> {
           ),
           const SizedBox(height: 20),
         ],
+        if (step == _AuthStep.reset) ...[
+          field(
+            'Confirm Password',
+            'auth-confirm-password',
+            confirmation,
+            secret: true,
+            limit: 128,
+          ),
+          const SizedBox(height: AccountingResponsive.groupGap),
+        ],
         if (step == _AuthStep.signIn) ...[
           Align(
             alignment: Alignment.centerRight,
-            child: AccountingButton.ghost(
-              context,
+            child: _AuthTextLink(
               key: const ValueKey('auth-forgot-password'),
               onPressed: disabled ? null : () => _go(_AuthStep.recover),
-              child: const Text('Forgot Password?'),
+              label: 'Forgot Password?',
             ),
           ),
           const SizedBox(height: 20),
         ],
-        if (step == _AuthStep.register && session.termsVersion.isNotEmpty) ...[
+        if (step == _AuthStep.register) ...[
           Row(
             children: [
-              Checkbox(
-                value: accepted,
-                onChanged: disabled
-                    ? null
-                    : (v) => setState(() => accepted = v ?? false),
-              ),
+              if (session.termsVersion.isNotEmpty)
+                Checkbox(
+                  value: accepted,
+                  onChanged: disabled
+                      ? null
+                      : (v) => setState(() => accepted = v ?? false),
+                ),
               Expanded(
-                child: Text(
-                  'I accept the Terms & Conditions.',
-                  style: AccountingTypography.helper(context),
+                child: Wrap(
+                  spacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    if (session.termsVersion.isNotEmpty)
+                      Text(
+                        'I accept the',
+                        style: AccountingTypography.helper(context),
+                      ),
+                    _AuthTextLink(
+                      key: const ValueKey('auth-terms'),
+                      onPressed: () => showTermsAndConditions(context),
+                      label: 'Terms & Conditions',
+                      small: true,
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 20),
         ],
         fullButton(
           AccountingButton.primary(
             context,
             key: const ValueKey('auth-submit'),
-            fullWidth: step == _AuthStep.signIn || step == _AuthStep.register,
+            fullWidth: true,
             onPressed:
                 disabled ||
                     !session.emailAvailable ||
@@ -389,7 +478,21 @@ class _AudytSignInPageState extends State<AudytSignInPage> {
           ),
         ),
         if (step == _AuthStep.signIn || step == _AuthStep.register) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: Divider(color: AccountingTheme.of(context).border),
+              ),
+              const SizedBox(width: 8),
+              Text('Or', style: AccountingTypography.helper(context)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Divider(color: AccountingTheme.of(context).border),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
           fullButton(
             AccountingButton.outline(
               context,
@@ -422,45 +525,69 @@ class _AudytSignInPageState extends State<AudytSignInPage> {
             ),
           ),
         ],
-        if (step == _AuthStep.verify || step == _AuthStep.reset) ...[
-          const SizedBox(height: 10),
-          fullButton(
-            AccountingButton.ghost(
-              context,
-              key: const ValueKey('auth-resend'),
-              onPressed: disabled || cooldown > 0 ? null : _resend,
-              child: Text(
-                cooldown > 0 ? 'Resend Code In ${cooldown}s' : 'Resend Code',
-              ),
+        if (step == _AuthStep.verify || step == _AuthStep.resetCode) ...[
+          const SizedBox(height: AccountingResponsive.groupGap),
+          Center(
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              children: [
+                Text(
+                  'Haven’t received a code?',
+                  style: AccountingTypography.helper(context),
+                ),
+                _AuthTextLink(
+                  key: const ValueKey('auth-resend'),
+                  onPressed: disabled || cooldown > 0 ? null : _resend,
+                  label: cooldown > 0
+                      ? 'Resend Code In ${cooldown}s'
+                      : 'Resend Code',
+                ),
+              ],
             ),
           ),
         ],
-        const SizedBox(height: 20),
-        Center(
-          child: AccountingButton.ghost(
-            context,
-            key: const ValueKey('auth-change-mode'),
-            onPressed: disabled
-                ? null
-                : () => _go(
-                    step == _AuthStep.signIn
-                        ? _AuthStep.register
-                        : _AuthStep.signIn,
-                  ),
-            child: Text(
-              step == _AuthStep.signIn ? 'Create Account' : 'Back To Sign In',
+        if (entry) ...[
+          const SizedBox(height: AccountingResponsive.groupGap),
+          Center(
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              children: [
+                Text(
+                  step == _AuthStep.signIn
+                      ? 'Don’t have an account?'
+                      : 'Already have an account?',
+                  style: AccountingTypography.helper(context),
+                ),
+                _AuthTextLink(
+                  key: const ValueKey('auth-change-mode'),
+                  onPressed: disabled
+                      ? null
+                      : () => _go(
+                          step == _AuthStep.signIn
+                              ? _AuthStep.register
+                              : _AuthStep.signIn,
+                        ),
+                  label: step == _AuthStep.signIn ? 'Sign Up' : 'Sign In',
+                ),
+              ],
             ),
           ),
-        ),
-        const SizedBox(height: 10),
-        Center(
-          child: AccountingButton.ghost(
-            context,
-            key: const ValueKey('auth-terms'),
-            onPressed: () => showTermsAndConditions(context),
-            child: const Text('Terms & Conditions'),
+        ],
+        if (step != _AuthStep.register) ...[
+          const SizedBox(height: 10),
+          Center(
+            child: _AuthTextLink(
+              key: const ValueKey('auth-terms'),
+              onPressed: () => showTermsAndConditions(context),
+              label: 'Terms & Conditions',
+              small: true,
+            ),
           ),
-        ),
+        ],
       ];
       return Scaffold(
         backgroundColor: AccountingTheme.of(context).background,
@@ -479,7 +606,10 @@ class _AudytSignInPageState extends State<AudytSignInPage> {
                       context,
                       key: const ValueKey('authentication-card'),
                       child: Padding(
-                        padding: accountingContentPadding,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: accountingContentInset,
+                          vertical: AccountingResponsive.pageTitleOuterGap,
+                        ),
                         child: AutofillGroup(
                           child: Form(
                             key: form,
@@ -532,55 +662,200 @@ class AuthTextField extends StatefulWidget {
 class _AuthTextFieldState extends State<AuthTextField> {
   bool visible = false;
   @override
-  Widget build(BuildContext context) => TextFormField(
-    key: widget.fieldKey,
-    controller: widget.controller,
-    enabled: widget.enabled,
-    obscureText: widget.secret && !visible,
-    enableSuggestions: !widget.secret,
-    autocorrect: !widget.secret,
-    keyboardType: widget.numeric
-        ? TextInputType.number
-        : widget.secret
-        ? TextInputType.visiblePassword
-        : widget.hint.contains('Email')
-        ? TextInputType.emailAddress
-        : TextInputType.text,
-    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-      color: AccountingTheme.of(context).foreground,
-      fontSize: accountingControlFontSize,
-    ),
-    inputFormatters: [
-      if (widget.numeric) FilteringTextInputFormatter.digitsOnly,
-      LengthLimitingTextInputFormatter(widget.limit),
-    ],
-    autofillHints: widget.secret
-        ? [AutofillHints.password]
-        : widget.hint.contains('Email')
-        ? [AutofillHints.email]
-        : null,
-    decoration:
-        accountingSingleLineInputDecoration(
-          context,
-          hintText: widget.hint,
-        ).copyWith(
-          suffixIcon: widget.secret
-              ? IconButton(
-                  tooltip: visible ? 'Hide Password' : 'Show Password',
-                  onPressed: widget.enabled
-                      ? () => setState(() => visible = !visible)
-                      : null,
-                  icon: AccountingIcon(
-                    visible
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                    size: accountingRecordVisibleIconExtent,
-                    color: AccountingTheme.of(context).mutedForeground,
+  Widget build(BuildContext context) {
+    final decoration = accountingSingleLineInputDecoration(
+      context,
+      hintText: widget.hint,
+    );
+    return FormField<String>(
+      key: widget.fieldKey,
+      initialValue: widget.controller.text,
+      enabled: widget.enabled,
+      validator: (_) => widget.validator?.call(widget.controller.text),
+      builder: (field) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: widget.controller,
+            enabled: widget.enabled,
+            obscureText: widget.secret && !visible,
+            enableSuggestions: !widget.secret,
+            autocorrect: !widget.secret,
+            keyboardType: widget.numeric
+                ? TextInputType.number
+                : widget.secret
+                ? TextInputType.visiblePassword
+                : widget.hint.contains('Email')
+                ? TextInputType.emailAddress
+                : TextInputType.text,
+            style: AccountingTypography.controlValue(context),
+            inputFormatters: [
+              if (widget.numeric) FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(widget.limit),
+            ],
+            autofillHints: widget.secret
+                ? [AutofillHints.password]
+                : widget.hint.contains('Email')
+                ? [AutofillHints.email]
+                : null,
+            decoration: decoration.copyWith(
+              enabledBorder: field.hasError
+                  ? decoration.errorBorder
+                  : decoration.enabledBorder,
+              focusedBorder: field.hasError
+                  ? decoration.focusedErrorBorder
+                  : decoration.focusedBorder,
+              suffixIcon: widget.secret
+                  ? IconButton(
+                      tooltip: visible ? 'Hide Password' : 'Show Password',
+                      onPressed: widget.enabled
+                          ? () => setState(() => visible = !visible)
+                          : null,
+                      icon: AccountingIcon(
+                        visible
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        size: accountingRecordVisibleIconExtent,
+                        color: AccountingTheme.of(context).mutedForeground,
+                      ),
+                    )
+                  : null,
+            ),
+            onChanged: field.didChange,
+            onSubmitted: widget.onSubmitted,
+          ),
+          if (field.errorText case final error?)
+            Padding(
+              padding: const EdgeInsets.only(
+                top: accountingFieldLabelGap,
+                left: accountingContentInset,
+                right: accountingContentInset,
+              ),
+              child: Semantics(
+                liveRegion: true,
+                child: Text(
+                  error,
+                  style: AccountingTypography.helper(context)
+                      .copyWith(color: AccountingTheme.of(context).destructive),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Back navigation shares the title line without enlarging its text spacing.
+class _AuthHeader extends StatelessWidget {
+  const _AuthHeader({
+    required this.title,
+    required this.subtitle,
+    required this.onBack,
+    required this.showBack,
+  });
+  final String title, subtitle;
+  final VoidCallback? onBack;
+  final bool showBack;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      LayoutBuilder(
+        builder: (context, bounds) {
+          final style = AccountingTypography.pageTitle(context);
+          final reserve = showBack ? accountingControlHeight : 0.0;
+          final painter =
+              TextPainter(
+                text: TextSpan(text: title, style: style),
+                textDirection: Directionality.of(context),
+                textScaler: MediaQuery.textScalerOf(context),
+                textAlign: TextAlign.center,
+              )..layout(
+                maxWidth: (bounds.maxWidth - reserve * 2).clamp(
+                  0,
+                  double.infinity,
+                ),
+              );
+          final titleHeight = painter.height;
+          painter.dispose();
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: reserve),
+                child: Center(
+                  child: Text(title, textAlign: TextAlign.center, style: style),
+                ),
+              ),
+              if (showBack)
+                Positioned(
+                  left: 0,
+                  top: (titleHeight - accountingControlHeight) / 2,
+                  child: AccountingButton.iconOnly(
+                    context,
+                    key: const ValueKey('auth-change-mode'),
+                    onPressed: onBack,
+                    icon: Icons.chevron_left_rounded,
+                    tooltip: 'Back',
                   ),
-                )
-              : null,
-        ),
-    validator: widget.validator,
-    onFieldSubmitted: widget.onSubmitted,
+                ),
+            ],
+          );
+        },
+      ),
+      const SizedBox(height: AccountingResponsive.titleSubtitleGap),
+      Text(
+        subtitle,
+        textAlign: TextAlign.center,
+        style: AccountingTypography.helper(context),
+      ),
+    ],
   );
+}
+
+/// Authentication links keep typography and hover separate from action buttons.
+class _AuthTextLink extends StatelessWidget {
+  const _AuthTextLink({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.small = false,
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+  final bool small;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = AccountingTheme.of(context);
+    return TextButton(
+      onPressed: onPressed,
+      style: ButtonStyle(
+        textStyle: WidgetStatePropertyAll(
+          small
+              ? AccountingTypography.helper(context)
+              : AccountingTypography.controlValue(context),
+        ),
+        foregroundColor: WidgetStateProperty.resolveWith(
+          (states) =>
+              !states.contains(WidgetState.disabled) &&
+                  (states.contains(WidgetState.hovered) ||
+                      states.contains(WidgetState.focused) ||
+                      states.contains(WidgetState.pressed))
+              ? tokens.foreground
+              : tokens.mutedForeground,
+        ),
+        minimumSize: const WidgetStatePropertyAll(Size.zero),
+        padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+        backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
+      ),
+      child: Text(label),
+    );
+  }
 }
