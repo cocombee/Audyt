@@ -121,11 +121,12 @@ class _CompanySelectorState extends State<CompanySelector> {
     final demo = DemoCompany.active(context);
     final restored = RestoredCompany.of(context);
     final savedName = widget.companyName?.trim() ?? '';
+    const legalTypeFallback = 'Legal Type Not Set';
     final title = demo
         ? 'Demo Company'
         : savedName.isNotEmpty
         ? savedName
-        : restored?.name ?? 'Current Company';
+        : 'Current Company';
     final currentOptionLabel = !demo && restored == null && savedName.isNotEmpty
         ? savedName
         : 'Current Company';
@@ -210,8 +211,8 @@ class _CompanySelectorState extends State<CompanySelector> {
                           const SizedBox(height: 4),
                           Text(
                             entry.available
-                                ? 'Restored Copy · ${entry.createdAt.toLocal().day.toString().padLeft(2, '0')}-${entry.createdAt.toLocal().month.toString().padLeft(2, '0')}-${entry.createdAt.toLocal().year}'
-                                : 'Restored Copy · Unavailable',
+                                ? '$legalTypeFallback (Restored) · ${entry.createdAt.toLocal().day.toString().padLeft(2, '0')}-${entry.createdAt.toLocal().month.toString().padLeft(2, '0')}-${entry.createdAt.toLocal().year}'
+                                : '$legalTypeFallback (Restored) · Unavailable',
                             style: AccountingTypography.helper(context),
                           ),
                         ],
@@ -317,11 +318,7 @@ class _CompanySelectorState extends State<CompanySelector> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      demo
-                                          ? 'Sdn. Bhd.'
-                                          : restored != null
-                                          ? 'Restored Copy'
-                                          : 'Legal Type Not Set',
+                                      demo ? 'Sdn. Bhd.' : legalTypeFallback,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: AccountingTypography.helper(

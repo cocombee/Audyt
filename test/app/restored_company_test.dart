@@ -17,6 +17,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../features/accounting/data/archive_upgrade_test.dart'
     show envelope, historical;
+import 'journal_workspace_integration_test.dart'
+    show captureUi, loadJournalLayoutFonts;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -284,9 +286,25 @@ void main() {
       (tester) async {
         await tester.binding.setSurfaceSize(Size(width, 1000));
         addTearDown(() => tester.binding.setSurfaceSize(null));
+        if (Platform.environment['AUDYT_UI_CAPTURE_DIR'] != null) {
+          await loadJournalLayoutFonts();
+        }
         final source = await createDemoWorkspace(
           databasePath: '${root.path}/original.sqlite',
         );
+        final savedBusinessName = width == 1224
+            ? 'Fictional Restored Supplies Sdn. Bhd.'
+            : '';
+        if (savedBusinessName.isNotEmpty) {
+          source.savePreferences(
+            source.preferences.change('Business Profile', {
+              'Business Name': savedBusinessName,
+            }),
+          );
+        }
+        final selectedName = savedBusinessName.isEmpty
+            ? 'Current Company'
+            : savedBusinessName;
         final expectedExpenseIds = (await source.expenses())
             .map((row) => row.id)
             .toSet();
@@ -308,16 +326,40 @@ void main() {
         );
         addTearDown(original.dispose);
         await tester.pumpWidget(
-          AudytApp(initialPath: '/home', workspace: original),
+          RepaintBoundary(
+            key: const ValueKey('workspace-capture'),
+            child: AudytApp(initialPath: '/home', workspace: original),
+          ),
         );
         await tester.pumpAndSettle();
         await tester.tap(find.byKey(const ValueKey('company-switcher')));
         await tester.pumpAndSettle();
-        await tester.tap(
-          find.byKey(
-            ValueKey('company-option-restored-${entries[path]!['id']}'),
-          ),
+        final option = find.byKey(
+          ValueKey('company-option-restored-${entries[path]!['id']}'),
         );
+        final createdAt = DateTime.parse(entries[path]!['createdAt']! as String)
+            .toLocal();
+        final createdDate =
+            '${createdAt.day.toString().padLeft(2, '0')}-${createdAt.month.toString().padLeft(2, '0')}-${createdAt.year}';
+        expect(
+          find.descendant(
+            of: option,
+            matching: find.text('Legal Type Not Set (Restored) · $createdDate'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: option,
+            matching: find.text(
+              savedBusinessName.isEmpty
+                  ? 'Restored Company'
+                  : savedBusinessName,
+            ),
+          ),
+          findsOneWidget,
+        );
+        await tester.tap(option);
         await tester.pumpAndSettle();
         final shell = tester.widget<AccountingShell>(
           find.byType(AccountingShell).last,
@@ -331,6 +373,30 @@ void main() {
           DemoCompany.active(tester.element(find.byType(CompanySelector).last)),
           false,
         );
+        final selected = find.byKey(const ValueKey('company-switcher'));
+        if (width == 1224) {
+          expect(
+            find.descendant(of: selected, matching: find.text(selectedName)),
+            findsOneWidget,
+          );
+          expect(
+            find.descendant(
+              of: selected,
+              matching: find.text('Legal Type Not Set'),
+            ),
+            findsOneWidget,
+          );
+        } else {
+          expect(find.byTooltip('Company: $selectedName'), findsOneWidget);
+        }
+        expect(
+          find.descendant(
+            of: selected,
+            matching: find.textContaining('Restored Copy'),
+          ),
+          findsNothing,
+        );
+        await captureUi(tester, 'Restored Company Selected ${width.toInt()}');
         expect(shell.workspace!.reminders, hasLength(3));
         expect(
           (await shell.workspace!.expenses()).map((row) => row.id).toSet(),
@@ -339,6 +405,7 @@ void main() {
         expect(shell.workspace!.postedInvoices(), hasLength(2));
         await tester.tap(find.byKey(const ValueKey('company-switcher')));
         await tester.pumpAndSettle();
+        await captureUi(tester, 'Restored Company Menu ${width.toInt()}');
         await tester.tap(find.byKey(const ValueKey('company-option-demo')));
         await tester.pumpAndSettle();
         await tester.tap(find.byKey(const ValueKey('company-switcher')));

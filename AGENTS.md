@@ -1,4 +1,13 @@
 Transaction Items title spacing (10 October 2026 user clarification): the outer
+
+Restored company selector identity (10 October 2026 user correction): the selected
+company shows its saved business name and existing legal-type subtitle. Recovery
+status never replaces that subtitle or leaks from the recovery registry into the
+selected name. Only the dropdown option appends (Restored) after its existing
+legal-type line; retain its saved date. Preserve Demo Sdn. Bhd. and the existing
+Legal Type Not Set fallback where no legal type is persisted. Do not guess a
+legal type, add storage, or strip legitimate business names containing Restored.
+
 Items heading in Expense, Quotation and matching transaction forms uses
 accountingFieldLabelGap (8px) below it. Retain accountingContentInset (20px)
 between sections and below the following divider before the line grid. Repeat
