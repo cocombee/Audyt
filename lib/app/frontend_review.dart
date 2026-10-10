@@ -130,6 +130,21 @@ String _transactionColumnTitle(String field, String currency) =>
       _ => field,
     };
 
+String _rateLineAmountText(Map<String, String> line, String currency) {
+  if (line['_manualAmount'] case final manual?) return manual;
+  try {
+    return formatAccountingMoneyInputText(
+      formatAccountingInputAmount(
+        SalesQuantity.fromDecimal(line['Quantity'] ?? '1')
+            .multiply(Money.fromDecimal(line['Rate'] ?? '', currency)),
+      ),
+      Currency.parse(currency).fractionDigits,
+    );
+  } on Object {
+    return '';
+  }
+}
+
 // These frontend transaction inputs reserve the default editable caret and
 // its gap within the content floor. Quantity and other numeric owners retain
 // their existing sizing; a title/helper floor is still independent of padding.
@@ -172,18 +187,7 @@ Map<String, double> _transactionColumnWidths(
   final digits = Currency.parse(currency).fractionDigits;
   String displayed(Map<String, String> line, String field) {
     if (field == 'Amount' && form.lineFields!.contains('Rate')) {
-      if (line['_manualAmount'] != null) return line['_manualAmount']!;
-      try {
-        return formatAccountingMoneyInputText(
-          formatAccountingInputAmount(
-            SalesQuantity.fromDecimal(line['Quantity'] ?? '1')
-                .multiply(Money.fromDecimal(line['Rate'] ?? '', currency)),
-          ),
-          digits,
-        );
-      } on Object {
-        return '';
-      }
+      return _rateLineAmountText(line, currency);
     }
     return field == 'Quantity'
         ? line[field] ?? ''
@@ -4404,28 +4408,12 @@ class _FrontendFormDialogState extends State<FrontendFormDialog> {
       }
       if (field == 'Amount' && _form.lineFields!.contains('Rate')) {
         final digits = Currency.parse(currency).fractionDigits;
-        String calculated() {
-          // Keep the actively keyed text/caret intact, including a trailing dot.
-          if (line['_manualAmount'] != null) return line['_manualAmount']!;
-          try {
-            final gross = line['_manualAmount'] == null
-                ? SalesQuantity.fromDecimal(line['Quantity'] ?? '1')
-                      .multiply(Money.fromDecimal(line['Rate'] ?? '', currency))
-                : Money.fromDecimal(line['_manualAmount']!, currency);
-            return formatAccountingMoneyInputText(
-              formatAccountingInputAmount(gross),
-              digits,
-            );
-          } on Object {
-            return '';
-          }
-        }
-
         final amountController = _controllers.putIfAbsent(
           '${line['_lineId']}-Amount',
           () => TextEditingController(),
         );
-        final next = calculated();
+        // Keep the actively keyed text/caret intact, including a trailing dot.
+        final next = _rateLineAmountText(line, currency);
         if (amountController.text != next) {
           amountController.value = TextEditingValue(
             text: next,
@@ -4519,14 +4507,8 @@ class _FrontendFormDialogState extends State<FrontendFormDialog> {
       );
     }
 
-    String amount(Money value) => formatAccountingMoneyInputText(
-      formatAccountingInputAmount(value),
-      Currency.parse(currency).fractionDigits,
-    );
     final totals = _depositLineTotals();
     final emptyAmounts = _lineAmountsEmpty(currency);
-    final zero = amount(Money.zero(currency));
-    final unavailable = emptyAmounts ? zero : '—';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -4598,30 +4580,7 @@ class _FrontendFormDialogState extends State<FrontendFormDialog> {
           ),
           const SizedBox(height: accountingContentInset),
         ],
-        _lineMemoSummary([
-          (
-            _form.title == 'Deposits' ? 'Other Funds' : 'Subtotal',
-            totals == null
-                ? unavailable
-                : amount(
-                    _form.title == 'Deposits' &&
-                            _values['Tax Mode'] == 'Inclusive'
-                        ? totals.$3
-                        : totals.$1,
-                  ),
-          ),
-          if (!(_form.title == 'Credit Card Credits' &&
-              _values['Tax Mode'] == 'Out Of Scope'))
-            ('Tax', totals == null ? unavailable : amount(totals.$2)),
-          (
-            'Total (${CurrencyPresentation.fromCode(currency).amountSymbol})',
-            totals == null
-                ? unavailable
-                : _form.title == 'Deposits'
-                ? _depositTotal(totals.$3, amount)
-                : amount(totals.$3),
-          ),
-        ]),
+        _lineMemoSummary(_lineSummaryRows()),
         if (totals == null && !emptyAmounts) ...[
           const SizedBox(height: accountingFieldLabelGap),
           accountingHelperText(
@@ -4653,6 +4612,91 @@ class _FrontendFormDialogState extends State<FrontendFormDialog> {
     } on Object {
       return '—';
     }
+  }
+
+  List<(String, String)> _lineSummaryRows() {
+    final currency = _moneyCurrencyCode();
+    final digits = Currency.parse(currency).fractionDigits;
+    String amount(Money value) => formatAccountingMoneyInputText(
+      formatAccountingInputAmount(value),
+      digits,
+    );
+    final totals = _form.title == 'Deposits'
+        ? _depositLineTotals()
+        : _lineTotals();
+    final unavailable = _lineAmountsEmpty(currency)
+        ? amount(Money.zero(currency))
+        : '—';
+    return [
+      (
+        _form.title == 'Deposits' ? 'Other Funds' : 'Subtotal',
+        totals == null
+            ? unavailable
+            : amount(
+                _form.title == 'Deposits' && _values['Tax Mode'] == 'Inclusive'
+                    ? totals.$3
+                    : totals.$1,
+              ),
+      ),
+      if (!(_form.title == 'Credit Card Credits' &&
+          _values['Tax Mode'] == 'Out Of Scope'))
+        ('Tax', totals == null ? unavailable : amount(totals.$2)),
+      (
+        'Total (${CurrencyPresentation.fromCode(currency).amountSymbol})',
+        totals == null
+            ? unavailable
+            : _form.title == 'Deposits'
+            ? _depositTotal(totals.$3, amount)
+            : amount(totals.$3),
+      ),
+    ];
+  }
+
+  List<(String, String)> _stagedLineReviewRows() {
+    final currency = _moneyCurrencyCode();
+    final digits = Currency.parse(currency).fractionDigits;
+    String displayMoney(String value) {
+      try {
+        return formatAccountingMoneyInputText(
+          formatAccountingInputAmount(Money.fromDecimal(value, currency)),
+          digits,
+        );
+      } on Object {
+        return formatAccountingMoneyInputText(value, digits);
+      }
+    }
+
+    final rows = <(String, String)>[];
+    for (final (index, line) in _lines.indexed) {
+      final description = (line['Description'] ?? '').trim();
+      rows.add((
+        'Line ${index + 1}',
+        description.isEmpty ? 'Not Set' : description,
+      ));
+      for (final field in [
+        ..._previewLineFields,
+        if (_previewLineFields.contains('Rate') &&
+            !_previewLineFields.contains('Amount'))
+          'Amount',
+      ].where((field) => field != 'Description')) {
+        final value =
+            (field == 'Amount' && _previewLineFields.contains('Rate')
+                    ? _rateLineAmountText(line, currency)
+                    : line[field] ?? '')
+                .trim();
+        if (value.isEmpty) continue;
+        final choices = _form.lineChoiceLabels[field];
+        rows.add((
+          '${_transactionColumnTitle(field, currency)} ${index + 1}',
+          choices == null
+              ? _previewMoneyField(field)
+                    ? displayMoney(value)
+                    : value
+              : choices[value] ?? 'Unavailable Selection',
+        ));
+      }
+    }
+    return rows;
   }
 
   List<String> get _previewLineFields => [
@@ -4863,12 +4907,6 @@ class _FrontendFormDialogState extends State<FrontendFormDialog> {
 
     final previewTotals = _lineTotals();
     final emptyAmounts = _lineAmountsEmpty(currencyCode);
-    final unavailable = emptyAmounts
-        ? formatAccountingMoneyInputText(
-            formatAccountingInputAmount(Money.zero(currencyCode)),
-            fractionDigits,
-          )
-        : '—';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -4923,35 +4961,7 @@ class _FrontendFormDialogState extends State<FrontendFormDialog> {
         const SizedBox(height: accountingContentInset),
         const Divider(height: 1),
         const SizedBox(height: accountingContentInset),
-        _lineMemoSummary([
-          (
-            'Subtotal',
-            previewTotals != null
-                ? formatAccountingMoneyInputText(
-                    formatAccountingInputAmount(previewTotals.$1),
-                    fractionDigits,
-                  )
-                : unavailable,
-          ),
-          (
-            'Tax',
-            previewTotals != null
-                ? formatAccountingMoneyInputText(
-                    formatAccountingInputAmount(previewTotals.$2),
-                    fractionDigits,
-                  )
-                : unavailable,
-          ),
-          (
-            'Total (${CurrencyPresentation.fromCode(currencyCode).amountSymbol})',
-            previewTotals != null
-                ? formatAccountingMoneyInputText(
-                    formatAccountingInputAmount(previewTotals.$3),
-                    fractionDigits,
-                  )
-                : unavailable,
-          ),
-        ]),
+        _lineMemoSummary(_lineSummaryRows()),
         if (previewTotals == null && !emptyAmounts) ...[
           const SizedBox(height: accountingFieldLabelGap),
           accountingHelperText(
@@ -5166,6 +5176,15 @@ class _FrontendFormDialogState extends State<FrontendFormDialog> {
                   if (_files.isNotEmpty) ('Selected Files', _files.join(', ')),
                 ],
               ),
+            if (_form.lines &&
+                widget.reviewInformationRowsBuilder == null &&
+                widget.reviewDocumentsBuilder == null) ...[
+              const SizedBox(height: AccountingResponsive.groupGap),
+              AccountingInformationRows(
+                key: const ValueKey('design-review-lines'),
+                rows: [..._stagedLineReviewRows(), ..._lineSummaryRows()],
+              ),
+            ],
             if (_receivePaymentProposal) ...[
               const SizedBox(height: AccountingResponsive.groupGap),
               _receivePaymentAllocations(readOnly: true),

@@ -527,6 +527,27 @@ void main() {
         await tap(field('Tax Mode'));
         await tap(find.text('Out Of Scope').last);
         expect(lineSelector('Tax Rate (%)'), findsNothing);
+        await tester.enterText(lineAmount.first, '100');
+        await tester.pumpAndSettle();
+        await tap(find.byKey(const ValueKey('design-review')));
+        final creditReviewRows = tester
+            .widget<AccountingInformationRows>(
+              find.byKey(const ValueKey('design-review-lines')),
+            )
+            .rows;
+        expect(creditReviewRows, contains(('Amount (RM) 1', '100.00')));
+        expect(creditReviewRows, contains(('Subtotal', '100.00')));
+        expect(creditReviewRows, contains(('Total (RM)', '100.00')));
+        expect(creditReviewRows.any((row) => row.$1 == 'Tax'), isFalse);
+        await captureUi(
+          tester,
+          'Card Credit Out Of Scope Review ${width.toInt()}',
+        );
+        await tap(find.byKey(const ValueKey('design-back')));
+        expect(
+          tester.widget<TextFormField>(lineAmount.first).initialValue,
+          '100',
+        );
         final originalDate = tester
             .widget<TextFormField>(field('Payment Date'))
             .controller!
@@ -1201,6 +1222,19 @@ void main() {
       expect(tester.widget<TextFormField>(amount(0)).initialValue, '100.00');
       expect(find.text('90.00'), findsOneWidget);
       await captureUi(tester, 'Deposit Out Of Scope ${width.toInt()}');
+      await tap(find.byKey(const ValueKey('design-review')));
+      final depositReviewRows = tester
+          .widget<AccountingInformationRows>(
+            find.byKey(const ValueKey('design-review-lines')),
+          )
+          .rows;
+      expect(depositReviewRows, contains(('Amount (RM) 1', '100.00')));
+      expect(depositReviewRows, contains(('Other Funds', '100.00')));
+      expect(depositReviewRows, contains(('Tax', '0.00')));
+      expect(depositReviewRows, contains(('Total (RM)', '90.00')));
+      await captureUi(tester, 'Deposit Adjusted Review ${width.toInt()}');
+      await tap(find.byKey(const ValueKey('design-back')));
+      expect(tester.widget<TextFormField>(amount(0)).initialValue, '100.00');
       await choose('Tax Mode', 'Tax Exclusive');
       expect(
         tester

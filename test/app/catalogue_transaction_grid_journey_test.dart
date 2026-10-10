@@ -28,6 +28,8 @@ import 'journal_workspace_integration_test.dart'
 void main() {
   salesReceiptConfiguredJourneys();
   salesReceiptCustomerCreationJourneys();
+  genericLineReviewJourneys();
+  manualRateLineReviewJourneys();
   for (final width in [720.0, 1162.0, 1224.0]) {
     for (final (title, savedPreview) in [
       ('Sales Receipts', false),
@@ -143,7 +145,8 @@ void main() {
             expect(
               tester.getRect(find.text('Rate (RM)')).left,
               closeTo(tester.getRect(rate).left, 0.5),
-              reason: 'Rate title stays on the field frame left edge as it grows.',
+              reason:
+                  'Rate title stays on the field frame left edge as it grows.',
             );
             expect(
               tester
@@ -155,7 +158,8 @@ void main() {
                   )
                   .textAlign,
               TextAlign.right,
-              reason: 'Title alignment does not change monetary value alignment.',
+              reason:
+                  'Title alignment does not change monetary value alignment.',
             );
           }
           final rowBefore = tester.getRect(rate);
@@ -239,6 +243,264 @@ void main() {
         },
       );
     }
+  }
+}
+
+void genericLineReviewJourneys() {
+  for (final width in [720.0, 1224.0]) {
+    for (final title in ['Purchase Orders', 'Supplier Credits']) {
+      testWidgets('generic line preview $title at $width', (tester) async {
+        installFixedPopoutHost(tester);
+        tester.view.physicalSize = Size(width, 1400);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        await loadJournalLayoutFonts();
+        await tester.pumpWidget(
+          RepaintBoundary(
+            key: const ValueKey('workspace-capture'),
+            child: MaterialApp(
+              theme: AccountingTheme.light(),
+              home: DemoCompany(
+                child: Scaffold(
+                  body: FrontendAreaPage(
+                    area: 'expenses-vendors',
+                    title: title,
+                    initialPage: title,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final originalRows = find
+            .byWidgetPredicate(
+              (widget) =>
+                  widget.key is ValueKey &&
+                  '${(widget.key as ValueKey).value}'.startsWith(
+                    'view-record-',
+                  ),
+            )
+            .evaluate()
+            .length;
+        await tester.tap(find.byKey(const ValueKey('design-open-form')));
+        await tester.pumpAndSettle();
+
+        Finder lineInput(String field) => find.byWidgetPredicate(
+          (widget) =>
+              widget is TextFormField &&
+              widget.key is ValueKey &&
+              '${(widget.key as ValueKey).value}'.endsWith('-$field'),
+        );
+        final description = find.byWidgetPredicate(
+          (widget) =>
+              widget is AccountingDescriptionField &&
+              widget.key is ValueKey &&
+              '${(widget.key as ValueKey).value}'.endsWith('-Description'),
+        );
+        Future<void> choose(String label, String value) async {
+          final field = find.byWidgetPredicate(
+            (widget) =>
+                widget is AccountingSelector<String> &&
+                widget.triggerKey == ValueKey('design-field-$label'),
+          );
+          final selector = tester.widget<AccountingSelector<String>>(field);
+          final option = selector.options.singleWhere(
+            (option) => option.value == value,
+          );
+          final trigger = find.byKey(selector.triggerKey!);
+          await tester.ensureVisible(trigger);
+          await tester.tap(trigger);
+          await tester.pumpAndSettle();
+          await tester.tap(find.text(option.label).last);
+          await tester.pumpAndSettle();
+        }
+
+        Map<String, String> reviewRows() => {
+          for (final row
+              in tester
+                  .widget<AccountingInformationRows>(
+                    find.byKey(const ValueKey('design-review-lines')),
+                  )
+                  .rows)
+            row.$1: row.$2,
+        };
+        Future<void> preview() async {
+          final action = find.byKey(const ValueKey('design-review'));
+          await tester.ensureVisible(action);
+          await tester.tap(action);
+          await tester.pumpAndSettle();
+          expect(
+            find.byKey(const ValueKey('design-review-lines')),
+            findsOneWidget,
+          );
+        }
+
+        await tester.enterText(
+          find.byKey(const ValueKey('design-field-Counterparty')),
+          'Fictional Preview Vendor',
+        );
+        await enterAccountingText(
+          tester,
+          description,
+          'Fictional preview line',
+        );
+        await tester.enterText(lineInput('Quantity').first, '2');
+        await tester.enterText(lineInput('Rate').first, '12.50');
+        await choose('Tax Mode', 'Exclusive');
+        await preview();
+        expect(reviewRows()['Line 1'], 'Fictional preview line');
+        expect(reviewRows()['Qty 1'], '2');
+        expect(reviewRows()['Rate (RM) 1'], '12.50');
+        expect(reviewRows()['Amount (RM) 1'], '25.00');
+        expect(reviewRows()['Subtotal'], '—');
+        expect(reviewRows()['Total (RM)'], '—');
+        await tester.tap(find.byKey(const ValueKey('design-back')));
+        await tester.pumpAndSettle();
+        await choose('Tax Mode', 'Out Of Scope');
+        final symbol = title == 'Purchase Orders' && width == 1224
+            ? '\$'
+            : 'RM';
+        if (symbol == '\$') await choose('Currency', 'USD');
+        await preview();
+        final rows = reviewRows();
+        expect(rows['Line 1'], 'Fictional preview line');
+        expect(rows['Qty 1'], '2');
+        expect(rows['Rate ($symbol) 1'], '12.50');
+        expect(rows['Amount ($symbol) 1'], '25.00');
+        expect(rows['Subtotal'], '25.00');
+        expect(rows['Tax'], '0.00');
+        expect(rows['Total ($symbol)'], '25.00');
+        await tester.ensureVisible(
+          find.byKey(const ValueKey('design-review-lines')),
+        );
+        await captureUi(tester, '$title Generic Line Preview ${width.toInt()}');
+        await tester.tap(find.byKey(const ValueKey('design-back')));
+        await tester.pumpAndSettle();
+        expect(
+          accountingDescriptionText('Fictional preview line'),
+          findsOneWidget,
+        );
+        expect(
+          tester.widget<TextFormField>(lineInput('Rate').first).initialValue,
+          '12.50',
+        );
+        expect(lineInput('Quantity'), findsOneWidget);
+        await tester.tap(find.byKey(const ValueKey('design-close')));
+        await tester.pumpAndSettle();
+        expect(find.text('Discard Unsaved Changes?'), findsOneWidget);
+        await tester.tap(find.byKey(const ValueKey('design-discard-changes')));
+        await tester.pumpAndSettle();
+        expect(find.byType(FrontendFormDialog), findsNothing);
+        expect(
+          find
+              .byWidgetPredicate(
+                (widget) =>
+                    widget.key is ValueKey &&
+                    '${(widget.key as ValueKey).value}'.startsWith(
+                      'view-record-',
+                    ),
+              )
+              .evaluate()
+              .length,
+          originalRows,
+        );
+      });
+    }
+  }
+}
+
+void manualRateLineReviewJourneys() {
+  for (final width in [1600.0]) {
+    testWidgets('generic rate amount precision review at $width', (
+      tester,
+    ) async {
+      installFixedPopoutHost(tester);
+      tester.view.physicalSize = Size(width, 1400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await loadJournalLayoutFonts();
+      final directory = Directory.systemTemp.createTempSync('rate-review-');
+      addTearDown(() => directory.deleteSync(recursive: true));
+      final workspace = await createDemoWorkspace(
+        databasePath: '${directory.path}/ledger.sqlite',
+      );
+      addTearDown(workspace.dispose);
+      await tester.pumpWidget(
+        RepaintBoundary(
+          key: const ValueKey('workspace-capture'),
+          child: MaterialApp(
+            theme: AccountingTheme.light(),
+            home: Scaffold(
+              body: FrontendFormDialog(
+                contentWidth: 1400,
+                form: const DesignForm(
+                  'Purchase Orders',
+                  transactionFields,
+                  lines: true,
+                  lineFields: [
+                    'Description',
+                    'Quantity',
+                    'Rate',
+                    'Discount',
+                    'Tax Rate (%)',
+                    'Account',
+                  ],
+                  lineChoiceLabels: {
+                    'Account': {'expense': 'Fictional Expenses'},
+                    'Tax Rate (%)': {'0': 'No Tax'},
+                  },
+                ),
+                settingsWorkspace: workspace,
+                initial: const {
+                  'Counterparty': 'Fictional Preview Vendor',
+                  'Tax Mode': 'Out Of Scope',
+                  '_lines': [
+                    {
+                      'Description': 'Fictional preview line',
+                      'Quantity': '3',
+                      'Rate': '3.34',
+                      'Discount': '1.00',
+                      'Tax Rate (%)': '0',
+                      'Account': 'expense',
+                    },
+                  ],
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final amount = find.byWidgetPredicate(
+        (widget) =>
+            widget is TextFormField &&
+            widget.key is ValueKey &&
+            '${(widget.key as ValueKey).value}'.endsWith('-Amount'),
+      );
+      await enterAccountingText(tester, amount, '10.00');
+      await tester.pumpAndSettle();
+      final preview = find.byKey(const ValueKey('design-review'));
+      await tester.ensureVisible(preview);
+      await tester.tap(preview);
+      await tester.pumpAndSettle();
+      final rows = tester
+          .widget<AccountingInformationRows>(
+            find.byKey(const ValueKey('design-review-lines')),
+          )
+          .rows;
+      expect(rows, contains(('Qty 1', '3')));
+      expect(rows, contains(('Rate (RM) 1', '3.34')));
+      expect(rows, contains(('Amount (RM) 1', '10.00')));
+      expect(rows, contains(('Discount (RM) 1', '1.00')));
+      expect(rows, contains(('Category 1', 'Fictional Expenses')));
+      expect(rows.any((row) => row.$2 == 'expense'), isFalse);
+      expect(rows, contains(('Subtotal', '9.00')));
+      expect(rows, contains(('Total (RM)', '9.00')));
+      await captureUi(tester, 'Rate Amount Precision Review ${width.toInt()}');
+    });
   }
 }
 
@@ -699,6 +961,37 @@ void salesReceiptConfiguredJourneys() {
             );
             await tester.tap(find.byKey(const ValueKey('design-review')));
             await tester.pumpAndSettle();
+            final receiptReviewRows = tester
+                .widget<AccountingInformationRows>(
+                  find.byKey(const ValueKey('design-review-lines')),
+                )
+                .rows;
+            expect(
+              receiptReviewRows,
+              contains(('Line 1', 'Maintained item description')),
+            );
+            expect(
+              receiptReviewRows,
+              contains(('Product / Service 1', 'Registered Service')),
+            );
+            expect(receiptReviewRows, contains(('Amount (RM) 1', '100.00')));
+            if (showRate) {
+              expect(receiptReviewRows, contains(('Qty 1', '1')));
+              expect(receiptReviewRows, contains(('Rate (RM) 1', '100.00')));
+            }
+            expect(
+              receiptReviewRows,
+              contains((
+                'Total (RM)',
+                basis == 'Exclusive' ? '108.00' : '100.00',
+              )),
+            );
+            if (showRate && basis == 'Exclusive') {
+              await captureUi(
+                tester,
+                'Sales Receipt Configured Review ${width.toInt()}',
+              );
+            }
             await tester.tap(find.text('Keep Preview'));
             await tester.pumpAndSettle();
             expect(

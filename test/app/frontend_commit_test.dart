@@ -355,7 +355,11 @@ void main() {
       expect(
         tester
             .widget<AccountingInformationRows>(
-              find.byType(AccountingInformationRows),
+              find.byWidgetPredicate(
+                (widget) =>
+                    widget is AccountingInformationRows &&
+                    widget.rows.any((row) => row.$1 == 'Customer'),
+              ),
             )
             .rows,
         contains(('Customer', 'Same Name')),
