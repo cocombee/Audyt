@@ -320,8 +320,5 @@ List<(String, String)> billInformationRows(
     ('Tax ${i + 1}', invoiceMoney(bill.lines[i].tax)),
     ('Line Total ${i + 1}', invoiceMoney(bill.lines[i].total)),
   ],
-  ('Vendor ID', bill.vendorSnapshot.id.value),
-  ('Payee ID', bill.vendorSnapshot.payeeId),
-  ('Bill ID', bill.id.value),
   ('Revision', '${bill.metadata.revision}'),
 ];

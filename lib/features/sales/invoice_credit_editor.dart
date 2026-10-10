@@ -4,6 +4,7 @@ import '../accounting/presentation/attachment_preview_dialog.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 
 import '../../app/accounting_components.dart';
@@ -55,9 +56,48 @@ class _InvoiceCreditEditorState extends State<InvoiceCreditEditor> {
       ),
   };
   late final attachments = [...?widget.draft?.attachments];
+  late final String _openingDate;
+  late final String _openingReason;
+  late final Map<EntityId, String> _openingAmounts;
+  late final List<ReceiptAttachment> _openingAttachments;
   bool picking = false;
   bool dragOver = false;
+  bool _closePromptOpen = false;
   String? error;
+
+  @override
+  void initState() {
+    super.initState();
+    _openingDate = date.text;
+    _openingReason = reason.text;
+    _openingAmounts = {
+      for (final entry in amounts.entries) entry.key: entry.value.text,
+    };
+    _openingAttachments = List.of(attachments);
+  }
+
+  bool get _hasChanges =>
+      date.text != _openingDate ||
+      reason.text != _openingReason ||
+      amounts.entries.any(
+        (entry) => entry.value.text != _openingAmounts[entry.key],
+      ) ||
+      !listEquals(attachments, _openingAttachments);
+
+  Future<void> _handleClose() async {
+    if (picking || _closePromptOpen) return;
+    if (_hasChanges) {
+      _closePromptOpen = true;
+      try {
+        final discard = await AccountingDialog.confirmDiscardChanges(context);
+        if (!mounted || !discard) return;
+      } finally {
+        _closePromptOpen = false;
+      }
+    }
+    if (mounted) Navigator.of(context).pop();
+  }
+
   Future<void> pick() async {
     setState(() => picking = true);
     try {
@@ -73,38 +113,49 @@ class _InvoiceCreditEditorState extends State<InvoiceCreditEditor> {
   }
 
   Future<void> _onFilesDropped(DropDoneDetails details) async {
-    if (mounted) setState(() => dragOver = false);
-    final files = <PickedExpenseAttachment>[];
-    for (final item in details.files) {
-      if (item is DropItemDirectory) continue;
-      final bookmark = item.extraAppleBookmark;
-      var accessed = false;
-      try {
-        if (bookmark != null && bookmark.isNotEmpty) {
-          accessed = await DesktopDrop.instance
-              .startAccessingSecurityScopedResource(bookmark: bookmark);
-        }
-        files.add(
-          PickedExpenseAttachment(
-            name: item.name,
-            mimeType:
-                item.mimeType ??
-                NativeExpenseAttachmentPicker.mimeTypeForFilename(item.name),
-            bytes: await item.readAsBytes(),
-            path: item.path,
-          ),
-        );
-      } catch (e) {
-        if (mounted) setState(() => error = 'Could not read ${item.name}: $e');
-      } finally {
-        if (accessed) {
-          await DesktopDrop.instance.stopAccessingSecurityScopedResource(
-            bookmark: bookmark!,
+    if (mounted) {
+      setState(() {
+        dragOver = false;
+        picking = true;
+      });
+    }
+    try {
+      final files = <PickedExpenseAttachment>[];
+      for (final item in details.files) {
+        if (item is DropItemDirectory) continue;
+        final bookmark = item.extraAppleBookmark;
+        var accessed = false;
+        try {
+          if (bookmark != null && bookmark.isNotEmpty) {
+            accessed = await DesktopDrop.instance
+                .startAccessingSecurityScopedResource(bookmark: bookmark);
+          }
+          files.add(
+            PickedExpenseAttachment(
+              name: item.name,
+              mimeType:
+                  item.mimeType ??
+                  NativeExpenseAttachmentPicker.mimeTypeForFilename(item.name),
+              bytes: await item.readAsBytes(),
+              path: item.path,
+            ),
           );
+        } catch (e) {
+          if (mounted) {
+            setState(() => error = 'Could not read ${item.name}: $e');
+          }
+        } finally {
+          if (accessed) {
+            await DesktopDrop.instance.stopAccessingSecurityScopedResource(
+              bookmark: bookmark!,
+            );
+          }
         }
       }
+      await _addFiles(files);
+    } finally {
+      if (mounted) setState(() => picking = false);
     }
-    await _addFiles(files);
   }
 
   Future<void> _addFiles(List<PickedExpenseAttachment> files) async {
@@ -175,10 +226,27 @@ class _InvoiceCreditEditorState extends State<InvoiceCreditEditor> {
   }
 
   @override
-  Widget build(BuildContext context) => AccountingDialog.alert(
+  Widget build(BuildContext context) => CallbackShortcuts(
+    bindings: {const SingleActivator(LogicalKeyboardKey.escape): _handleClose},
+    child: FocusScope(
+      autofocus: true,
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop) _handleClose();
+        },
+        child: _dialog(context),
+      ),
+    ),
+  );
+
+  Widget _dialog(BuildContext context) => AccountingDialog.alert(
     context,
     widthFamily: AccountingPopoutWidthFamily.custom,
     title: 'Credit Draft',
+    onClose: _handleClose,
+    closeKey: const ValueKey('cancel-credit'),
+    canClose: !picking,
     formFooter: true,
     description: 'Enter gross credit amounts for returned lines. Leave other lines blank.',
     content: SizedBox(
@@ -435,12 +503,6 @@ class _InvoiceCreditEditorState extends State<InvoiceCreditEditor> {
       ),
     ),
     actions: [
-      AccountingButton.secondary(
-        context,
-        key: const ValueKey('cancel-credit'),
-        onPressed: () => Navigator.pop(context),
-        child: const Text('Cancel'),
-      ),
       AccountingButton.primary(
         context,
         key: const ValueKey('save-credit'),

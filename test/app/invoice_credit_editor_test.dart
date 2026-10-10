@@ -215,6 +215,17 @@ void main() {
     await tester.enterText(amountField, '');
     await tester.pumpAndSettle();
     expect(tester.getSize(amountField).width, closeTo(initialAmountWidth, .1));
+    await tester.enterText(reasonField, 'New draft working reason');
+    await tester.tap(find.byKey(const ValueKey('cancel-credit')));
+    await tester.pumpAndSettle();
+    expect(find.text('Discard Unsaved Changes?'), findsOneWidget);
+    await tester.tap(find.text('Keep Editing'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<TextField>(reasonField).controller!.text,
+      'New draft working reason',
+    );
+    await tester.enterText(reasonField, '');
 
     await tester.tap(find.byKey(const ValueKey('credit-attachments')));
     await tester.pumpAndSettle();
@@ -261,6 +272,62 @@ void main() {
     expect(find.byTooltip('Edit'), findsOneWidget);
     await tester.tap(find.byTooltip('Edit'));
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('cancel-credit')));
+    await tester.pumpAndSettle();
+    expect(find.text('Discard Unsaved Changes?'), findsNothing);
+    expect(find.byType(InvoiceCreditEditor), findsNothing);
+    await tester.tap(find.byTooltip('Edit'));
+    await tester.pumpAndSettle();
+
+    final savedAmount = find.byKey(ValueKey('credit-amount-$second'));
+    final savedDate = find.byKey(const ValueKey('credit-date'));
+    final savedDateText = tester.widget<TextField>(savedDate).controller!.text;
+    await tester.enterText(savedAmount, '36.00');
+    expect(tester.widget<TextField>(savedAmount).controller!.text, '36.00');
+    await tester.tap(find.byKey(const ValueKey('cancel-credit')));
+    await tester.pumpAndSettle();
+    expect(find.text('Discard Unsaved Changes?'), findsOneWidget);
+    await tester.tap(find.text('Keep Editing'));
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.text('Discard Unsaved Changes?'), findsOneWidget);
+    await tester.tap(find.text('Keep Editing'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(savedAmount).controller!.text, '36.00');
+    await tester.tapAt(const Offset(2, 2));
+    await tester.pumpAndSettle();
+    expect(find.text('Discard Unsaved Changes?'), findsOneWidget);
+    await tester.tap(find.text('Keep Editing'));
+    await tester.pumpAndSettle();
+    await tester.enterText(savedAmount, '35.00');
+    await tester.enterText(savedDate, '02-01-2026');
+    await tester.tap(find.byKey(const ValueKey('cancel-credit')));
+    await tester.pumpAndSettle();
+    expect(find.text('Discard Unsaved Changes?'), findsOneWidget);
+    await tester.tap(find.text('Keep Editing'));
+    await tester.pumpAndSettle();
+    await tester.enterText(savedDate, savedDateText);
+    await tester.enterText(
+      find.byKey(const ValueKey('credit-reason')),
+      'Changed reason',
+    );
+    await tester.tap(find.byKey(const ValueKey('cancel-credit')));
+    await tester.pumpAndSettle();
+    expect(find.text('Discard Unsaved Changes?'), findsOneWidget);
+    await tester.tap(find.text('Keep Editing'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('credit-reason')))
+          .controller!
+          .text,
+      'Changed reason',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('credit-reason')),
+      w.creditDrafts().single.reason,
+    );
     final savedAttachment = w.creditDrafts().single.attachments.single;
     final removeAttachment = find.byKey(
       ValueKey('remove-${savedAttachment.originalId}'),
@@ -275,6 +342,10 @@ void main() {
     );
     await tester.tap(find.byKey(const ValueKey('cancel-credit')));
     await tester.pumpAndSettle();
+    expect(find.text('Discard Unsaved Changes?'), findsOneWidget);
+    await tester.tap(find.text('Discard'));
+    await tester.pumpAndSettle();
+    expect(find.byType(InvoiceCreditEditor), findsNothing);
     expect(
       w.creditDrafts().single.attachments.single.originalSha256,
       attachmentHash,

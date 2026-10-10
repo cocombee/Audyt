@@ -212,6 +212,8 @@ void main() {
       await tap(find.byKey(ValueKey('remove-${savedAttachment.originalId}')));
       await enter('Reason', 'Cancelled edit');
       await tap(find.byKey(const ValueKey('cancel-credit')));
+      expect(find.text('Discard Unsaved Changes?'), findsOneWidget);
+      await tap(find.text('Discard'));
       expect(tables(workspace), initial);
       await tap(find.text('Choose Invoice To Credit').first);
       await tap(find.text('CREDIT-JOURNEY · ${customer.displayName}').last);
@@ -261,6 +263,8 @@ void main() {
       expect(tables(workspace), afterOtherSave);
       await capture('Stale Edit Rejected');
       await tap(find.byKey(const ValueKey('cancel-credit')));
+      expect(find.text('Discard Unsaved Changes?'), findsOneWidget);
+      await tap(find.text('Discard'));
       await tap(find.byKey(ValueKey('history-$creditId')));
       await updateElsewhere('Latest saved reason');
       final afterLatestSave = tables(workspace);

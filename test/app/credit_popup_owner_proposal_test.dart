@@ -158,6 +158,9 @@ void main() {
         await t.pumpAndSettle();
         await capture('Credit Draft · Actual Editor');
         await tap(find.byKey(const ValueKey('cancel-credit')));
+        expect(find.text('Discard Unsaved Changes?'), findsOneWidget);
+        await capture('Credit Draft · Dirty Close Warning');
+        await tap(find.text('Discard'));
         expect(tables(w), baseline);
         await tap(
           find.byKey(ValueKey('post-credit-${fixture.creditId.value}')),
