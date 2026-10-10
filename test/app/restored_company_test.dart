@@ -10,6 +10,8 @@ import 'package:audyt/core/ids/entity_id.dart';
 import 'package:audyt/features/accounting/application/accounting_workspace.dart';
 import 'package:audyt/features/accounting/application/restored_workspaces.dart';
 import 'package:audyt/features/accounting/application/workspace_backup.dart';
+import 'package:audyt/features/accounting/domain/expense_draft.dart';
+import 'package:audyt/features/purchases/domain/payment_voucher.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -51,6 +53,7 @@ void main() {
                 'path': path,
                 'createdAt': DateTime.now().toUtc().toIso8601String(),
                 'available': true,
+                'newTransactionCount': 0,
               };
             case 'listRestoredWorkspaces':
               return {'workspaces': entries.values.toList(), 'issues': 0};
@@ -148,10 +151,107 @@ void main() {
     );
     expect(report.trialBalanceCredits, report.trialBalanceDebits);
     expect(report.balanceSheetDifference, BigInt.zero);
+    final baselineRoots = await restored.database.auditEventCount(
+      entry.businessId,
+      kind: 'transaction_root_created',
+    );
     restored.savePreferences(
       restored.preferences.change('Sales Preferences', {
         'Customer Message': 'Copy only',
       }),
+    );
+    expect(
+      await restored.database.auditEventCount(
+        entry.businessId,
+        kind: 'transaction_root_created',
+      ),
+      baselineRoots,
+    );
+    final sampleJournal = (await restored.journals()).first.entry;
+    final newJournalId = await restored.saveJournal(
+      date: DateTime.utc(2026, 10, 10),
+      memo: 'Fictional new restored journal',
+      lines: sampleJournal.lines,
+    );
+    expect(
+      await restored.database.auditEventCount(
+        entry.businessId,
+        kind: 'transaction_root_created',
+      ),
+      baselineRoots + 1,
+    );
+    final voucherSources = restored.vouchers.sources
+        .where(
+          (source) => source.type == PaymentVoucherSourceType.directExpense,
+        )
+        .take(2)
+        .toList();
+    expect(voucherSources, hasLength(2));
+    for (final (index, sourceRecord) in voucherSources.indexed) {
+      restored.vouchers.save(
+        PaymentVoucher.create(
+          id: 'lifecycle-voucher-${index + 1}',
+          sourceType: sourceRecord.type,
+          sourceId: sourceRecord.id,
+          payee: sourceRecord.payee,
+          amount: sourceRecord.amount,
+          paymentAccount: 'Demo Bank',
+          paymentAccountId: sourceRecord.paymentAccountId,
+          paymentMethod: 'Bank Transfer',
+          paymentDate: sourceRecord.date,
+          reference: 'LIFECYCLE-${index + 1}',
+        ),
+      );
+    }
+    expect(
+      await restored.database.auditEventCount(
+        entry.businessId,
+        kind: 'transaction_root_created',
+      ),
+      baselineRoots + 3,
+    );
+    final newExpense = RecordExpenseDraft(
+      submissionId: 'lifecycle-expense',
+      amount: '10.00',
+      date: '10-10-2026',
+      payee: 'Fictional Paper Shop',
+      paymentAccount: 'Cash',
+      category: 'Office Operations',
+      tax: 'Review Needed',
+      customer: '',
+      billable: false,
+      dimensions: '',
+      itemOrSplitDetails: '',
+      notes: '',
+    );
+    final newExpenseId = await restored.saveExpenseIntake(newExpense);
+    expect(await restored.saveExpenseIntake(newExpense), newExpenseId);
+    await restored.saveJournal(
+      date: DateTime.utc(2026, 10, 11),
+      memo: 'Fictional fifth restored transaction',
+      lines: sampleJournal.lines,
+    );
+    expect(
+      await restored.database.auditEventCount(
+        entry.businessId,
+        kind: 'transaction_root_created',
+      ),
+      baselineRoots + 5,
+    );
+    final firstVoucher = restored.vouchers.byId('lifecycle-voucher-1')!;
+    restored.vouchers.save(
+      PaymentVoucher.fromJson({
+        ...firstVoucher.toJson(),
+        'reference': 'LIFECYCLE-EDITED',
+      }),
+      expectedCurrent: firstVoucher,
+    );
+    expect(
+      await restored.database.auditEventCount(
+        entry.businessId,
+        kind: 'transaction_root_created',
+      ),
+      baselineRoots + 5,
     );
     await WorkspaceBackup(restored).info();
     expect((backupCalls.last.arguments as Map)['workspaceId'], entry.id);
@@ -165,6 +265,25 @@ void main() {
       restored.preferences.text('Sales Preferences', 'Customer Message'),
       'Copy only',
     );
+    expect(
+      (await restored.database.auditEventPage(
+        entry.businessId,
+        kind: 'transaction_root_created',
+        subjectId: newJournalId,
+      )),
+      hasLength(1),
+    );
+    expect(
+      await restored.database.auditEventCount(
+        entry.businessId,
+        kind: 'transaction_root_created',
+      ),
+      baselineRoots + 5,
+    );
+    expect(
+      restored.vouchers.byId('lifecycle-voucher-1')?.reference,
+      'LIFECYCLE-EDITED',
+    );
     restored.dispose();
     final original = await AccountingWorkspace.open(
       '${root.path}/original.sqlite',
@@ -177,6 +296,23 @@ void main() {
     expect(
       (await original.journals()).map((row) => row.entry.id).toSet(),
       journalIds,
+    );
+    final originalAuditRoots = await original.database.auditEventCount(
+      identity.businessId,
+      kind: 'transaction_root_created',
+    );
+    final originalJournal = (await original.journals()).first.entry;
+    await original.saveJournal(
+      date: DateTime.utc(2026, 10, 10),
+      memo: 'Fictional original-company journal',
+      lines: originalJournal.lines,
+    );
+    expect(
+      await original.database.auditEventCount(
+        identity.businessId,
+        kind: 'transaction_root_created',
+      ),
+      originalAuditRoots,
     );
     await WorkspaceBackup(original).info();
     expect(
@@ -286,14 +422,14 @@ void main() {
       (tester) async {
         await tester.binding.setSurfaceSize(Size(width, 1000));
         addTearDown(() => tester.binding.setSurfaceSize(null));
-        if (Platform.environment['AUDYT_UI_CAPTURE_DIR'] != null) {
-          await loadJournalLayoutFonts();
-        }
+        // Geometry and line-count assertions use the actual app font in every
+        // run, including the complete gate without screenshot capture enabled.
+        await loadJournalLayoutFonts();
         final source = await createDemoWorkspace(
           databasePath: '${root.path}/original.sqlite',
         );
         final savedBusinessName = width == 1224
-            ? 'Fictional Restored Supplies Sdn. Bhd.'
+            ? 'Fictional Restored Sdn. Bhd.'
             : '';
         if (savedBusinessName.isNotEmpty) {
           source.savePreferences(
@@ -320,6 +456,14 @@ void main() {
           archive = envelope(historical(archive!, 36));
         }
         final path = (await WorkspaceBackup(source).import())!;
+        final secondPath = '$path-second';
+        final secondCopyId = EntityId.random().value;
+        entries[secondPath] = {
+          ...entries[path]!,
+          'id': secondCopyId,
+          'name': 'Fictional Second Restored Services Sdn. Bhd.',
+          'path': secondPath,
+        };
         source.dispose();
         final original = await AccountingWorkspace.open(
           '${root.path}/original.sqlite',
@@ -337,6 +481,87 @@ void main() {
         final option = find.byKey(
           ValueKey('company-option-restored-${entries[path]!['id']}'),
         );
+        final secondOption = find.byKey(
+          ValueKey('company-option-restored-$secondCopyId'),
+        );
+        Rect paintedOption(Finder row) {
+          final material = find.descendant(
+            of: row,
+            matching: find.byType(Material),
+          );
+          expect(material, findsOneWidget);
+          return tester.getRect(material);
+        }
+
+        void expectOptionGaps() {
+          final current = paintedOption(
+            find.byKey(const ValueKey('company-option-current')),
+          );
+          final demo = paintedOption(
+            find.byKey(const ValueKey('company-option-demo')),
+          );
+          final first = paintedOption(option);
+          final second = paintedOption(secondOption);
+          final ordinaryGap = demo.top - current.bottom;
+          expect(
+            ordinaryGap,
+            kMinInteractiveDimension - accountingControlHeight,
+          );
+          expect(first.top - demo.bottom, ordinaryGap);
+          expect(second.top - first.bottom, ordinaryGap);
+        }
+
+        void expectRestoredOptionClearance(String subtitle) {
+          final demoOption = find.byKey(const ValueKey('company-option-demo'));
+          final singlePaint = paintedOption(demoOption);
+          final singleText = tester.getRect(
+            find.descendant(
+              of: demoOption,
+              matching: find.text('Demo Company'),
+            ),
+          );
+          final multiPaint = paintedOption(option);
+          final title = tester.getRect(
+            find.descendant(
+              of: option,
+              matching: find.text(
+                savedBusinessName.isEmpty
+                    ? 'Restored Company'
+                    : savedBusinessName,
+              ),
+            ),
+          );
+          final detail = tester.getRect(
+            find.descendant(of: option, matching: find.text(subtitle)),
+          );
+          expect(singlePaint.height, accountingControlHeight);
+          expect(
+            title.top - multiPaint.top,
+            closeTo(singleText.top - singlePaint.top, 1),
+          );
+          expect(
+            multiPaint.bottom - detail.bottom,
+            closeTo(singlePaint.bottom - singleText.bottom, 1),
+          );
+          expect(
+            detail.bottom - title.top,
+            greaterThan(singleText.height * 1.8),
+          );
+        }
+
+        Future<void> captureWithHover(Finder row, String label) async {
+          if (Platform.environment['AUDYT_UI_CAPTURE_DIR'] == null) return;
+          final mouse = await tester.createGesture(
+            kind: ui.PointerDeviceKind.mouse,
+          );
+          await mouse.addPointer(location: tester.getCenter(row));
+          await mouse.moveTo(tester.getCenter(row));
+          await tester.pumpAndSettle();
+          await captureUi(tester, label);
+          await mouse.removePointer();
+          await tester.pumpAndSettle();
+        }
+
         final createdAt = DateTime.parse(entries[path]!['createdAt']! as String)
             .toLocal();
         final createdDate =
@@ -359,6 +584,31 @@ void main() {
           ),
           findsOneWidget,
         );
+        expectRestoredOptionClearance(
+          'Legal Type Not Set (Restored) · $createdDate',
+        );
+        expectOptionGaps();
+        if (width == 1224) {
+          final title = tester.getRect(
+            find.descendant(of: option, matching: find.text(savedBusinessName)),
+          );
+          final detail = tester.getRect(
+            find.descendant(
+              of: option,
+              matching: find.text(
+                'Legal Type Not Set (Restored) · $createdDate',
+              ),
+            ),
+          );
+          final singleText = tester.getRect(
+            find.descendant(
+              of: find.byKey(const ValueKey('company-option-demo')),
+              matching: find.text('Demo Company'),
+            ),
+          );
+          expect(title.height, closeTo(singleText.height, 1));
+          expect(detail.height, greaterThan(singleText.height * 1.4));
+        }
         await tester.tap(option);
         await tester.pumpAndSettle();
         final shell = tester.widget<AccountingShell>(
@@ -405,7 +655,55 @@ void main() {
         expect(shell.workspace!.postedInvoices(), hasLength(2));
         await tester.tap(find.byKey(const ValueKey('company-switcher')));
         await tester.pumpAndSettle();
-        await captureUi(tester, 'Restored Company Menu ${width.toInt()}');
+        expectRestoredOptionClearance(
+          'Legal Type Not Set (Restored) · $createdDate',
+        );
+        expectOptionGaps();
+        await captureWithHover(
+          find.byKey(const ValueKey('company-option-demo')),
+          'Restored Company Menu ${width.toInt()}',
+        );
+        await captureWithHover(
+          secondOption,
+          'Restored Company Adjacent Rows ${width.toInt()}',
+        );
+        await tester.tap(find.byKey(const ValueKey('company-switcher')));
+        await tester.pumpAndSettle();
+        entries[path]!['newTransactionCount'] = 5;
+        entries[secondPath]!['newTransactionCount'] = 5;
+        await tester.tap(find.byKey(const ValueKey('company-switcher')));
+        await tester.pumpAndSettle();
+        expect(
+          find.descendant(
+            of: option,
+            matching: find.text('Legal Type Not Set'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: option,
+            matching: find.textContaining('(Restored)'),
+          ),
+          findsNothing,
+        );
+        expect(
+          find.descendant(
+            of: option,
+            matching: find.textContaining(createdDate),
+          ),
+          findsNothing,
+        );
+        expectRestoredOptionClearance('Legal Type Not Set');
+        expectOptionGaps();
+        await captureWithHover(
+          find.byKey(const ValueKey('company-option-demo')),
+          'Restored Company Marker Expired ${width.toInt()}',
+        );
+        await captureWithHover(
+          secondOption,
+          'Restored Company Adjacent Rows Expired ${width.toInt()}',
+        );
         await tester.tap(find.byKey(const ValueKey('company-option-demo')));
         await tester.pumpAndSettle();
         await tester.tap(find.byKey(const ValueKey('company-switcher')));

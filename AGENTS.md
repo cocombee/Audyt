@@ -1,3 +1,23 @@
+Restored company marker lifecycle and menu padding (10 October 2026 user correction):
+Only restored-copy dropdown options show the recovery marker and restore date.
+Retire both after five newly saved durable transaction roots, including drafts;
+exclude imported roots, edits, retries and posting an existing draft. Persist
+retirement in copy metadata so it stays retired after restart or unavailability.
+Legacy copies begin counting at their first compatible update. Default, Demo and
+other businesses do not acquire recovery-count events. Preserve saved business
+names and existing legal-type subtitles. Multiline restored choices retain the
+same effective top/bottom content clearance as the original single-line selector
+choice, measured to its painted 44px Material surface rather than the surrounding
+48px hit target. Use the shared control-height/font geometry when text wraps. This
+opt-in must not change ordinary choices, page buttons or table spacing.
+
+Adjacent restored selector spacing (10 October 2026 native correction): tall
+multiline choices must also retain the ordinary 4px painted-to-painted option
+gap. Preserve each option's existing 2px unpainted edge, derived from the 48px
+interactive target and 44px painted control height, independently of its inner
+text clearance. Scope this wrapper to restored company options only; ordinary
+selectors, table rows and page buttons retain their existing owners.
+
 Transaction Items title spacing (10 October 2026 user clarification): the outer
 
 Restored company selector identity (10 October 2026 user correction): the selected

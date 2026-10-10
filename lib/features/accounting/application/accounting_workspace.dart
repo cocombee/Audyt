@@ -561,6 +561,7 @@ final class AccountingWorkspace extends ChangeNotifier {
         defaultCurrency: 'MYR',
         createIfMissing: false,
       );
+      database.trackRestoredTransactionRoots(identity.businessId);
       return AccountingWorkspace._(
         database,
         identity,

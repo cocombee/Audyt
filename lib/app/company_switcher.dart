@@ -94,6 +94,20 @@ class _CompanySelectorState extends State<CompanySelector> {
   RestoredWorkspaceCatalog? _catalog;
   bool _failed = false;
   int _generation = 0;
+
+  String _restoredOptionSubtitle(RestoredWorkspaceEntry entry) {
+    if (!entry.showRestoredMarker) {
+      return entry.available
+          ? 'Legal Type Not Set'
+          : 'Legal Type Not Set · Unavailable';
+    }
+    final date = entry.createdAt.toLocal();
+    final dateText = entry.available
+        ? '${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}'
+        : 'Unavailable';
+    return 'Legal Type Not Set (Restored) · $dateText';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -180,42 +194,51 @@ class _CompanySelectorState extends State<CompanySelector> {
                   in _catalog?.entries ?? <RestoredWorkspaceEntry>[])
                 SizedBox(
                   width: width - 8,
-                  child: MenuItemButton(
-                    key: ValueKey('company-option-restored-${entry.id}'),
-                    onPressed: !entry.available
-                        ? null
-                        : () {
-                            if (restored?.id == entry.id) return;
-                            Navigator.of(context).push<void>(
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    RestoredCompanyPage(path: entry.path),
-                              ),
-                            );
-                          },
-                    style: accountingSelectorOptionStyle(
-                      context,
-                      selected: restored?.id == entry.id,
+                  // A multiline option paints beyond Material's 48px tap
+                  // target. Keep the ordinary option's 2px unpainted edge on
+                  // each side so adjacent selection surfaces stay separated.
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical:
+                          (kMinInteractiveDimension - accountingControlHeight) /
+                          2,
                     ),
-                    child: Semantics(
-                      selected: restored?.id == entry.id,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            entry.name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            entry.available
-                                ? '$legalTypeFallback (Restored) · ${entry.createdAt.toLocal().day.toString().padLeft(2, '0')}-${entry.createdAt.toLocal().month.toString().padLeft(2, '0')}-${entry.createdAt.toLocal().year}'
-                                : '$legalTypeFallback (Restored) · Unavailable',
-                            style: AccountingTypography.helper(context),
-                          ),
-                        ],
+                    child: MenuItemButton(
+                      key: ValueKey('company-option-restored-${entry.id}'),
+                      onPressed: !entry.available
+                          ? null
+                          : () {
+                              if (restored?.id == entry.id) return;
+                              Navigator.of(context).push<void>(
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      RestoredCompanyPage(path: entry.path),
+                                ),
+                              );
+                            },
+                      style: accountingSelectorOptionStyle(
+                        context,
+                        selected: restored?.id == entry.id,
+                        multiline: true,
+                      ),
+                      child: Semantics(
+                        selected: restored?.id == entry.id,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              entry.name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _restoredOptionSubtitle(entry),
+                              style: AccountingTypography.helper(context),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

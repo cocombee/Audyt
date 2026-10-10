@@ -735,6 +735,15 @@ extension TaxRemittancePersistence on LocalAccountingDatabase {
         subjectId: request,
         detail: payload,
       );
+      if (result.origin == TaxRemittanceOrigin.recorded) {
+        _appendTransactionRootCreated(
+          businessId: company,
+          actorId: actor,
+          at: approved,
+          family: 'taxRemittance',
+          recordId: request,
+        );
+      }
       _taxRemittanceFromRow(
         _database.select(
           'SELECT * FROM tax_remittances WHERE business_id=? AND id=?',

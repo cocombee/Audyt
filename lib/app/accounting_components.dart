@@ -3155,11 +3155,32 @@ ButtonStyle accountingSelectorOptionStyle(
   bool hovered = false,
   bool managedHighlight = false,
   bool grouped = false,
+  bool multiline = false,
 }) {
   final tokens = AccountingTheme.of(context);
+  // A single-line option paints at 44px even when its transparent tap target
+  // grows to 48px. Preserve clearance against the painted surface.
+  var verticalInset = 5.0;
+  if (multiline) {
+    final line = TextPainter(
+      text: TextSpan(text: 'Ag', style: AccountingTypography.value(context)),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+    )..layout();
+    verticalInset = math.max(
+      verticalInset,
+      (accountingControlHeight - line.height) / 2,
+    );
+    line.dispose();
+  }
   return MenuItemButton.styleFrom(
-    minimumSize: const Size(double.infinity, 44),
-    padding: EdgeInsets.fromLTRB(grouped ? 28 : 12, 5, 12, 5),
+    minimumSize: const Size(double.infinity, accountingControlHeight),
+    padding: EdgeInsets.fromLTRB(
+      grouped ? 28 : 12,
+      verticalInset,
+      12,
+      verticalInset,
+    ),
     foregroundColor: tokens.foreground,
     disabledForegroundColor: tokens.mutedForeground,
     overlayColor: Colors.transparent,

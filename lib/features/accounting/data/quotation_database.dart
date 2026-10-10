@@ -422,6 +422,15 @@ extension QuotationDatabase on LocalAccountingDatabase {
         savedAt: savedAt,
         auditKind: 'quotation_draft_saved',
       );
+      if (rows.isEmpty) {
+        _appendTransactionRootCreated(
+          businessId: businessId,
+          actorId: actorId,
+          at: savedAt,
+          family: 'quotation',
+          recordId: quotation.id,
+        );
+      }
       _queueGeneratedDocument(
         businessId: businessId,
         recordId: quotation.id,

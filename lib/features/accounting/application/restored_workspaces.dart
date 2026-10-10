@@ -13,6 +13,7 @@ final class RestoredWorkspaceEntry {
     required this.path,
     required this.createdAt,
     required this.available,
+    this.newTransactionCount = 0,
   });
   factory RestoredWorkspaceEntry.decode(Object? data) {
     if (data is! Map) {
@@ -21,6 +22,7 @@ final class RestoredWorkspaceEntry {
     final id = data['id'], business = data['businessId'];
     final name = data['name'], path = data['path'];
     final created = data['createdAt'], available = data['available'];
+    final newTransactionCount = data['newTransactionCount'];
     if (id is! String ||
         business is! String ||
         name is! String ||
@@ -29,7 +31,11 @@ final class RestoredWorkspaceEntry {
         path is! String ||
         !path.startsWith('/') ||
         created is! String ||
-        available is! bool) {
+        available is! bool ||
+        (newTransactionCount != null &&
+            (newTransactionCount is! int ||
+                newTransactionCount < 0 ||
+                newTransactionCount > 5))) {
       throw const FormatException('Invalid restored workspace.');
     }
     EntityId.parse(id);
@@ -44,12 +50,15 @@ final class RestoredWorkspaceEntry {
       path: path,
       createdAt: date,
       available: available,
+      newTransactionCount: newTransactionCount as int? ?? 0,
     );
   }
   final String id, name, path;
   final EntityId businessId;
   final DateTime createdAt;
   final bool available;
+  final int newTransactionCount;
+  bool get showRestoredMarker => newTransactionCount < 5;
 }
 
 final class RestoredWorkspaceCatalog {

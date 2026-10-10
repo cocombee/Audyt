@@ -964,6 +964,13 @@ extension BillSettlementPersistence on LocalAccountingDatabase {
         subjectId: requestId,
         detail: _billPaymentAudit(result),
       );
+      _appendTransactionRootCreated(
+        businessId: businessId,
+        actorId: actorId,
+        at: at,
+        family: 'billSettlement',
+        recordId: requestId,
+      );
     });
     return result;
   }

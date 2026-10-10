@@ -821,6 +821,21 @@ final class LocalAccountingDatabase
 
   final Database _database;
 
+  // Enabled only by AccountingWorkspace.openExisting after restored identity
+  // verification. Ordinary books keep their existing audit behavior.
+  EntityId? _restoredTrackingBusinessId;
+
+  void trackRestoredTransactionRoots(EntityId businessId) {
+    _ensureOpen();
+    final rows = _database.select(
+      'SELECT business_id FROM local_workspace WHERE singleton=1',
+    );
+    if (rows.length != 1 || rows.single['business_id'] != businessId.value) {
+      throw StateError('The restored company identity could not be verified.');
+    }
+    _restoredTrackingBusinessId = businessId;
+  }
+
   /// Detects both this connection's writes and commits from another opener of
   /// the same book, matching the reconciliation snapshot cache.
   (int, int) get changeToken {
@@ -1328,6 +1343,13 @@ final class LocalAccountingDatabase
           'invoiceIds': ordered.map((e) => e.key.value).toList(),
         }),
       );
+      _appendTransactionRootCreated(
+        businessId: businessId,
+        actorId: actorId,
+        at: approvalTime,
+        family: 'customerReceipt',
+        recordId: requestId,
+      );
     });
     return requestId;
   }
@@ -1675,6 +1697,15 @@ final class LocalAccountingDatabase
       subjectId: invoice.id,
       detail: jsonEncode({'revision': revision}),
     );
+    if (rows.isEmpty && !quotationConversion) {
+      _appendTransactionRootCreated(
+        businessId: businessId,
+        actorId: actorId,
+        at: savedAt,
+        family: 'invoice',
+        recordId: invoice.id,
+      );
+    }
     _queueGeneratedDocument(
       businessId: businessId,
       recordId: invoice.id,
@@ -1909,6 +1940,13 @@ final class LocalAccountingDatabase
           'reference': reference,
           'claimIds': result.claimIds.map((id) => id.value).toList(),
         }),
+      );
+      _appendTransactionRootCreated(
+        businessId: businessId,
+        actorId: actorId,
+        at: paidAt,
+        family: 'claimSettlement',
+        recordId: requestId,
       );
     });
     return result;
@@ -2877,6 +2915,15 @@ final class LocalAccountingDatabase
         subjectId: draftId,
         detail: payload,
       );
+      if (rows.isEmpty) {
+        _appendTransactionRootCreated(
+          businessId: businessId,
+          actorId: actorId,
+          at: savedAt,
+          family: 'invoiceCredit',
+          recordId: draftId,
+        );
+      }
     });
     return revision;
   }
@@ -3326,7 +3373,21 @@ final class LocalAccountingDatabase
     if (record.entry.state != JournalEntryState.draft) {
       throw StateError('Posting requires approval of a saved draft.');
     }
-    _transaction(() => _writeJournal(record));
+    _transaction(() {
+      final existing = _database.select(
+        'SELECT 1 FROM journal_entries WHERE id=?',
+        [record.entry.id.value],
+      ).isNotEmpty;
+      _writeJournal(record);
+      if (!existing) {
+        _appendTransactionRootCreated(
+          businessId: record.metadata.businessId,
+          at: record.metadata.createdAt,
+          family: 'manualJournal',
+          recordId: record.entry.id,
+        );
+      }
+    });
   }
 
   void _writeJournal(
@@ -3966,6 +4027,41 @@ final class LocalAccountingDatabase
     );
   }
 
+  /// One event for each newly persisted transaction root. Recovery copies use
+  /// an audit-sequence watermark, so this must share the record's transaction.
+  void _appendTransactionRootCreated({
+    required EntityId businessId,
+    EntityId? actorId,
+    required DateTime at,
+    required String family,
+    required EntityId recordId,
+    String? recordKey,
+  }) {
+    if (_restoredTrackingBusinessId != businessId) return;
+    if (_database.autocommit) {
+      throw StateError('Transaction creation must share the record commit.');
+    }
+    var owner = actorId;
+    if (owner == null) {
+      final rows = _database.select(
+        'SELECT owner_id FROM local_workspace WHERE business_id=?',
+        [businessId.value],
+      );
+      // A direct database save may validly have no local device workspace.
+      // Never invent an actor or reject that transaction for display status.
+      if (rows.isEmpty) return;
+      owner = EntityId.parse(rows.single['owner_id'] as String);
+    }
+    _appendAudit(
+      businessId: businessId,
+      actorId: owner,
+      at: at,
+      kind: 'transaction_root_created',
+      subjectId: recordId,
+      detail: recordKey == null ? family : '$family/$recordKey',
+    );
+  }
+
   static String _calendarDay(DateTime date) => DateTime.utc(
     date.year,
     date.month,
@@ -4110,6 +4206,12 @@ final class LocalAccountingDatabase
           draft.category,
           payload,
         ],
+      );
+      _appendTransactionRootCreated(
+        businessId: businessId,
+        at: createdAt,
+        family: 'expense',
+        recordId: id,
       );
       if (occurrenceIdentity != null) {
         _database.execute(
@@ -5544,6 +5646,16 @@ final class LocalAccountingDatabase
             'INSERT INTO payment_vouchers(business_id,id,payload) VALUES(?,?,?) ON CONFLICT(business_id,id) DO UPDATE SET payload=excluded.payload',
             [businessId.value, voucher.id, payload],
           );
+          if (previous == null) {
+            _appendTransactionRootCreated(
+              businessId: businessId,
+              actorId: actor,
+              at: DateTime.now().toUtc(),
+              family: 'paymentVoucher',
+              recordId: businessId,
+              recordKey: voucher.id,
+            );
+          }
           if (voucher.paymentEvidence != null ||
               (previous != null && previous.status != voucher.status) ||
               (previous == null &&
@@ -5755,6 +5867,14 @@ final class LocalAccountingDatabase
               'INSERT INTO claims(business_id,id,payload) VALUES(?,?,?) ON CONFLICT(business_id,id) DO UPDATE SET payload=excluded.payload',
               [businessId.value, id, payload],
             );
+            if (prior == null) {
+              _appendTransactionRootCreated(
+                businessId: businessId,
+                at: DateTime.now().toUtc(),
+                family: 'claim',
+                recordId: claim.id,
+              );
+            }
             updates[id] = payload;
           }
         });

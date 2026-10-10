@@ -9,6 +9,8 @@ final class RestoredWorkspaceRegistry {
     let businessId: String
     let name: String
     let createdAt: String
+    let baselineAuditSequence: Int64?
+    let markerExpired: Bool?
   }
   let root: URL
   private let manager = FileManager.default
@@ -92,15 +94,76 @@ final class RestoredWorkspaceRegistry {
     guard info.isRegularFile == true, info.isSymbolicLink != true,
           (info.fileSize ?? 0) <= 16_384 else { throw failure() }
     let entry = try JSONDecoder().decode(Entry.self, from: Data(contentsOf: marker))
-    guard entry.version == 1, entry.id == marker.deletingLastPathComponent().lastPathComponent,
+    guard (entry.version == 1 || entry.version == 2),
+          (entry.baselineAuditSequence == nil
+            ? entry.version == 1 && entry.markerExpired == nil
+            : entry.baselineAuditSequence! >= 0),
+          entry.id == marker.deletingLastPathComponent().lastPathComponent,
           UUID(uuidString: entry.id) != nil, UUID(uuidString: entry.businessId) != nil,
           !entry.name.isEmpty, entry.name.count <= 200,
           ISO8601DateFormatter().date(from: entry.createdAt) != nil else { throw failure() }
     return entry
   }
-  private func result(_ entry: Entry, _ database: URL, available: Bool) -> [String: Any] {
+  private func auditNumber(at url: URL, sql: String) throws -> Int64 {
+    var database: OpaquePointer?
+    guard sqlite3_open_v2(url.path, &database, SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX, nil) == SQLITE_OK else {
+      if let database { sqlite3_close(database) }; throw failure()
+    }
+    defer { sqlite3_close(database) }
+    var statement: OpaquePointer?
+    guard sqlite3_prepare_v2(database, sql, -1, &statement, nil) == SQLITE_OK else { throw failure() }
+    defer { sqlite3_finalize(statement) }
+    guard sqlite3_step(statement) == SQLITE_ROW else { throw failure() }
+    let value = sqlite3_column_int64(statement, 0)
+    guard value >= 0, sqlite3_step(statement) == SQLITE_DONE else { throw failure() }
+    return value
+  }
+  private func baseline(at database: URL, businessId: String) throws -> Int64 {
+    guard UUID(uuidString: businessId) != nil else { throw failure() }
+    return try auditNumber(at: database,
+      sql: "SELECT COALESCE(MAX(sequence),0) FROM ledger_audit WHERE business_id='\(businessId)'")
+  }
+  private func transactionCount(_ entry: Entry, at database: URL) throws -> Int {
+    if entry.markerExpired == true { return 5 }
+    guard let after = entry.baselineAuditSequence,
+          UUID(uuidString: entry.businessId) != nil else { throw failure() }
+    // The family and subject form one durable root, even if an event is retried.
+    let count = try auditNumber(at: database, sql:
+      "SELECT COUNT(*) FROM (SELECT 1 FROM ledger_audit WHERE business_id='\(entry.businessId)' AND sequence>\(after) AND kind='transaction_root_created' GROUP BY detail,subject_id LIMIT 5)")
+    return Int(count)
+  }
+  private func write(_ entry: Entry, at database: URL) throws {
+    let marker = database.deletingLastPathComponent().appendingPathComponent("workspace.json")
+    let encoded = try JSONEncoder().encode(entry)
+    guard encoded.count <= 16_384 else { throw failure() }
+    try encoded.write(to: marker, options: .atomic)
+    guard try read(marker) == entry else { throw failure() }
+  }
+  private func compatible(_ entry: Entry, at database: URL) throws -> Entry {
+    if entry.baselineAuditSequence != nil { return entry }
+    // Keep version 1: the previous installed reader ignores these new fields.
+    let updated = Entry(version: 1, id: entry.id, businessId: entry.businessId,
+                        name: entry.name, createdAt: entry.createdAt,
+                        baselineAuditSequence: try baseline(at: database, businessId: entry.businessId),
+                        markerExpired: false)
+    try write(updated, at: database)
+    return updated
+  }
+  private func observed(_ entry: Entry, at database: URL) throws -> (Entry, Int) {
+    let current = try compatible(entry, at: database)
+    let count = try transactionCount(current, at: database)
+    guard count == 5, current.markerExpired != true else { return (current, count) }
+    let expired = Entry(version: 1, id: current.id, businessId: current.businessId,
+                        name: current.name, createdAt: current.createdAt,
+                        baselineAuditSequence: current.baselineAuditSequence,
+                        markerExpired: true)
+    try write(expired, at: database)
+    return (expired, 5)
+  }
+  private func result(_ entry: Entry, _ database: URL, available: Bool, transactionCount: Int) -> [String: Any] {
     ["id": entry.id, "businessId": entry.businessId, "name": entry.name,
-     "createdAt": entry.createdAt, "path": database.path, "available": available]
+     "createdAt": entry.createdAt, "path": database.path, "available": available,
+     "newTransactionCount": transactionCount]
   }
   func register(path: String, businessId: String, name: String) throws -> [String: Any] {
     let database = try managedDatabase(path)
@@ -116,28 +179,33 @@ final class RestoredWorkspaceRegistry {
             try Data(contentsOf: pending) == pendingData else { throw failure() }
     }
     var createdAt = ISO8601DateFormatter().string(from: Date())
+    var firstSequence = try baseline(at: database, businessId: businessId)
+    var markerExpired = false
     if manager.fileExists(atPath: marker.path) {
       let old = try read(marker)
       guard old.businessId == businessId else { throw failure() }
       createdAt = old.createdAt
+      firstSequence = old.baselineAuditSequence ?? firstSequence
+      markerExpired = old.markerExpired == true
     }
     let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
     let entry = Entry(version: 1, id: folder.lastPathComponent, businessId: businessId,
-                      name: cleanName.isEmpty ? "Restored Company" : String(cleanName.prefix(200)), createdAt: createdAt)
-    let encoded = try JSONEncoder().encode(entry)
-    guard encoded.count <= 16_384 else { throw failure() }
-    try encoded.write(to: marker, options: .atomic)
-    guard try read(marker) == entry else { throw failure() }
+                      name: cleanName.isEmpty ? "Restored Company" : String(cleanName.prefix(200)),
+                      createdAt: createdAt, baselineAuditSequence: firstSequence,
+                      markerExpired: markerExpired)
+    try write(entry, at: database)
     if hasPending {
       try manager.removeItem(at: pending)
     }
-    return result(entry, database, available: true)
+    let (current, count) = try observed(entry, at: database)
+    return result(current, database, available: true, transactionCount: count)
   }
   func lookup(path: String) throws -> [String: Any] {
     let database = try managedDatabase(path)
     let entry = try read(database.deletingLastPathComponent().appendingPathComponent("workspace.json"))
     guard try business(at: database) == entry.businessId else { throw failure() }
-    return result(entry, database, available: true)
+    let (current, count) = try observed(entry, at: database)
+    return result(current, database, available: true, transactionCount: count)
   }
   func list() throws -> [String: Any] {
     if !manager.fileExists(atPath: root.path) { return ["workspaces": [], "issues": 0] }
@@ -153,7 +221,11 @@ final class RestoredWorkspaceRegistry {
         let entry = try read(marker)
         let database = folder.appendingPathComponent("ledger.sqlite").standardizedFileURL
         let available = (try? managedDatabase(database.path)).flatMap { try? business(at: $0) } == entry.businessId
-        entries.append(result(entry, database, available: available))
+        let (current, count) = available
+          ? try observed(entry, at: database)
+          : (entry, entry.markerExpired == true ? 5 : 0)
+        entries.append(result(current, database, available: available,
+                              transactionCount: count))
       } catch { issues += 1 }
     }
     entries.sort {

@@ -338,6 +338,15 @@ extension PurchaseBillDraftPersistence on LocalAccountingDatabase {
           'payeeId': bill.vendorSnapshot.payeeId,
         }),
       );
+      if (previous == null) {
+        _appendTransactionRootCreated(
+          businessId: businessId,
+          actorId: actorId,
+          at: bill.metadata.updatedAt,
+          family: 'bill',
+          recordId: bill.id,
+        );
+      }
       if (recurrence != null) {
         _saveInlineDocumentSchedule(
           businessId,
