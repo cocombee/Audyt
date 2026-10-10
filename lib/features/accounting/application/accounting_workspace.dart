@@ -1147,6 +1147,59 @@ final class AccountingWorkspace extends ChangeNotifier {
     return id;
   }
 
+  Future<EntityId> updateAccountMetadata({
+    required StoredAccount original,
+    required String code,
+    required String name,
+    required AccountType type,
+    required bool isParent,
+    required EntityId? parentId,
+    required AccountStatus status,
+    AccountProfile? profile,
+  }) async {
+    final id = original.account.id;
+    if (original.metadata.recordId != id ||
+        original.metadata.businessId != identity.businessId ||
+        original.metadata.isTombstone) {
+      throw StateError('The account does not belong to the active company.');
+    }
+    final current = await database.getAccount(id);
+    if (current == null ||
+        current.metadata.isTombstone ||
+        current.metadata.businessId != identity.businessId ||
+        current.metadata.revision != original.metadata.revision) {
+      throw StateError(
+        'Account changed since it was read. Reload before saving.',
+      );
+    }
+    if (current.account.status == AccountStatus.archived ||
+        status == AccountStatus.archived) {
+      throw StateError('Archived accounts cannot be edited here.');
+    }
+    final now = DateTime.now().toUtc();
+    final updatedAt = now.isAfter(current.metadata.updatedAt)
+        ? now
+        : current.metadata.updatedAt.add(const Duration(microseconds: 1));
+    await database.saveAccount(
+      StoredAccount(
+        account: Account.create(
+          id: id,
+          code: code,
+          name: name,
+          type: type,
+          status: status,
+          isParent: isParent,
+          isSystem: current.account.isSystem,
+          parentId: parentId,
+          profile: profile ?? current.account.profile,
+        ),
+        metadata: current.metadata.nextRevision(updatedAt: updatedAt),
+      ),
+    );
+    if (!_closed) notifyListeners();
+    return id;
+  }
+
   Future<List<StoredJournalEntry>> journals() =>
       database.listJournals(identity.businessId);
 

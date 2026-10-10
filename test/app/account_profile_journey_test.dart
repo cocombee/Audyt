@@ -52,11 +52,16 @@ Future<void> chooseType(WidgetTester tester, String query, String label) async {
 void main() {
   for (final width in [720.0, 1162.0]) {
     testWidgets(
-      'Saved Account View and Edit retain facts without writes at $width',
+      'Saved Account View and Edit save metadata without changing postings at $width',
       (tester) async {
         await prepare(tester, width);
         tester.view.physicalSize = Size(width, 809);
-        final workspace = await AccountingWorkspace.open(':memory:');
+        final folder = Directory.systemTemp.createTempSync(
+          'audyt-saved-account-edit-',
+        );
+        addTearDown(() => folder.deleteSync(recursive: true));
+        final path = '${folder.path}/ledger.sqlite';
+        var workspace = await AccountingWorkspace.open(path);
         addTearDown(workspace.dispose);
         final parent = await workspace.createAccount(
           code: '1000',
@@ -169,7 +174,7 @@ void main() {
         expect(keyed('ledger-opening-balance'), findsNothing);
         expect(
           tester.widget<FilledButton>(keyed('save-ledger-account')).onPressed,
-          isNull,
+          isNotNull,
         );
         await tester.ensureVisible(find.text('Reporting Currency'));
         await tester.pumpAndSettle();
@@ -254,8 +259,101 @@ void main() {
         expect(find.text('Posted Balance'), findsOneWidget);
         expect(find.text('RM 123.45 Dr'), findsOneWidget);
         await captureUi(tester, 'Saved Account Edit Balance ${width.toInt()}');
-        await tap(tester, keyed('ledger-account-close'));
+        await tester.ensureVisible(keyed('ledger-account-code'));
+        await tester.enterText(keyed('ledger-account-code'), '3000');
+        await tester.enterText(
+          keyed('ledger-account-name'),
+          'Office Petty Cash',
+        );
+        await tap(tester, keyed('save-ledger-account'));
+        expect(find.text('Edit Account'), findsOneWidget);
+        expect(find.textContaining('already used'), findsOneWidget);
+        expect(
+          tester
+              .widget<TextField>(keyed('ledger-account-name'))
+              .controller!
+              .text,
+          'Office Petty Cash',
+        );
         expect(tables(workspace), before);
+        await tester.ensureVisible(keyed('ledger-account-code'));
+        await tester.enterText(keyed('ledger-account-code'), '1011');
+        await tester.ensureVisible(keyed('ledger-account-description'));
+        await enterAccountingText(
+          tester,
+          keyed('ledger-account-description'),
+          'Updated office cash purpose.',
+        );
+        final accountScroll = tester.state<ScrollableState>(
+          find
+              .ancestor(
+                of: keyed('ledger-lock-account'),
+                matching: find.byType(Scrollable),
+              )
+              .first,
+        );
+        accountScroll.position.jumpTo(accountScroll.position.maxScrollExtent);
+        await tester.pumpAndSettle();
+        await captureUi(
+          tester,
+          'Saved Account Lock After Error ${width.toInt()}',
+        );
+        expect(keyed('ledger-lock-account').hitTestable(), findsOneWidget);
+        await tap(tester, keyed('ledger-lock-account'));
+        await tap(tester, keyed('save-ledger-account'));
+        expect(find.text('Edit Account'), findsNothing);
+        final edited = (await workspace.database.getAccount(id))!;
+        expect(edited.account.id, id);
+        expect(edited.account.code, '1011');
+        expect(edited.account.name, 'Office Petty Cash');
+        expect(edited.account.parentId, parent);
+        expect(edited.account.status, AccountStatus.locked);
+        expect(edited.account.profile!.detailType, 'Cash on hand');
+        expect(
+          edited.account.profile!.description,
+          'Updated office cash purpose.',
+        );
+        expect(edited.metadata.revision, 2);
+        expect(edited.metadata.createdAt, isNotNull);
+        expect((await workspace.accounts()), hasLength(3));
+        expect((await workspace.journals()), hasLength(1));
+        final after = tables(workspace);
+        expect(
+          Map.of(after)..remove('accounts'),
+          Map.of(before)..remove('accounts'),
+        );
+        await tester.pumpWidget(const SizedBox());
+        workspace.dispose();
+        workspace = await AccountingWorkspace.open(path);
+        addTearDown(workspace.dispose);
+        final reopened = (await workspace.database.getAccount(id))!;
+        expect(reopened.account.code, '1011');
+        expect(
+          reopened.account.profile!.description,
+          'Updated office cash purpose.',
+        );
+        expect(reopened.metadata.revision, 2);
+        expect((await workspace.journals()).single.entry.id, journalId);
+        final report = await workspace.report(
+          from: DateTime.utc(1),
+          through: DateTime.now(),
+        );
+        expect(
+          report.rows.singleWhere((row) => row.account.id == id).endingNetDebit,
+          BigInt.from(12345),
+        );
+        await host(tester, workspace);
+        await tester.pumpAndSettle();
+        await tap(tester, keyed('ledger-account-edit-${id.value}'));
+        expect(find.text('RM 123.45 Dr'), findsOneWidget);
+        expect(
+          tester
+              .widget<TextField>(keyed('ledger-account-name'))
+              .controller!
+              .text,
+          'Office Petty Cash',
+        );
+        await tap(tester, keyed('ledger-account-close'));
         expect(tester.takeException(), isNull);
       },
     );

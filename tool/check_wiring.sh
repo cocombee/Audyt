@@ -44,6 +44,7 @@ cd "$wiring_project"
   test/app/ledger_account_ordinary_proposal_test.dart \
   test/app/account_profile_journey_test.dart \
   test/features/accounting/data/account_profile_test.dart \
+  test/features/accounting/data/account_repository_test.dart \
   test/app/membership_service_test.dart \
   test/app/registered_claimant_context_test.dart \
   test/features/accounting/domain/payee_test.dart \

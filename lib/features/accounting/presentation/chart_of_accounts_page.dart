@@ -777,7 +777,7 @@ class _NewAccountDialogState extends State<_NewAccountDialog> {
   }
 
   Future<void> _save() async {
-    if (_busy || widget.original != null) return;
+    if (_busy) return;
     if (_code.text.trim().isEmpty ||
         _name.text.trim().isEmpty ||
         _type == null) {
@@ -796,20 +796,40 @@ class _NewAccountDialogState extends State<_NewAccountDialog> {
       _error = null;
     });
     try {
-      final savedId = await widget.workspace.createAccount(
-        code: _code.text,
-        name: _name.text,
-        type: _type!,
-        profile: AccountProfile(
-          reportingType: _reportingType,
-          detailType: _detailType,
-          description: _description.text,
-          defaultTaxCodeId: _defaultTaxCode,
-        ),
-        status: _locked ? AccountStatus.locked : AccountStatus.active,
-        isParent: _group,
-        parentId: _parent == 'none' ? null : EntityId.parse(_parent),
+      final original = widget.original;
+      final profile = AccountProfile(
+        reportingType: _reportingType,
+        detailType: _detailType,
+        description: _description.text,
+        defaultTaxCodeId: _defaultTaxCode,
       );
+      final savedId = original == null
+          ? await widget.workspace.createAccount(
+              code: _code.text,
+              name: _name.text,
+              type: _type!,
+              profile: profile,
+              status: _locked ? AccountStatus.locked : AccountStatus.active,
+              isParent: _group,
+              parentId: _parent == 'none' ? null : EntityId.parse(_parent),
+            )
+          : await widget.workspace.updateAccountMetadata(
+              original: original,
+              code: _code.text,
+              name: _name.text,
+              type: _type!,
+              profile:
+                  original.account.profile == null &&
+                      _reportingType == null &&
+                      _detailType == null &&
+                      _description.text.isEmpty &&
+                      _defaultTaxCode == null
+                  ? null
+                  : profile,
+              status: _locked ? AccountStatus.locked : AccountStatus.active,
+              isParent: _group,
+              parentId: _parent == 'none' ? null : EntityId.parse(_parent),
+            );
       if (mounted) Navigator.of(context).pop(savedId);
     } catch (error) {
       if (mounted) {
@@ -928,7 +948,7 @@ class _NewAccountDialogState extends State<_NewAccountDialog> {
           formFooter: true,
           description: widget.original == null
               ? 'Create an account in the company reporting currency.'
-              : 'Account updates are not connected yet.',
+              : 'Update account details. Existing postings remain unchanged.',
           content: SizedBox(
             width: AccountingPopoutTokens.normalContentWidth,
             child: AnimatedBuilder(
@@ -1349,7 +1369,7 @@ class _NewAccountDialogState extends State<_NewAccountDialog> {
             AccountingButton.primary(
               context,
               key: const ValueKey('save-ledger-account'),
-              onPressed: _busy || widget.original != null ? null : _save,
+              onPressed: _busy ? null : _save,
               child: Text(_busy ? 'Saving…' : 'Save Account'),
             ),
           ],

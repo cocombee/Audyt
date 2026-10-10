@@ -11,6 +11,10 @@ import 'package:audyt/core/storage/record_metadata.dart';
 import 'package:audyt/features/accounting/application/account_repository.dart';
 import 'package:audyt/features/accounting/data/accounting_database.dart';
 import 'package:audyt/features/accounting/domain/account.dart';
+import 'package:audyt/features/accounting/application/accounting_workspace.dart';
+import 'package:audyt/features/accounting/domain/journal_entry.dart';
+import 'package:audyt/features/accounting/domain/payment_account.dart';
+import 'package:audyt/core/money/money.dart';
 
 EntityId id(int n) =>
     EntityId.parse('018f0c4e-56f1-7d4a-b9bb-${n.toString().padLeft(12, '0')}');
@@ -96,7 +100,23 @@ void main() {
       throwsStateError,
     );
     await db.saveAccount(account(2, code: 'CASH', business: 92));
-    expect(await db.listAccounts(id(90)), hasLength(1));
+    final editable = account(3, code: 'Petty');
+    await db.saveAccount(editable);
+    await expectLater(
+      db.saveAccount(
+        account(
+          3,
+          code: 'cAsH',
+          metadata: editable.metadata.nextRevision(
+            updatedAt: DateTime.utc(2026, 9, 14),
+          ),
+        ),
+      ),
+      throwsStateError,
+    );
+    expect((await db.getAccount(id(3)))!.account.code, 'Petty');
+    expect((await db.getAccount(id(3)))!.metadata.revision, 1);
+    expect(await db.listAccounts(id(90)), hasLength(2));
   });
   test(
     'parent must exist and share business and type; cycles are rejected',
@@ -144,6 +164,124 @@ void main() {
         throwsStateError,
       );
       expect((await db.getAccount(id(1)))!.account.parentId, isNull);
+      expect((await db.getAccount(id(1)))!.metadata.revision, 1);
+    },
+  );
+  test('journal-used account keeps type and posting role atomically', () async {
+    final workspace = await AccountingWorkspace.open(':memory:');
+    addTearDown(workspace.dispose);
+    final usedId = await workspace.createAccount(
+      code: '1000',
+      name: 'Bank',
+      type: AccountType.asset,
+    );
+    final otherId = await workspace.createAccount(
+      code: '3000',
+      name: 'Capital',
+      type: AccountType.equity,
+    );
+    await workspace.saveJournal(
+      date: DateTime.utc(2026, 10, 10),
+      memo: 'Retained posting identity',
+      lines: [
+        JournalLine.debit(
+          accountId: usedId,
+          amount: Money.fromDecimal('1.00', 'MYR'),
+        ),
+        JournalLine.credit(
+          accountId: otherId,
+          amount: Money.fromDecimal('1.00', 'MYR'),
+        ),
+      ],
+    );
+    final original = (await workspace.database.getAccount(usedId))!;
+    Future<void> rejected(AccountType type, bool isParent) async {
+      await expectLater(
+        workspace.updateAccountMetadata(
+          original: original,
+          code: '1001',
+          name: 'Changed Bank',
+          type: type,
+          isParent: isParent,
+          parentId: null,
+          status: AccountStatus.active,
+        ),
+        throwsStateError,
+      );
+      final retained = (await workspace.database.getAccount(usedId))!;
+      expect(retained.account.code, '1000');
+      expect(retained.account.type, AccountType.asset);
+      expect(retained.account.isParent, isFalse);
+      expect(retained.metadata.revision, original.metadata.revision);
+      expect(await workspace.journals(), hasLength(1));
+    }
+
+    await rejected(AccountType.expense, false);
+    await rejected(AccountType.asset, true);
+    await workspace.updateAccountMetadata(
+      original: original,
+      code: '1001',
+      name: 'Changed Bank',
+      type: AccountType.asset,
+      isParent: false,
+      parentId: null,
+      status: AccountStatus.locked,
+    );
+    expect((await workspace.database.getAccount(usedId))!.metadata.revision, 2);
+    expect(await workspace.journals(), hasLength(1));
+  });
+
+  test(
+    'payment-linked account keeps type and posting role atomically',
+    () async {
+      final workspace = await AccountingWorkspace.open(':memory:');
+      addTearDown(workspace.dispose);
+      final linkedId = await workspace.createAccount(
+        code: '1000',
+        name: 'Bank',
+        type: AccountType.asset,
+      );
+      workspace.savePaymentAccount(
+        PaymentAccount.create(
+          id: 'bank-one',
+          name: 'Bank One',
+          type: PaymentAccountType.bank,
+          currencyCode: workspace.identity.currency,
+        ),
+      );
+      workspace.database.linkPaymentLedgerAccount(
+        workspace.identity.businessId,
+        'bank-one',
+        linkedId,
+      );
+      final original = (await workspace.database.getAccount(linkedId))!;
+      for (final (type, isParent) in [
+        (AccountType.liability, false),
+        (AccountType.asset, true),
+      ]) {
+        await expectLater(
+          workspace.updateAccountMetadata(
+            original: original,
+            code: '1001',
+            name: 'Changed Bank',
+            type: type,
+            isParent: isParent,
+            parentId: null,
+            status: AccountStatus.active,
+          ),
+          throwsStateError,
+        );
+        final retained = (await workspace.database.getAccount(linkedId))!;
+        expect(retained.account.code, '1000');
+        expect(retained.metadata.revision, 1);
+        expect(
+          workspace.database.paymentLedgerAccount(
+            workspace.identity.businessId,
+            'bank-one',
+          ),
+          linkedId,
+        );
+      }
     },
   );
   test('v1 migration preserves historical journals without guessing account records', () async {

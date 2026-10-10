@@ -2,9 +2,12 @@ import 'dart:io';
 import 'dart:convert';
 
 import 'package:audyt/features/accounting/application/accounting_workspace.dart';
+import 'package:audyt/features/accounting/application/account_repository.dart';
 import 'package:audyt/features/accounting/data/accounting_database.dart';
 import 'package:audyt/features/accounting/domain/account.dart';
 import 'package:audyt/features/accounting/domain/company_tax_rate.dart';
+import 'package:audyt/core/ids/entity_id.dart';
+import 'package:audyt/core/storage/record_metadata.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/sqlite3.dart';
 
@@ -34,6 +37,35 @@ void main() {
         );
         profiles[id.value] = profile.toJson();
       }
+      final original = (await workspace.accounts()).singleWhere(
+        (record) => record.account.code == 'REF-expenses',
+      );
+      final editedProfile = AccountProfile(
+        reportingType: ReportingAccountType.expenses,
+        detailType: ReportingAccountType.expenses.details.first,
+        description: 'Updated retained purpose.',
+      );
+      expect(
+        await workspace.updateAccountMetadata(
+          original: original,
+          code: 'REF-EXP-EDIT',
+          name: 'Edited Expense Sample',
+          type: AccountType.expense,
+          isParent: false,
+          parentId: null,
+          status: AccountStatus.locked,
+          profile: editedProfile,
+        ),
+        original.account.id,
+      );
+      profiles[original.account.id.value] = editedProfile.toJson();
+      final edited = (await workspace.database.getAccount(
+        original.account.id,
+      ))!;
+      expect(edited.metadata.revision, original.metadata.revision + 1);
+      expect(edited.metadata.createdAt, original.metadata.createdAt);
+      expect(edited.metadata.originDeviceId, original.metadata.originDeviceId);
+      expect(edited.account.status, AccountStatus.locked);
       final archive = workspace.database.exportDataArchive(
         business,
         DateTime.utc(2026, 10, 5),
@@ -63,6 +95,11 @@ void main() {
           profiles[record.account.id.value],
         );
       }
+      final restoredEdit = (await restored.getAccount(original.account.id))!;
+      expect(restoredEdit.account.code, 'REF-EXP-EDIT');
+      expect(restoredEdit.account.name, 'Edited Expense Sample');
+      expect(restoredEdit.metadata.revision, 2);
+      expect(restoredEdit.account.status, AccountStatus.locked);
       expect(await workspace.journals(), isEmpty);
     },
   );
@@ -211,6 +248,111 @@ void main() {
       expect(upgraded.account.code, original.account.code);
       expect(upgraded.account.type, original.account.type);
       expect(upgraded.metadata.revision, original.metadata.revision);
+      expect(
+        await workspace.updateAccountMetadata(
+          original: upgraded,
+          code: 'LEGACY-EDIT',
+          name: 'Legacy Cash Edited',
+          type: upgraded.account.type,
+          isParent: upgraded.account.isParent,
+          parentId: upgraded.account.parentId,
+          status: upgraded.account.status,
+        ),
+        id,
+      );
+      final edited = (await workspace.database.getAccount(id))!;
+      expect(edited.account.profile, isNull);
+      expect(edited.metadata.revision, original.metadata.revision + 1);
+      expect(await workspace.journals(), isEmpty);
+    },
+  );
+
+  test(
+    'metadata command rejects stale, foreign, missing and archived accounts',
+    () async {
+      final workspace = await AccountingWorkspace.open(':memory:');
+      addTearDown(workspace.dispose);
+      final accountId = await workspace.createAccount(
+        code: '1000',
+        name: 'Cash',
+        type: AccountType.asset,
+      );
+      final original = (await workspace.database.getAccount(accountId))!;
+      Future<EntityId> update(
+        StoredAccount expected, {
+        String code = '1001',
+        AccountStatus status = AccountStatus.active,
+      }) => workspace.updateAccountMetadata(
+        original: expected,
+        code: code,
+        name: 'Petty Cash',
+        type: AccountType.asset,
+        isParent: false,
+        parentId: null,
+        status: status,
+      );
+      await update(original);
+      await expectLater(update(original), throwsStateError);
+      final current = (await workspace.database.getAccount(accountId))!;
+      await expectLater(
+        update(
+          StoredAccount(
+            account: current.account,
+            metadata: RecordMetadata.initial(
+              recordId: accountId,
+              businessId: EntityId.random(),
+              originDeviceId: workspace.identity.deviceId,
+              createdAt: current.metadata.createdAt,
+            ),
+          ),
+        ),
+        throwsStateError,
+      );
+      final missingId = EntityId.random();
+      await expectLater(
+        update(
+          StoredAccount(
+            account: Account.create(
+              id: missingId,
+              code: 'MISSING',
+              name: 'Missing',
+              type: AccountType.asset,
+            ),
+            metadata: RecordMetadata.initial(
+              recordId: missingId,
+              businessId: workspace.identity.businessId,
+              originDeviceId: workspace.identity.deviceId,
+              createdAt: DateTime.utc(2026, 10, 10),
+            ),
+          ),
+        ),
+        throwsStateError,
+      );
+      await workspace.database.saveAccount(
+        StoredAccount(
+          account: Account.create(
+            id: accountId,
+            code: current.account.code,
+            name: current.account.name,
+            type: current.account.type,
+            status: AccountStatus.archived,
+          ),
+          metadata: current.metadata.nextRevision(
+            updatedAt: current.metadata.updatedAt.add(
+              const Duration(seconds: 1),
+            ),
+          ),
+        ),
+      );
+      final archived = (await workspace.database.getAccount(accountId))!;
+      await expectLater(update(archived), throwsStateError);
+      expect(archived.account.status, AccountStatus.archived);
+      expect(current.metadata.revision, 2);
+      expect(
+        (await workspace.database.getAccount(accountId))!.account.code,
+        '1001',
+      );
+      expect(await workspace.accounts(), hasLength(1));
       expect(await workspace.journals(), isEmpty);
     },
   );
