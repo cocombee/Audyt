@@ -347,7 +347,6 @@ class RecordExpensePage extends StatefulWidget {
     this.onSave,
     this.onSaved,
     this.onSavedReview,
-    this.onManageRecurrences,
     this.onCancel,
     this.onAttachmentsPick,
     this.onAttachmentPick,
@@ -389,7 +388,6 @@ class RecordExpensePage extends StatefulWidget {
   final RecordExpenseSaver? onSave;
   final VoidCallback? onSaved;
   final Future<void> Function()? onSavedReview;
-  final Future<void> Function()? onManageRecurrences;
   final VoidCallback? onCancel;
   final ExpenseAttachmentsPicker? onAttachmentsPick;
   @Deprecated('Use onAttachmentsPick so the selected bytes can be processed.')
@@ -999,9 +997,17 @@ class _RecordExpensePageState extends State<RecordExpensePage> {
                   ),
                   const SizedBox(height: accountingContentInset),
                 ],
-                accountingFieldLabel(context, 'Items'),
-                const SizedBox(height: accountingContentInset),
-                Divider(height: 1, color: AccountingTheme.of(context).border),
+                accountingFieldLabel(
+                  context,
+                  'Items',
+                  key: const ValueKey('expense-items-label'),
+                ),
+                const SizedBox(height: accountingFieldLabelGap),
+                Divider(
+                  key: const ValueKey('expense-items-divider'),
+                  height: 1,
+                  color: AccountingTheme.of(context).border,
+                ),
                 const SizedBox(height: accountingContentInset),
                 _buildLineGrid(context, width),
                 const SizedBox(height: accountingContentInset),
@@ -1207,7 +1213,7 @@ class _RecordExpensePageState extends State<RecordExpensePage> {
           )
         else
           AccountingOrdinaryFields(fields: slots),
-        if (_recurrenceEnabled || widget.onManageRecurrences != null) ...[
+        if (_recurrenceEnabled) ...[
           const SizedBox(height: accountingContentInset),
           _buildRecurrenceFields(context, showToggle: false),
         ],
@@ -3029,37 +3035,84 @@ class _RecordExpensePageState extends State<RecordExpensePage> {
             ],
           ),
         if (_recurrenceEnabled) ...[
-          const SizedBox(height: 12),
-          accountingFieldLabel(context, 'Repeat', alignToField: true),
-          const SizedBox(height: 8),
-          LayoutBuilder(
-            builder: (context, constraints) => SizedBox(
-              width: constraints.maxWidth < 360 ? constraints.maxWidth : 360,
-              child: AccountingSelector<String>(
-                triggerKey: const ValueKey('expense-recurrence-period'),
-                hintText: 'Select recurrence',
-                assignedWidth: constraints.maxWidth < 360
-                    ? constraints.maxWidth
-                    : 360,
-                value: _recurrencePeriod,
-                enabled: enabled,
-                options: [
-                  for (final period in _recurrencePeriods)
-                    AccountingSelectorOption(value: period, label: period),
-                  if (_recurrencePeriod == 'Custom Schedule')
-                    const AccountingSelectorOption(
-                      value: 'Custom Schedule',
-                      label: 'Custom Schedule',
+          if (showToggle) const SizedBox(height: 12),
+          AccountingOrdinaryFields(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            fields: [
+              AccountingOrdinaryFieldSlot(
+                label: 'Repeat',
+                choices: _recurrencePeriods,
+                hasGuidance: true,
+                builder: (assignedWidth) {
+                  final width = math.min(assignedWidth, 360.0);
+                  return SizedBox(
+                    width: width,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        accountingFieldLabel(
+                          context,
+                          'Repeat',
+                          key: const ValueKey('expense-recurrence-label'),
+                          alignToField: true,
+                        ),
+                        const SizedBox(height: accountingFieldLabelGap),
+                        AccountingSelector<String>(
+                          triggerKey: const ValueKey(
+                            'expense-recurrence-period',
+                          ),
+                          hintText: 'Select recurrence',
+                          assignedWidth: width,
+                          value: _recurrencePeriod,
+                          enabled: enabled,
+                          options: [
+                            for (final period in _recurrencePeriods)
+                              AccountingSelectorOption(
+                                value: period,
+                                label: period,
+                              ),
+                            if (_recurrencePeriod == 'Custom Schedule')
+                              const AccountingSelectorOption(
+                                value: 'Custom Schedule',
+                                label: 'Custom Schedule',
+                              ),
+                          ],
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() => _recurrencePeriod = value);
+                            }
+                          },
+                        ),
+                      ],
                     ),
-                ],
-                onChanged: (value) {
-                  if (value != null) setState(() => _recurrencePeriod = value);
+                  );
                 },
               ),
-            ),
+              if (enabled)
+                AccountingOrdinaryFieldSlot(
+                  label: 'Schedule Options',
+                  minimumControlWidth: math.max(
+                    accountingControlHeight,
+                    AccountingResponsive.measuredTextWidth(
+                          context,
+                          'Schedule Options',
+                          AccountingTypography.button(context)
+                              .copyWith(fontSize: accountingControlFontSize),
+                        ) +
+                        accountingContentInset * 2,
+                  ),
+                  builder: (_) => AccountingButton.outline(
+                    context,
+                    key: const ValueKey('expense-recurrence-options'),
+                    onPressed: _editRecurrence,
+                    fullWidth: !widget.includeTopSafeArea,
+                    child: const Text('Schedule Options'),
+                  ),
+                ),
+            ],
           ),
           if (selected != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: accountingFieldLabelGap),
             AccountingInformationRows(
               key: const ValueKey('expense-recurrence-information'),
               rows: [
@@ -3082,24 +3135,6 @@ class _RecordExpensePageState extends State<RecordExpensePage> {
               ],
             ),
           ],
-          if (enabled) ...[
-            const SizedBox(height: 8),
-            AccountingButton.outline(
-              context,
-              key: const ValueKey('expense-recurrence-options'),
-              onPressed: _editRecurrence,
-              child: const Text('Schedule Options'),
-            ),
-          ],
-        ],
-        if (widget.onManageRecurrences != null) ...[
-          const SizedBox(height: 8),
-          AccountingButton.outline(
-            context,
-            key: const ValueKey('expense-manage-recurrences'),
-            onPressed: widget.onManageRecurrences,
-            child: const Text('Manage Saved Schedules'),
-          ),
         ],
       ],
     );

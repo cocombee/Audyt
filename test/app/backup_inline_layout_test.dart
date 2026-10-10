@@ -1,14 +1,19 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:audyt/app/accounting_components.dart';
+import 'package:audyt/app/accounting_icons.dart';
+import 'package:audyt/app/accounting_theme.dart';
 import 'package:audyt/app/field_guidance.dart';
+import 'package:audyt/app/field_row_trial.dart';
 import 'package:audyt/app/workspace_backup_controls.dart';
+import 'package:audyt/features/accounting/application/accounting_workspace.dart';
 import 'package:audyt/features/accounting/application/workspace_backup.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'claim_receipts_proposal_test.dart' show capture, tap;
+import 'claim_receipts_proposal_test.dart' show capture, prepare, tap;
 import 'sales_email_settings_dialog_test.dart' show host, keyed;
 import 'restored_page_routes_test.dart' show tables;
 
@@ -56,30 +61,50 @@ void main() {
         final frequency = t.getRect(keyed('design-field-Backup Frequency'));
         final format = t.getRect(keyed('design-field-Export Format'));
         final destination = t.getRect(keyed('backup-destination'));
+        final destinationSlot = t.getRect(keyed('backup-destination-slot'));
         expect(frequency.top, closeTo(format.top, 0.01));
         expect(destination.top, closeTo(frequency.top, 0.01));
         expect(frequency.right, lessThan(format.left));
         expect(format.right, lessThan(destination.left));
-        expect(
-          destination.width,
-          closeTo(
-            AccountingButton.normalIconLabelWidth(
-              t.element(keyed('backup-destination')),
-              'Choose Folder',
-              icon: Icons.folder_open_outlined,
-            ),
-            1,
+        expect(destination.width, closeTo(destinationSlot.width, 0.5));
+        expect(destination.left, closeTo(destinationSlot.left, 0.5));
+        expect(destination.right, closeTo(destinationSlot.right, 0.5));
+        expect(destination.height, closeTo(frequency.height, 0.01));
+        final iconRect = t.getRect(
+          find.descendant(
+            of: keyed('backup-destination'),
+            matching: find.byType(AccountingButtonIcon),
+          ),
+        );
+        final labelRect = t.getRect(
+          find.descendant(
+            of: keyed('backup-destination'),
+            matching: find.text('Choose Folder'),
           ),
         );
         expect(
-          destination.width,
-          lessThan(t.getSize(keyed('backup-destination-slot')).width),
+          (iconRect.left + labelRect.right) / 2,
+          closeTo(destination.center.dx, 1),
         );
-        expect(destination.height, closeTo(frequency.height, 0.01));
+        expect(destination.height, closeTo(accountingControlHeight, 0.5));
         expect(find.byType(WorkspaceBackupControls), findsOneWidget);
         await t.ensureVisible(find.text('Backup & Export Preferences'));
         await t.pumpAndSettle();
-        await capture(t, 'Backup Three Controls Inline ${width.toInt()}');
+        await capture(
+          t,
+          'Backup Destination Field Fill Three Up ${width.toInt()}',
+        );
+        await tap(t, keyed('design-preview'));
+        final previewSlot = t.getRect(keyed('backup-destination-slot'));
+        final previewButton = t.getRect(keyed('backup-destination'));
+        expect(previewButton.left, closeTo(previewSlot.left, 0.5));
+        expect(previewButton.right, closeTo(previewSlot.right, 0.5));
+        expect(previewButton.height, closeTo(accountingControlHeight, 0.5));
+        await capture(
+          t,
+          'Backup Destination Frontend Preview Fill ${width.toInt()}',
+        );
+        await tap(t, keyed('design-preview'));
         for (final label in [
           'Backup Frequency',
           'Export Format',
@@ -137,9 +162,13 @@ void main() {
             t.getSize(find.byType(WorkspaceBackupControls)).width,
           ),
         );
+        expect(retained.height, closeTo(accountingControlHeight, 0.5));
         await t.ensureVisible(find.text('Backup & Export Preferences'));
         await t.pumpAndSettle();
-        await capture(t, 'Backup Existing Long Destination ${width.toInt()}');
+        await capture(
+          t,
+          'Backup Destination Field Fill Long Path ${width.toInt()}',
+        );
         await tap(t, keyed('export-data'));
         expect(calls.where((call) => call.method == 'export'), hasLength(1));
         expect(tables(w), before);
@@ -151,4 +180,118 @@ void main() {
       },
     );
   }
+
+  testWidgets('Backup Destination fills its stacked popout field slot', (
+    t,
+  ) async {
+    await prepare(t, 720);
+    final root = Directory.systemTemp.createTempSync(
+      'audyt-backup-stacked-row-',
+    );
+    addTearDown(() => root.deleteSync(recursive: true));
+    final workspace = await AccountingWorkspace.open(
+      '${root.path}/company.sqlite',
+    );
+    addTearDown(workspace.dispose);
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(WorkspaceBackup.channel, (call) async {
+      if (call.method == 'info') return <String, Object?>{'folder': null};
+      throw StateError('Unexpected backup call: ${call.method}');
+    });
+
+    final definitions = [
+      (
+        label: 'Backup Frequency',
+        value: 'Manual',
+        choices: ['Manual', 'Daily', 'Weekly', 'Monthly'],
+      ),
+      (label: 'Export Format', value: 'JSON', choices: ['JSON', 'CSV']),
+    ];
+    final fields = [
+      for (final definition in definitions)
+        AccountingOrdinaryFieldSlot(
+          label: definition.label,
+          choices: definition.choices,
+          hasGuidance: true,
+          builder: (assignedWidth) => Builder(
+            builder: (context) => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                accountingFieldLabel(
+                  context,
+                  definition.label,
+                  alignToField: true,
+                  guidance: accountingFieldGuidance(definition.label),
+                ),
+                const SizedBox(height: accountingFieldLabelGap),
+                AccountingSelector<String>(
+                  triggerKey: ValueKey('stacked-${definition.label}'),
+                  options: [
+                    for (final choice in definition.choices)
+                      AccountingSelectorOption(value: choice, label: choice),
+                  ],
+                  value: definition.value,
+                  onChanged: (_) {},
+                  hintText: 'Select ${definition.label}',
+                  assignedWidth: assignedWidth,
+                ),
+              ],
+            ),
+          ),
+        ),
+    ];
+    const rowWidth = 430.0;
+    await t.pumpWidget(
+      RepaintBoundary(
+        key: const ValueKey('workspace-capture'),
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: AccountingTheme.light(),
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: rowWidth,
+                child: WorkspaceBackupControls(
+                  preferenceFields: fields,
+                  preferenceFieldsWidth: rowWidth,
+                  backup: WorkspaceBackup(workspace),
+                  onOpenRestored: (_) async {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await t.pumpAndSettle();
+
+    final frequency = t.getRect(keyed('stacked-Backup Frequency'));
+    final format = t.getRect(keyed('stacked-Export Format'));
+    final slot = t.getRect(keyed('backup-destination-slot'));
+    final destination = t.getRect(keyed('backup-destination'));
+    expect(frequency.top, closeTo(format.top, 0.5));
+    expect(destination.top, greaterThan(format.bottom));
+    expect(destination.left, closeTo(slot.left, 0.5));
+    expect(destination.right, closeTo(slot.right, 0.5));
+    expect(destination.height, closeTo(accountingControlHeight, 0.5));
+    final iconRect = t.getRect(
+      find.descendant(
+        of: keyed('backup-destination'),
+        matching: find.byType(AccountingButtonIcon),
+      ),
+    );
+    final labelRect = t.getRect(
+      find.descendant(
+        of: keyed('backup-destination'),
+        matching: find.text('Choose Folder'),
+      ),
+    );
+    expect(
+      (iconRect.left + labelRect.right) / 2,
+      closeTo(destination.center.dx, 1),
+    );
+    await capture(t, 'Backup Destination Field Fill Stacked 720');
+    expect(t.takeException(), isNull);
+  });
 }

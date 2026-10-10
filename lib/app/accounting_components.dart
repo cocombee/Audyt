@@ -174,8 +174,8 @@ final class AccountingButton {
   static const contentIconSize = 16.0;
   static const contentIconGap = 8.0;
 
-  /// Measures the existing normal icon/label action, without assigning width.
-  /// A containing labelled slot may wrap; the button keeps its intrinsic frame.
+  /// Measures the existing normal icon/label action's intrinsic width.
+  /// A mixed popout field-row owner may fill its assigned slot instead.
   static double normalIconLabelWidth(
     BuildContext context,
     String label, {
@@ -728,8 +728,9 @@ final class AccountingButton {
             child: content,
           ),
         };
-        // Only an explicit owner exception (authentication entry buttons)
-        // fills its row. Ordinary buttons share field height, not field width.
+        // Width expansion is an explicit opt-in for mixed popout field slots
+        // and existing full-width authentication actions; other actions stay
+        // content-fit.
         if (fullWidth) return SizedBox(width: double.infinity, child: button);
         return Align(
           alignment: Alignment.centerLeft,

@@ -219,7 +219,9 @@ void main() {
       await tester.ensureVisible(openExpense);
       await tester.tap(openExpense);
       await tester.pumpAndSettle();
-      final manage = find.byKey(const ValueKey('expense-manage-recurrences'));
+      await tester.tap(find.byKey(const ValueKey('record-expense-cancel')));
+      await tester.pumpAndSettle();
+      final manage = find.byKey(const ValueKey('expense-open-recurring'));
       await tester.ensureVisible(manage);
       await tester.tap(manage);
       await tester.pumpAndSettle();

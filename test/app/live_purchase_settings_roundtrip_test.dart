@@ -218,9 +218,8 @@ void main() {
               await tap(find.byKey(ValueKey('open-expense-${blankId.value}')));
             } else {
               await tap(find.byKey(ValueKey('open-expense-${taggedId.value}')));
-              await tap(
-                find.byKey(const ValueKey('expense-manage-recurrences')),
-              );
+              await tap(find.byKey(const ValueKey('record-expense-cancel')));
+              await tap(find.byKey(const ValueKey('expense-open-recurring')));
               await tap(
                 find.byKey(const ValueKey('recurring-saved-suggestions')),
               );

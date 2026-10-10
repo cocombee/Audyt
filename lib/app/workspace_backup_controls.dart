@@ -71,24 +71,23 @@ class _WorkspaceBackupControlsState extends State<WorkspaceBackupControls> {
     children: [
       accountingFieldLabel(context, 'Backup Destination', alignToField: true),
       const SizedBox(height: accountingFieldLabelGap),
-      Align(
-        alignment: Alignment.centerLeft,
-        child: AccountingButton.outline(
-          context,
-          key: const ValueKey('backup-destination'),
-          leadingIcon: Icons.folder_open_outlined,
-          onPressed: _busy
-              ? null
-              : () => _run(() async {
-                  final folder = await widget.backup.chooseFolder();
-                  if (folder != null && mounted) {
-                    setState(() => _folder = folder);
-                  }
-                }),
-          child: Text(
-            _folder ?? 'Choose Folder',
-            overflow: TextOverflow.ellipsis,
-          ),
+      AccountingButton.outline(
+        context,
+        key: const ValueKey('backup-destination'),
+        leadingIcon: Icons.folder_open_outlined,
+        fullWidth: true,
+        onPressed: _busy
+            ? null
+            : () => _run(() async {
+                final folder = await widget.backup.chooseFolder();
+                if (folder != null && mounted) {
+                  setState(() => _folder = folder);
+                }
+              }),
+        child: Text(
+          _folder ?? 'Choose Folder',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
       ),
     ],

@@ -1,6 +1,8 @@
 import 'package:audyt/features/accounting/domain/payment_account.dart';
 import 'package:flutter/material.dart';
 import 'package:audyt/app/app.dart';
+import 'package:audyt/app/accounting_theme.dart';
+import 'package:audyt/app/field_row_trial.dart';
 
 import 'dart:io';
 
@@ -77,7 +79,129 @@ void main() {
       await tester.ensureVisible(openExpense);
       await tester.tap(openExpense);
       await tester.pumpAndSettle();
-      final manage = find.byKey(const ValueKey('expense-manage-recurrences'));
+      expect(
+        find.byKey(const ValueKey('expense-manage-recurrences')),
+        findsNothing,
+      );
+      expect(find.text('Manage Saved Schedules'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('expense-recurring-control')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('expense-recurrence-period')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('expense-recurrence-options')),
+        findsOneWidget,
+      );
+      final headerFields = find.ancestor(
+        of: find.byKey(const ValueKey('expense-recurring-control')),
+        matching: find.byType(AccountingOrdinaryFields),
+      );
+      final recurrenceFields = find.ancestor(
+        of: find.byKey(const ValueKey('expense-recurrence-period')),
+        matching: find.byType(AccountingOrdinaryFields),
+      );
+      expect(headerFields, findsOneWidget);
+      expect(recurrenceFields, findsOneWidget);
+      expect(
+        tester.getRect(recurrenceFields).top -
+            tester.getRect(headerFields).bottom,
+        closeTo(accountingContentInset, 0.5),
+      );
+      final repeat = tester.getRect(
+        find.byKey(const ValueKey('expense-recurrence-period')),
+      );
+      final repeatLabel = tester.getRect(
+        find.byKey(const ValueKey('expense-recurrence-label')),
+      );
+      final options = tester.getRect(
+        find.byKey(const ValueKey('expense-recurrence-options')),
+      );
+      final summary = tester.getRect(
+        find.byKey(const ValueKey('expense-recurrence-information')),
+      );
+      final itemsLabel = tester.getRect(
+        find.byKey(const ValueKey('expense-items-label')),
+      );
+      final itemsDivider = tester.getRect(
+        find.byKey(const ValueKey('expense-items-divider')),
+      );
+      expect(
+        repeat.top - repeatLabel.bottom,
+        closeTo(accountingFieldLabelGap, 0.5),
+      );
+      expect(options.top, closeTo(repeat.top, 0.5));
+      expect(options.left, greaterThan(repeat.right));
+      expect(
+        summary.top - tester.getRect(recurrenceFields).bottom,
+        closeTo(accountingFieldLabelGap, 0.5),
+      );
+      expect(
+        itemsDivider.top - itemsLabel.bottom,
+        closeTo(accountingFieldLabelGap, 0.5),
+      );
+      await Scrollable.ensureVisible(
+        tester.element(
+          find.byKey(const ValueKey('expense-recurrence-options')),
+        ),
+        alignment: 0.45,
+      );
+      await tester.pumpAndSettle();
+      await captureUi(tester, 'Expense Saved Form Without Duplicate Shortcut');
+      final liveFields = tester.widget<AccountingOrdinaryFields>(
+        recurrenceFields,
+      );
+      const narrowRunKey = ValueKey('expense-recurrence-narrow-run');
+      final narrowOverlay = OverlayEntry(
+        builder: (context) => Positioned.fill(
+          child: ColoredBox(
+            color: Colors.white,
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 64),
+                child: SizedBox(
+                  key: narrowRunKey,
+                  width: 300,
+                  child: AccountingOrdinaryFields(
+                    fields: liveFields.fields,
+                    crossAxisAlignment: liveFields.crossAxisAlignment,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      Overlay.of(tester.element(recurrenceFields)).insert(narrowOverlay);
+      await tester.binding.setSurfaceSize(const Size(440, 400));
+      await tester.pumpAndSettle();
+      final narrowRun = find.byKey(narrowRunKey);
+      final narrowRepeat = tester.getRect(
+        find.descendant(
+          of: narrowRun,
+          matching: find.byKey(const ValueKey('expense-recurrence-period')),
+        ),
+      );
+      final narrowOptions = tester.getRect(
+        find.descendant(
+          of: narrowRun,
+          matching: find.byKey(const ValueKey('expense-recurrence-options')),
+        ),
+      );
+      expect(narrowOptions.top, greaterThan(narrowRepeat.bottom));
+      await captureUi(tester, 'Expense Repeat Options Narrow Stack');
+      await tester.binding.setSurfaceSize(const Size(1224, 1100));
+      narrowOverlay.remove();
+      narrowOverlay.dispose();
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('record-expense-cancel')));
+      await tester.pumpAndSettle();
+      final manage = find.byKey(const ValueKey('expense-open-recurring'));
+      expect(manage, findsOneWidget);
       await tester.ensureVisible(manage);
       await tester.tap(manage);
       await tester.pumpAndSettle();

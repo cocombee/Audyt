@@ -1,4 +1,5 @@
 import 'package:audyt/app/app.dart';
+import 'package:audyt/app/transaction_form_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -49,7 +50,15 @@ void main() {
     );
     expect(payee.top, number.top);
     expect(date.top, greaterThan(payee.bottom));
-    expect(find.text('0.00'), findsNWidgets(3));
+    final summary = tester.widget<AccountingMemoSummary>(
+      find.byType(AccountingMemoSummary),
+    );
+    expect(summary.rows.singleWhere((row) => row.$1 == 'Subtotal').$2, '0.00');
+    expect(summary.rows.singleWhere((row) => row.$1 == 'Tax').$2, '0.00');
+    expect(
+      summary.rows.singleWhere((row) => row.$1 == 'Total (RM)').$2,
+      '0.00',
+    );
     expect(find.text('Expense Details'), findsNothing);
     expect(tester.takeException(), isNull);
   });

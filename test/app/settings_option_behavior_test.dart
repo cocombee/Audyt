@@ -1,7 +1,9 @@
 import 'dart:ui' show PointerDeviceKind;
 
+import 'package:audyt/app/accounting_components.dart';
 import 'package:audyt/app/accounting_icons.dart';
 import 'package:audyt/app/accounting_theme.dart';
+import 'package:audyt/app/field_row_trial.dart';
 import 'package:audyt/app/frontend_review.dart';
 import 'package:audyt/app/live_settings_catalog.dart';
 import 'package:audyt/app/naming_setup.dart';
@@ -10,6 +12,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'journal_workspace_integration_test.dart' show captureUi;
 import '../support/menu_visual_geometry.dart';
 
 void main() {
@@ -74,6 +77,114 @@ void main() {
     expect(saved?['Country'], 'Singapore');
     expect(saved?['State / Region'], '');
   });
+
+  for (final layout in [
+    (screenWidth: 720.0, formWidth: 320.0),
+    (screenWidth: 1162.0, formWidth: 600.0),
+  ]) {
+    testWidgets(
+      'Business Profile logo chooser fits at ${layout.screenWidth}px',
+      (tester) async {
+        await fonts();
+        await tester.binding.setSurfaceSize(Size(layout.screenWidth, 1000));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        await tester.pumpWidget(
+          RepaintBoundary(
+            key: const ValueKey('workspace-capture'),
+            child: MaterialApp(
+              theme: AccountingTheme.light(),
+              home: Scaffold(
+                body: SingleChildScrollView(
+                  child: Center(
+                    child: SizedBox(
+                      width: layout.formWidth,
+                      child: FrontendFormDialog(
+                        form: liveSettingsForms({}).firstWhere(
+                          (form) => form.title == 'Business Profile',
+                        ),
+                        embedded: true,
+                        fieldLayoutOwner:
+                            AccountingFieldLayoutOwner.sharedPopup,
+                        contentWidth: layout.formWidth,
+                        initial: const {'Business Name': 'Saved Business'},
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final action = find.byKey(const ValueKey('design-business-logo'));
+        final dropzone = find.byKey(
+          const ValueKey('design-business-logo-dropzone'),
+        );
+        await tester.ensureVisible(action);
+        await tester.pumpAndSettle();
+        expect(action, findsOneWidget);
+        expect(dropzone, findsOneWidget);
+
+        final requiredButtonWidth = AccountingButton.normalIconLabelWidth(
+          tester.element(action),
+          'Choose Files',
+          icon: Icons.file_upload_outlined,
+        );
+        final requiredDropzoneWidth =
+            requiredButtonWidth + accountingContentInset * 2;
+        final actionRect = tester.getRect(action);
+        final dropzoneRect = tester.getRect(dropzone);
+        final label = find.descendant(
+          of: action,
+          matching: find.text('Choose Files'),
+        );
+        final labelParagraph = tester.renderObject<RenderParagraph>(label);
+        final singleLineLabel = TextPainter(
+          text: labelParagraph.text,
+          textDirection: labelParagraph.textDirection,
+          textScaler: labelParagraph.textScaler,
+        )..layout();
+
+        expect(action, findsOneWidget);
+        expect(
+          tester.getSize(label).height,
+          closeTo(singleLineLabel.height, 0.5),
+        );
+        singleLineLabel.dispose();
+        expect(
+          actionRect.width,
+          greaterThanOrEqualTo(requiredButtonWidth - 0.5),
+        );
+        expect(
+          dropzoneRect.width,
+          greaterThanOrEqualTo(requiredDropzoneWidth - 0.5),
+        );
+        expect(actionRect.height, closeTo(accountingControlHeight, 0.5));
+        expect(tester.widget<OutlinedButton>(action), isA<OutlinedButton>());
+        expect(
+          find.descendant(
+            of: action,
+            matching: find.byWidgetPredicate(
+              (widget) =>
+                  widget is AccountingButtonIcon &&
+                  widget.icon == Icons.file_upload_outlined,
+            ),
+          ),
+          findsOneWidget,
+        );
+        if (layout.formWidth < 400) {
+          expect(dropzoneRect.width, greaterThan(layout.formWidth / 2));
+        }
+
+        await captureUi(
+          tester,
+          'Business Profile Logo Button Fit ${layout.screenWidth.toInt()}',
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 
   for (final title in ['Sales Preferences', 'Purchase Preferences']) {
     testWidgets('$title only shows the custom term for custom choices', (

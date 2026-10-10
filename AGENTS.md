@@ -1,3 +1,12 @@
+Transaction Items title spacing (10 October 2026 user clarification): the outer
+Items heading in Expense, Quotation and matching transaction forms uses
+accountingFieldLabelGap (8px) below it. Retain accountingContentInset (20px)
+between sections and below the following divider before the line grid. Repeat
+uses the same 8px title-to-control and control-to-summary gaps, without adding
+an extra inner gap when its parent already provides 20px. These are outer form
+relationships: do not change ordinary table heading/row/cell padding, shared
+table components or information-row inset/colon spacing.
+
 Discard warning alignment (10 October 2026 user correction): the shared
 AccountingDialog.confirmDiscardChanges message begins on the title's left
 content axis. Keep existing typography, insets, width family and actions; do not
@@ -359,17 +368,20 @@ section callers and the complete small icon family before installation.
 Online Delivery's two selectors remain in one ordinary field run; PDF Attached
 follows them. No broad button width or unrelated checkbox/field rule is implied.
 
-Backup inline composition — latest 7 October correction: Backup Frequency,
+Backup inline composition — latest 10 October correction: Backup Frequency,
 Export Format and the labelled Backup Destination control participate in one
 measured ordinary row when their title/helper and control minima fit. Destination
 was previously separated by the footer owner; do not preserve that forced break.
-Its Choose Folder button retains its normal intrinsic width and original command,
-busy state, loaded path, errors and company ownership. A long stored folder may
-wrap the labelled slot and ellipsize within available space. Reuse the ordinary
-row planner with an explicit external-control floor; do not apply field fractions
-to button frames, move other backup actions into the field row, or opt unrelated
-embedded forms into this composition. Proposal-only Settings exposes no native
-backup command. Inspect the actual saved-company route before confirming it.
+Its Choose Folder button may fill its assigned slot in this mixed popout row,
+centered with the existing outline tokens and 44px height; page/tab Select
+actions, footer actions and nested dropzone buttons remain content-fit. A long
+stored folder may wrap the labelled slot and ellipsize within available space.
+Reuse the ordinary row planner with an explicit external-control floor. This
+button fills its assigned popout slot; do not apply general field fractions to
+button frames. Keep other backup actions content-fit, and do not opt unrelated
+embedded forms into this composition. Proposal-only
+Settings exposes no native backup command. Inspect the actual saved-company
+route before confirming it.
 
 Supporting-text scope — 7 October user correction: short supporting text is
 acceptable. Put long field-specific explanations in each field's existing helper
@@ -1143,7 +1155,7 @@ Quotation Info or its actual title), with the established row gaps thereafter.
 This supersedes the former three-row bottom-alignment rule. A single summary
 line retains its accepted bottom alignment; never invent extra summary lines.
 
-Button exception to responsive field sizing: buttons and fields share the established height token only, not width rules. Ordinary New Journal and other actions retain the existing content-fit button token even when alone. Field-title floors and lone-field half/full tracks apply to inputs, never stretch an ordinary action. Empty monetary totals use the currency formatter (0.00 for RM) in both current and saved-preview grids; genuinely unresolved nonzero calculations retain unavailable information rather than inventing zero.
+Button exception to responsive field sizing: buttons and fields share the established height token; width remains owner-specific. Ordinary New Journal and other actions retain the existing content-fit button token even when alone. A button may fill only an explicitly assigned mixed popout field slot or an established full-width authentication action. Field-title floors and lone-field half/full tracks apply to inputs; they never stretch ordinary page, tab or footer actions. Empty monetary totals use the currency formatter (0.00 for RM) in both current and saved-preview grids; genuinely unresolved nonzero calculations retain unavailable information rather than inventing zero.
 
 Journal Review toolbar correction (8 October 2026): Drafts, Posted and Memo Or Journal ID belong on the same line when their existing content-fit buttons and bounded search field fit. Wrap only when the actual available width requires it. Preserve the existing status-button peer gap, ordinary control-group gap, record-count visibility, Through/Clear filter, search/paging commands and title action. This is the JournalReviewPage toolbar owner only; do not change other buttons, fields or checkbox families.
 
@@ -1272,9 +1284,10 @@ preferences and financial/report commands remain separate. Install and inspect
 this physical design batch before continuing new wiring.
 
 Shared width and close verification checkpoint (6 October 2026): ordinary
-buttons remain content-fit regardless of a full-width field wrapper. Only the
-already accepted authentication Google button explicitly requests fullWidth;
-do not spread that exception to page actions or other authentication actions.
+buttons remain content-fit regardless of a full-width field wrapper. The
+existing authentication submit and Google actions, plus a button assigned to a
+mixed popout field slot, may explicitly request fullWidth. Do not spread those
+exceptions to other page, tab, footer or authentication actions.
 Inspect the actual painted button at narrow and default widths. Retain dirty
 form input through Close until explicit Discard in journey tests; untouched
 forms close normally. A migrated recurrence fixture must use its own scheduled

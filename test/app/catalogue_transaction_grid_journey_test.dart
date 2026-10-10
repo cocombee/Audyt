@@ -87,6 +87,21 @@ void main() {
           await tester.pumpAndSettle();
           expect(find.byType(AccountingTransactionGrid), findsOneWidget);
           expect(find.textContaining('Design preview ·'), findsOneWidget);
+          expect(
+            tester
+                    .getRect(find.byKey(const ValueKey('design-line-divider')))
+                    .top -
+                tester
+                    .getRect(find.byKey(const ValueKey('design-line-heading')))
+                    .bottom,
+            closeTo(accountingFieldLabelGap, 0.5),
+          );
+          if (title == 'Quotations' && width == 1224) {
+            await tester.ensureVisible(
+              find.byKey(const ValueKey('design-line-heading')),
+            );
+            await captureUi(tester, 'Quotation Generic Items Heading 1224');
+          }
 
           Finder input(String field) => find.byWidgetPredicate(
             (widget) =>
@@ -1145,6 +1160,21 @@ void salesReceiptCustomerCreationJourneys() {
             ),
           );
           await tester.pumpAndSettle();
+          expect(
+            tester
+                    .getRect(find.byKey(const ValueKey('design-line-divider')))
+                    .top -
+                tester
+                    .getRect(find.byKey(const ValueKey('design-line-heading')))
+                    .bottom,
+            closeTo(accountingFieldLabelGap, 0.5),
+          );
+          if (title == 'Quotations' && width == 1224) {
+            await tester.ensureVisible(
+              find.byKey(const ValueKey('design-line-heading')),
+            );
+            await captureUi(tester, 'Quotation Current Items Heading 1224');
+          }
           Finder counterparty() => find.byWidgetPredicate(
             (widget) =>
                 widget is AccountingSelector<String> &&

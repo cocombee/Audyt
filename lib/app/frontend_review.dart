@@ -3180,7 +3180,18 @@ class _FrontendFormDialogState extends State<FrontendFormDialog> {
               ),
             ...options.map((option) => option.label),
           ]);
-    return labelWidth > valueWidth ? labelWidth : valueWidth;
+    final minimum = labelWidth > valueWidth ? labelWidth : valueWidth;
+    if (field.label == 'Business Logo') {
+      final logoChooserMinimum =
+          AccountingButton.normalIconLabelWidth(
+            context,
+            'Choose Files',
+            icon: Icons.file_upload_outlined,
+          ) +
+          accountingContentInset * 2;
+      return math.max(minimum, logoChooserMinimum);
+    }
+    return minimum;
   }
 
   Widget _fields(
@@ -4515,10 +4526,11 @@ class _FrontendFormDialogState extends State<FrontendFormDialog> {
         const SizedBox(height: accountingContentInset),
         Text(
           _form.title == 'Deposits' ? 'Funds' : 'Items',
+          key: const ValueKey('design-line-heading'),
           style: AccountingTypography.fieldLabel(context),
         ),
-        const SizedBox(height: 12),
-        const Divider(height: 1),
+        const SizedBox(height: accountingFieldLabelGap),
+        const Divider(key: ValueKey('design-line-divider'), height: 1),
         const SizedBox(height: accountingContentInset),
         AccountingTransactionGrid(
           columns: [
@@ -4911,9 +4923,13 @@ class _FrontendFormDialogState extends State<FrontendFormDialog> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: accountingContentInset),
-        Text('Items', style: AccountingTypography.fieldLabel(context)),
-        const SizedBox(height: 12),
-        const Divider(height: 1),
+        Text(
+          'Items',
+          key: const ValueKey('design-line-heading'),
+          style: AccountingTypography.fieldLabel(context),
+        ),
+        const SizedBox(height: accountingFieldLabelGap),
+        const Divider(key: ValueKey('design-line-divider'), height: 1),
         const SizedBox(height: accountingContentInset),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,

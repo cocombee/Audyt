@@ -28,7 +28,6 @@ Future<void> showCurrentExpenseEditor(
   bool forceReadOnly = false,
   Future<List<Payee>> Function(String)? employeePayeeSearch,
   ExpenseAttachmentsPicker? onAttachmentsPick,
-  Future<void> Function()? onManageRecurrences,
 }) async {
   final locked =
       forceReadOnly ||
@@ -49,12 +48,6 @@ Future<void> showCurrentExpenseEditor(
       savedDraft: record.draft,
       readOnly: locked,
       onAttachmentsPick: onAttachmentsPick,
-      onManageRecurrences: onManageRecurrences == null
-          ? null
-          : () async {
-              Navigator.pop(routeContext);
-              await onManageRecurrences();
-            },
       recordActions: [
         if (canReview &&
             (!record.summary.isPosted || record.summary.hasPendingRevision))
@@ -323,7 +316,6 @@ class _ExpenseIntakePageState extends State<ExpenseIntakePage> {
         widget.workspace,
         record,
         employeePayeeSearch: widget.employeePayeeSearch,
-        onManageRecurrences: _showRecurring,
       );
 
   Future<void> _showSavedSuggestions() async {
