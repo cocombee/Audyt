@@ -195,6 +195,7 @@ void main() {
     raw.execute('DROP VIEW current_quotations');
     raw.execute('DROP TABLE converted_quotation_revisions');
     dropCurrentAccountFixtureOwner(raw);
+    dropCurrentPaymentMethodFixtureOwner(raw);
     raw.execute('PRAGMA user_version=62');
     raw.dispose();
     f.w = await AccountingWorkspace.open('${f.dir.path}/source.sqlite');

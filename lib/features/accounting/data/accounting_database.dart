@@ -17,6 +17,8 @@ import 'package:crypto/crypto.dart';
 import '../domain/company_preferences.dart';
 import '../domain/company_tax_rate.dart';
 import '../domain/company_tax_agency.dart';
+import '../domain/company_payment_method.dart';
+import '../domain/company_payment_term.dart';
 import '../domain/tax_remittance.dart';
 import '../domain/tax_activity_report.dart';
 import '../domain/claimant_statement.dart';
@@ -78,6 +80,8 @@ part 'bill_ageing_database.dart';
 part 'catalogue_database.dart';
 part 'tax_rate_database.dart';
 part 'tax_agency_database.dart';
+part 'company_payment_method_database.dart';
+part 'company_payment_term_database.dart';
 part 'tax_remittance_database.dart';
 part 'recurring_document_database.dart';
 part 'sales_report_database.dart';
@@ -751,6 +755,12 @@ final class LocalAccountingDatabase
           }
           _validateTaxArchive();
         }
+        if (names.contains('company_payment_methods')) {
+          _validatePaymentMethodArchive();
+        }
+        if (names.contains('company_payment_terms')) {
+          _validatePaymentTermArchive();
+        }
         if (names.contains('tax_remittances')) {
           _validateTaxRemittanceArchive();
         }
@@ -817,7 +827,7 @@ final class LocalAccountingDatabase
     }
   }
 
-  static const schemaVersion = 64;
+  static const schemaVersion = 66;
 
   final Database _database;
 
@@ -3655,6 +3665,23 @@ final class LocalAccountingDatabase
             'The reviewed journal must match the expense date, currency and total.',
           );
         }
+        final savedExpense = RecordExpenseDraft.fromJson(
+          jsonDecode(expense['payload'] as String) as Map<String, dynamic>,
+        );
+        // Legacy intakes can have a free-text or unlinked payment account.
+        // An explicit dedicated ledger link must bind the initial posting just
+        // as it binds a later Expense correction, using current saved facts.
+        final paymentAccountId = savedExpense.paymentAccountId;
+        if (savedExpense.claimSource == null &&
+            paymentAccountId != null &&
+            paymentLedgerAccount(command.businessId, paymentAccountId) !=
+                null) {
+          _requireExpenseJournalMatchesDraft(
+            command.businessId,
+            posted,
+            savedExpense,
+          );
+        }
         final otherLinks = _database.select(
           'SELECT id FROM expense_intakes WHERE journal_id = ?',
           [command.journalId.value],
@@ -4132,6 +4159,16 @@ final class LocalAccountingDatabase
                     as Map<String, dynamic>,
               ),
       );
+      _validateExpensePaymentMethodSnapshot(
+        businessId,
+        draft,
+        existing: previous.isEmpty
+            ? null
+            : RecordExpenseDraft.fromJson(
+                jsonDecode(previous.single['payload'] as String)
+                    as Map<String, dynamic>,
+              ),
+      );
       final occurrenceIdentity = recurringOccurrenceIdentity;
       if (occurrenceIdentity != null) {
         final occurrences = _database.select(
@@ -4329,6 +4366,11 @@ final class LocalAccountingDatabase
         throw StateError('The saved expense changed. Reopen before editing.');
       }
       _validateExpenseTaxSnapshots(businessId, checked, existing: expected);
+      _validateExpensePaymentMethodSnapshot(
+        businessId,
+        checked,
+        existing: expected,
+      );
       final accounts = readPaymentAccounts(businessId)
           .where((account) => account.id == checked.paymentAccountId);
       if (accounts.isEmpty ||
@@ -5100,7 +5142,7 @@ final class LocalAccountingDatabase
     );
     _transaction(() {
       final source = _database.select(
-        'SELECT id FROM expense_intakes WHERE business_id = ? AND id = ? AND archived_at IS NULL',
+        'SELECT payload FROM expense_intakes WHERE business_id = ? AND id = ? AND archived_at IS NULL',
         [businessId.value, template.sourceExpenseId],
       );
       if (source.isEmpty) {
@@ -5112,6 +5154,7 @@ final class LocalAccountingDatabase
         'SELECT revision,payload FROM recurring_expense_templates WHERE business_id = ? AND id = ?',
         [businessId.value, template.id],
       );
+      RecordExpenseDraft? previousDefaults;
       if (rows.isEmpty) {
         if (template.revision != 1) {
           throw StateError('A new template must start at revision one.');
@@ -5127,7 +5170,21 @@ final class LocalAccountingDatabase
             'Template changed since it was loaded, or its source changed. Reopen before saving.',
           );
         }
+        previousDefaults = RecordExpenseDraft.fromJson(
+          Map<String, dynamic>.from(previous.toJson()['defaults'] as Map),
+        );
       }
+      final defaults = RecordExpenseDraft.fromJson(
+        Map<String, dynamic>.from(template.toJson()['defaults'] as Map),
+      );
+      final sourceDraft = RecordExpenseDraft.fromJson(
+        jsonDecode(source.single['payload'] as String) as Map<String, dynamic>,
+      );
+      _validateExpensePaymentMethodSnapshot(
+        businessId,
+        defaults,
+        existing: previousDefaults ?? sourceDraft,
+      );
       _database.execute(
         'INSERT INTO recurring_expense_templates(business_id,id,revision,payload) VALUES(?,?,?,?) ON CONFLICT(business_id,id) DO UPDATE SET revision=excluded.revision,payload=excluded.payload',
         [businessId.value, template.id, template.revision, payload],
@@ -9710,6 +9767,30 @@ final class LocalAccountingDatabase
       _transaction(() {
         _database.execute('ALTER TABLE accounts ADD COLUMN profile TEXT');
         _database.execute('PRAGMA user_version = 64');
+      });
+    }
+    if (version < 65 && throughVersion >= 65) {
+      _transaction(() {
+        _database.execute(
+          'CREATE TABLE company_payment_methods(business_id TEXT NOT NULL,id TEXT NOT NULL,name TEXT NOT NULL,normalized_name TEXT NOT NULL,revision INTEGER NOT NULL CHECK(revision>0),payload TEXT NOT NULL,PRIMARY KEY(business_id,id),UNIQUE(business_id,normalized_name))',
+        );
+        _database.execute(
+          'CREATE TABLE company_payment_method_history(business_id TEXT NOT NULL,id TEXT NOT NULL,revision INTEGER NOT NULL CHECK(revision>0),payload TEXT NOT NULL,saved_at TEXT NOT NULL,PRIMARY KEY(business_id,id,revision),FOREIGN KEY(business_id,id) REFERENCES company_payment_methods(business_id,id))',
+        );
+        for (final operation in ['UPDATE', 'DELETE']) {
+          _database.execute(
+            "CREATE TRIGGER company_payment_method_history_no_${operation.toLowerCase()} BEFORE $operation ON company_payment_method_history BEGIN SELECT RAISE(ABORT,'Payment method history is immutable'); END",
+          );
+        }
+        _database.execute('PRAGMA user_version = 65');
+      });
+    }
+    if (version < 66 && throughVersion >= 66) {
+      _transaction(() {
+        _database.execute(
+          'CREATE TABLE company_payment_terms(business_id TEXT NOT NULL,id TEXT NOT NULL,name TEXT NOT NULL,normalized_name TEXT NOT NULL,revision INTEGER NOT NULL CHECK(revision=1),active INTEGER NOT NULL CHECK(active=1),payload TEXT NOT NULL,created_at TEXT NOT NULL,PRIMARY KEY(business_id,id),UNIQUE(business_id,normalized_name))',
+        );
+        _database.execute('PRAGMA user_version = 66');
       });
     }
   }

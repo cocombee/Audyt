@@ -7,12 +7,18 @@ import '../../../core/ids/entity_id.dart';
 import '../../../core/money/money.dart';
 import '../../../core/storage/record_metadata.dart';
 import '../../accounting/domain/payment_terms.dart';
+import '../../accounting/domain/company_payment_term.dart';
 import '../../accounting/domain/company_preferences.dart';
+import '../../accounting/presentation/company_payment_term_selection.dart';
 import '../../sales/domain/invoice_tax.dart';
 import '../../sales/domain/sales_line_item.dart';
 import '../../sales/invoice_form.dart' show invoiceDecimal, invoiceMoney;
 import '../domain/purchase_bill_draft.dart';
 import '../domain/vendor.dart';
+
+/// A transient Bill selector value. Bills persist the rule, never this ID.
+String billPaymentTermChoice(CompanyPaymentTerm template) =>
+    companyPaymentTermChoice(template);
 
 DesignForm billForm(
   Map<String, String> vendors,
@@ -20,6 +26,7 @@ DesignForm billForm(
   Set<String> currencyCodes = const {},
   Map<String, String> counterpartyCurrencies = const {},
   Map<String, String> counterpartyCustomTerms = const {},
+  List<CompanyPaymentTerm> paymentTermTemplates = const [],
   String defaultCurrencyCode = 'MYR',
   CompanyPreferences? preferences,
   PurchaseBillDraft? existing,
@@ -31,9 +38,16 @@ DesignForm billForm(
       if (field.label == 'Counterparty')
         DesignField('Counterparty', required: true, choiceLabels: vendors)
       else if (field.label == 'Payment Terms')
-        const DesignField(
+        DesignField(
           'Payment Terms',
-          options: ['Use Vendor Default', ...termsChoices],
+          choiceLabels: {
+            for (final choice in const ['Use Vendor Default', ...termsChoices])
+              choice: choice,
+            ...companyPaymentTermChoiceLabels(
+              paymentTermTemplates,
+              reservedChoices: const ['Use Vendor Default', ...termsChoices],
+            ),
+          },
         )
       else if (field.label == 'Tax Mode')
         DesignField(
@@ -145,6 +159,7 @@ PurchaseBillDraft billFromForm(
   required Vendor vendor,
   required Set<String> purchaseAccountIds,
   List<CompanyTaxRate> taxCodes = const [],
+  List<CompanyPaymentTerm> paymentTermTemplates = const [],
   PurchaseBillDraft? existing,
 }) {
   String text(String key) => (values[key] as String? ?? '').trim();
@@ -177,7 +192,19 @@ PurchaseBillDraft billFromForm(
       int.tryParse(text(key)) ??
       (throw FormatException('Enter $key as a whole number.'));
   final term = text('Payment Terms');
+  final namedTemplate = isCompanyPaymentTermChoice(term)
+      ? paymentTermTemplates
+            .where(
+              (template) =>
+                  template.active && billPaymentTermChoice(template) == term,
+            )
+            .firstOrNull
+      : null;
+  if (isCompanyPaymentTermChoice(term) && namedTemplate == null) {
+    throw StateError('The selected company payment term is unavailable.');
+  }
   final terms =
+      namedTemplate?.rule ??
       (switch (term) {
         '' || 'Use Vendor Default' => vendor.terms,
         'Due On Receipt' => PaymentTerms.netDays(0),
@@ -198,7 +225,7 @@ PurchaseBillDraft billFromForm(
             ? text('Custom Payment Terms')
             : existing?.bill.terms.customText,
       );
-  final due = text('Due Date').isEmpty
+  final due = namedTemplate != null || text('Due Date').isEmpty
       ? terms.dueDateFor(issue)
       : parseAccountingInputDate(text('Due Date'));
   if (due == null) throw const FormatException('Enter a valid bill due date.');

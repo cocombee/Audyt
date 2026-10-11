@@ -9,6 +9,8 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/sqlite3.dart';
 
+import '../../../support/historical_sqlite_fixture.dart';
+
 Map<String, dynamic> body(String archive) =>
     jsonDecode((jsonDecode(archive) as Map)['data'] as String)
         as Map<String, dynamic>;
@@ -31,6 +33,7 @@ Map<String, dynamic> historical(String archive, int version) {
   final data = body(archive);
   data['schemaVersion'] = version;
   final tables = data['tables'] as Map;
+  dropCurrentPaymentMethodArchiveFixtureOwner(data);
   if (version < 64) {
     final accounts = tables['accounts'] as Map;
     final columns = accounts['columns'] as List;

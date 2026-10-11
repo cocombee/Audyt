@@ -4,7 +4,11 @@ set -euo pipefail
 readonly wiring_project="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly wiring_flutter="${AUDYT_FLUTTER_BIN:-/Users/mrkokom/Development/flutter/bin/flutter}"
 readonly wiring_cmake='/Users/mrkokom/My Drive (cocombees@gmail.com)/Codex/Apps/Audyt/Toolchain/cmake/data/bin'
-export PATH="$wiring_cmake:$PATH"
+# Keep the hook environment stable when the caller already supplies CMake.
+case "$PATH" in
+  "$wiring_cmake"|"$wiring_cmake":*) ;;
+  *) export PATH="$wiring_cmake:$PATH" ;;
+esac
 cd "$wiring_project"
 # Real command/storage/report/UI journeys. Extend this list when a live route is added.
 "$wiring_flutter" analyze --no-pub
@@ -24,7 +28,9 @@ cd "$wiring_project"
   test/app/customer_receipts_page_test.dart \
   test/app/customer_owner_audit_test.dart \
   test/app/payment_method_directory_test.dart \
+  test/app/payment_method_wiring_journey_test.dart \
   test/app/payment_terms_directory_test.dart \
+  test/app/terms_directory_wiring_journey_test.dart \
   test/app/statement_settings_dialog_test.dart \
   test/app/sales_email_settings_dialog_test.dart \
   test/app/accounting_preferences_dialog_test.dart \
@@ -126,6 +132,8 @@ cd "$wiring_project"
   test/app/tax_remittance_proposal_test.dart \
   test/features/accounting/data/purchase_tax_cost_mapping_test.dart \
   test/features/accounting/data/tax_agency_wiring_test.dart \
+  test/features/accounting/data/company_payment_method_test.dart \
+  test/features/accounting/data/company_payment_term_test.dart \
   test/features/accounting/data/claimant_statement_test.dart \
   test/features/accounting/data/claim_reimbursement_position_test.dart \
   test/features/accounting/data/claim_expense_revision_posting_test.dart \
@@ -198,6 +206,8 @@ cd "$wiring_project"
   test/features/sales/receivable_ageing_test.dart \
   test/features/sales/sales_line_item_test.dart \
   test/features/sales/generated_sales_document_test.dart \
+  test/features/sales/invoice_named_terms_persistence_test.dart \
+  test/app/invoice_terms_selection_wiring_journey_test.dart \
   test/features/sales/invoice_tax_test.dart \
   test/core/money_test.dart \
   test/core/money_format_boundary_test.dart \
@@ -232,6 +242,7 @@ cd "$wiring_project"
   test/features/accounting/data/journal_editability_test.dart \
   test/features/accounting/data/expense_revision_test.dart \
   test/features/accounting/data/expense_revision_posting_test.dart \
+  test/features/accounting/data/expense_initial_payment_credit_test.dart \
   test/app/banking_page_test.dart \
   test/app/bank_statement_upload_proposal_test.dart \
   test/app/banking_navigation_test.dart \
@@ -255,7 +266,9 @@ cd "$wiring_project"
   test/features/accounting/data/payee_persistence_test.dart \
   test/features/accounting/data/payment_account_persistence_test.dart \
   test/features/purchases/presentation/bill_form_test.dart \
+  test/features/purchases/presentation/bill_named_terms_persistence_test.dart \
   test/app/bills_page_journey_test.dart \
+  test/app/bill_terms_selection_wiring_journey_test.dart \
   test/app/pay_bills_page_journey_test.dart \
   test/features/purchases/bill_voucher_provenance_test.dart \
   test/features/purchases/voucher_source_integrity_test.dart \

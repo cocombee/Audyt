@@ -13,6 +13,8 @@ import '../../../app/field_row_trial.dart';
 import '../../../app/responsive.dart';
 import '../../../core/dates/accounting_date.dart';
 import '../../../core/money/currency_presentation.dart';
+import '../application/accounting_workspace.dart';
+import '../domain/company_payment_method.dart';
 import 'widgets/accounting_formatters.dart';
 
 /// Explicit preview facts, not a maintained company directory or stored defaults.
@@ -22,20 +24,24 @@ class PaymentMethodDirectoryPreviewEntry {
     required this.name,
     required this.cardPayment,
     this.active = true,
+    this.method,
   });
   final String id, name;
   final bool cardPayment, active;
+  final CompanyPaymentMethod? method;
 }
 
 Future<void> showPaymentMethodDirectoryPreview(
   BuildContext context, {
   bool demo = false,
   String currencyCode = 'MYR',
+  AccountingWorkspace? workspace,
 }) => AccountingDialog.showFixed<void>(
   context: context,
   contentWidth: AccountingPopoutTokens.normalContentWidth,
   builder: (_) => PaymentMethodDirectoryDialog(
     currencyCode: currencyCode,
+    workspace: demo ? null : workspace,
     entries: demo
         ? const [
             PaymentMethodDirectoryPreviewEntry(
@@ -64,16 +70,19 @@ Future<void> showPaymentMethodDirectoryPreview(
   ),
 );
 
-/// Reuses the existing Tax Agencies master-list and original method form owners.
-/// Maintained saves, report queries and activation remain unavailable until wired.
+/// Reuses the existing master-list, row actions, and payment-method form.
+/// Workspace-backed saves and activation update maintained company records;
+/// report actions remain preview-only.
 class PaymentMethodDirectoryDialog extends StatefulWidget {
   const PaymentMethodDirectoryDialog({
     super.key,
     this.entries = const [],
     this.currencyCode = 'MYR',
+    this.workspace,
   });
   final List<PaymentMethodDirectoryPreviewEntry> entries;
   final String currencyCode;
+  final AccountingWorkspace? workspace;
   @override
   State<PaymentMethodDirectoryDialog> createState() =>
       _PaymentMethodDirectoryDialogState();
@@ -83,11 +92,25 @@ class _PaymentMethodDirectoryDialogState
     extends State<PaymentMethodDirectoryDialog> {
   bool _includeInactive = false;
 
+  List<PaymentMethodDirectoryPreviewEntry> get _entries =>
+      widget.workspace == null
+      ? widget.entries
+      : [
+          for (final method in widget.workspace!.paymentMethods)
+            PaymentMethodDirectoryPreviewEntry(
+              id: method.id.value,
+              name: method.name,
+              cardPayment: method.cardPayment,
+              active: method.active,
+              method: method,
+            ),
+        ];
+
   Future<void> _report([PaymentMethodDirectoryPreviewEntry? entry]) =>
       showDialog<void>(
         context: context,
         builder: (_) => PaymentMethodReportPreview(
-          entries: widget.entries,
+          entries: _entries,
           method: entry,
           currencyCode: widget.currencyCode,
         ),
@@ -124,27 +147,67 @@ class _PaymentMethodDirectoryDialogState
           title: entry.active ? 'Make Method Inactive?' : 'Make Method Active?',
           fixedContentWidth: AccountingPopoutTokens.dialogContentWidth,
           maxContentWidth: AccountingPopoutTokens.dialogContentWidth,
-          description:
-              'Changing payment-method availability is not connected yet.',
+          description: widget.workspace == null
+              ? 'Changing payment-method availability is not connected yet.'
+              : 'This changes which methods are available for new Expenses.',
           content: Text(entry.name, style: AccountingTypography.value(context)),
           actions: [
             if (entry.active)
               AccountingButton.destructive(
                 context,
                 key: const ValueKey('payment-method-deactivate-confirm'),
-                onPressed: null,
+                onPressed: entry.method == null
+                    ? null
+                    : () => _setActive(entry.method!, false),
                 child: const Text('Make Inactive'),
               )
             else
               AccountingButton.primary(
                 context,
                 key: const ValueKey('payment-method-activate-confirm'),
-                onPressed: null,
+                onPressed: entry.method == null
+                    ? null
+                    : () => _setActive(entry.method!, true),
                 child: const Text('Make Active'),
               ),
           ],
         ),
       );
+
+  Future<void> _setActive(CompanyPaymentMethod method, bool active) async {
+    try {
+      widget.workspace!.savePaymentMethod(
+        CompanyPaymentMethod(
+          id: method.id,
+          name: method.name,
+          cardPayment: method.cardPayment,
+          active: active,
+          revision: method.revision,
+        ),
+      );
+      if (mounted) setState(() {});
+      if (mounted) Navigator.of(context).pop();
+    } on Object catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not update payment method: $error')),
+      );
+    }
+  }
+
+  Future<void> _openMethodForm({
+    PaymentMethodDirectoryPreviewEntry? entry,
+  }) async {
+    final saved = await showAccountingPaymentMethodPreview(
+      context,
+      directory: true,
+      initialName: entry?.name,
+      cardPayment: entry?.cardPayment ?? false,
+      workspace: widget.workspace,
+      existingMethod: entry?.method,
+    );
+    if (saved != null && mounted) setState(() {});
+  }
 
   Widget _directoryToolbar() => LayoutBuilder(
     builder: (context, constraints) {
@@ -203,8 +266,7 @@ class _PaymentMethodDirectoryDialogState
             AccountingButton.primary(
               context,
               key: const ValueKey('payment-method-new'),
-              onPressed: () =>
-                  showAccountingPaymentMethodPreview(context, directory: true),
+              onPressed: _openMethodForm,
               child: const Text('New Payment Method'),
             ),
           ],
@@ -229,14 +291,17 @@ class _PaymentMethodDirectoryDialogState
 
   @override
   Widget build(BuildContext context) {
-    final entries = widget.entries
+    final allEntries = _entries;
+    final entries = allEntries
         .where((entry) => _includeInactive || entry.active)
         .toList();
     return AccountingDialog.alert(
       context,
       widthFamily: AccountingPopoutWidthFamily.normal,
       title: 'Payment Methods',
-      description: 'Design preview · Methods are not saved. Existing payment selections are unchanged.',
+      description: widget.workspace == null
+          ? 'Design preview · Methods are not saved. Existing payment selections are unchanged.'
+          : 'Manage company payment methods used by Expense.',
       fixedContentWidth: AccountingPopoutTokens.normalContentWidth,
       maxContentWidth: AccountingPopoutTokens.normalContentWidth,
       content: Column(
@@ -248,9 +313,13 @@ class _PaymentMethodDirectoryDialogState
           if (entries.isEmpty)
             accountingHelperText(
               context,
-              widget.entries.isEmpty
-                  ? 'The maintained payment-method list is not connected yet.'
-                  : 'No active methods in this preview.',
+              allEntries.isEmpty
+                  ? widget.workspace == null
+                        ? 'The maintained payment-method list is not connected yet.'
+                        : 'No payment methods are saved yet.'
+                  : widget.workspace == null
+                  ? 'No active methods in this preview.'
+                  : 'No active methods. Include inactive methods to see them.',
             )
           else
             AccountingRecordList(
@@ -289,12 +358,7 @@ class _PaymentMethodDirectoryDialogState
                         AccountingButton.iconOnly(
                           context,
                           key: ValueKey('payment-method-edit-${entry.id}'),
-                          onPressed: () => showAccountingPaymentMethodPreview(
-                            context,
-                            directory: true,
-                            initialName: entry.name,
-                            cardPayment: entry.cardPayment,
-                          ),
+                          onPressed: () => _openMethodForm(entry: entry),
                           icon: Icons.edit_outlined,
                           tooltip: 'Edit ${entry.name}',
                         ),

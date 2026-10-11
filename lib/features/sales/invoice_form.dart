@@ -10,6 +10,8 @@ import '../../core/money/currency.dart';
 import '../../core/money/currency_presentation.dart';
 import '../../core/money/money.dart';
 import '../accounting/domain/customer.dart';
+import '../accounting/domain/company_payment_term.dart';
+import '../accounting/presentation/company_payment_term_selection.dart';
 import 'domain/invoice.dart';
 import 'domain/sales_line_item.dart';
 import 'domain/product_catalogue.dart';
@@ -131,6 +133,7 @@ DesignForm invoiceForm(
   Invoice? existing,
   Map<String, String> counterpartyCurrencies = const {},
   Map<String, String> counterpartyCustomTerms = const {},
+  List<CompanyPaymentTerm> paymentTermTemplates = const [],
   String defaultCurrencyCode = 'MYR',
   Map<String, String>? itemChoices,
   Map<String, String> taxChoices = const {'0': 'No Tax'},
@@ -141,10 +144,29 @@ DesignForm invoiceForm(
       if (field.label == 'Counterparty')
         DesignField('Counterparty', required: true, choiceLabels: customers)
       else if (field.label == 'Payment Terms')
-        const DesignField(
-          'Payment Terms',
-          options: ['Use Customer Default', ...termsChoices],
-        )
+        if (paymentTermTemplates.any((template) => template.active))
+          DesignField(
+            'Payment Terms',
+            choiceLabels: {
+              for (final choice in const [
+                'Use Customer Default',
+                ...termsChoices,
+              ])
+                choice: choice,
+              ...companyPaymentTermChoiceLabels(
+                paymentTermTemplates,
+                reservedChoices: const [
+                  'Use Customer Default',
+                  ...termsChoices,
+                ],
+              ),
+            },
+          )
+        else
+          const DesignField(
+            'Payment Terms',
+            options: ['Use Customer Default', ...termsChoices],
+          )
       else
         field,
   ],
@@ -244,6 +266,7 @@ Invoice invoiceFromForm(
   List<CompanyTaxRate> taxCodes = const [],
   List<CatalogueItem> catalogueItems = const [],
   List<CatalogueCategory> catalogueCategories = const [],
+  List<CompanyPaymentTerm> paymentTermTemplates = const [],
   bool requireCatalogueItem = false,
   bool allowRetainedUnavailableAccounts = false,
 }) {
@@ -268,7 +291,20 @@ Invoice invoiceFromForm(
       int.tryParse(text(key)) ??
       (throw FormatException('Enter $key as a whole number.'));
   final termLabel = text('Payment Terms');
+  final namedTemplate = isCompanyPaymentTermChoice(termLabel)
+      ? paymentTermTemplates
+            .where(
+              (template) =>
+                  template.active &&
+                  companyPaymentTermChoice(template) == termLabel,
+            )
+            .firstOrNull
+      : null;
+  if (isCompanyPaymentTermChoice(termLabel) && namedTemplate == null) {
+    throw StateError('The selected company payment term is unavailable.');
+  }
   final terms =
+      namedTemplate?.rule ??
       (switch (termLabel) {
         '' || 'Use Customer Default' => customer.paymentTerms,
         'Due On Receipt' => PaymentTerms.netDays(0),
@@ -290,10 +326,10 @@ Invoice invoiceFromForm(
             ? text('Custom Payment Terms')
             : existing?.terms.customText,
       );
-  final due = text('Due Date').isEmpty
+  final due = namedTemplate != null || text('Due Date').isEmpty
       ? null
       : parseAccountingInputDate(text('Due Date'));
-  if (text('Due Date').isNotEmpty && due == null) {
+  if (namedTemplate == null && text('Due Date').isNotEmpty && due == null) {
     throw const FormatException('Enter a valid due date.');
   }
   final lines = <SalesLineItem>[];

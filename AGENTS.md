@@ -1,3 +1,26 @@
+Initial Expense linked-payment credit review (11 October 2026; planned): reuse the existing Expense revision journal-match validator inside atomic initial approval whenever the ordinary saved Expense has an explicit company-scoped payment ledger link. Recheck current saved payment selection at commit; full credit must reach that ledger. Null/unlinked legacy intakes retain existing user-authored Journal approval, without name inference. No Claim path, category-to-GL mapping, UI/token, schema, automatic posting or backend change. Meaningful SQLite atomic rejection/restart tests and required gate/freeze/build/install remain pending; native financial approval requires user hand-off. See Expense Initial Payment Credit Review/Implementation Plan.json.
+
+Invoice Terms selection working batch (11 October 2026; planned, not installed): connect only the existing Invoice Terms selector to active maintained company terms through optional inputs on its shared form; Quotation defaults empty and unchanged. Reuse the tested opaque choice/unique label owner from Bill without changing Bill behavior. Named selection snapshots exact fixed/monthly rule and derives date, excluding hidden prior Custom text/date. Guard current company term identity/activity/revision/rule at Review and after awaited PDF rendering immediately before durable Invoice Save Draft. Reopen remains generic historical PaymentTerms; no catalog identity/name persistence. No Invoice Add Term, profile/default precedence, schema, posting, token or geometry changes. Focused/full gate, frozen build/install and actual native checks remain pending. Bill Terms installed functional checks now passed (inline cancel/save/refresh, fixed/monthly due dates, normal restart; all77 other tables/all prior rows unchanged); full design/goal acceptance remains pending. See Invoice Terms Selection Wiring Review/Implementation Plan.json and Bill Terms Selection Wiring Review/Native Functional Verification.json.
+
+Bill Terms selection working batch (11 October 2026; not installed): connect active maintained company terms only to the existing Bill Terms selector/Review/Save Draft. Opaque local choice IDs resolve to exact rule snapshots; named selection derives its date and excludes hidden prior Custom text. Save rechecks the captured template against current company facts. Add Term returns void and refreshes choices without selecting it or resetting parent input. Reopen uses the saved generic rule, never name/rule matching. No schema, Invoice/profile/default, posting, shared geometry or table change. Focused/full gate, source captures, frozen build and installed QA verification remain pending; see Bill Terms Selection Wiring Review/Implementation Plan.json.
+
+Terms directory create/list wiring (11 October 2026 source checkpoint): reuse the accepted Settings directory and New Term/Review/Save owner. Company-owner creation stores a named exact fixed-days/monthly PaymentTerms rule with stable identity, normalized unique name, active=true and revision1. No Edit/inactive/default/report command or transaction term identity is added. Bill-only Add Term reuses creation but returns no selected transaction value; preserve Bill/supplier values and all existing structured historical terms/due dates. Use additive schema66/archive validation and actual installed restart/data-diff verification. The focused20-case source/SQLite/UI suite passes; packaging, installed commands and native acceptance remain pending. See Terms Directory Wiring Review/Implementation Plan.json.
+
+Payment Methods existing-command wiring (11 October 2026 source checkpoint):
+Settings Payment Methods and the ordinary Expense selector reuse their accepted
+owners with company-scoped maintained methods. New/Edit/availability changes use
+owner-authorized optimistic revisions and immutable history; card-payment status
+is explicit. Expense JSON optionally freezes the exact method revision; legacy
+payloads omit it, and historical choices survive rename or deactivation. New or
+relinked selections require current active facts. Schema65 adds only the method
+current/history tables; upgrade/archive validation preserves prior Expense,
+Voucher and payment-account data. Recurring defaults retain exact source facts
+on initial creation or their own previous facts on later edits, with active
+validation for relinks. Demo, Claim-linked previews, Voucher method strings,
+PaymentAccount/ledger links and disconnected reports retain their existing
+boundaries. This records source wiring, not packaging or installed/native
+acceptance; see Payment Methods Wiring Review and the current install ledgers.
+
 Restored company marker lifecycle and menu padding (10 October 2026 user correction):
 Only restored-copy dropdown options show the recovery marker and restore date.
 Retire both after five newly saved durable transaction roots, including drafts;

@@ -14,6 +14,7 @@ import 'dart:async';
 
 import '../features/accounting/presentation/receipt_review_dialog.dart';
 import '../features/accounting/presentation/receipt_review_queue.dart';
+import '../features/accounting/domain/company_payment_method.dart';
 
 import 'dart:math' as math;
 import 'dart:convert';
@@ -64,42 +65,64 @@ import '../features/sales/product_catalogue_page.dart';
 
 export 'frontend_catalog.dart';
 
-/// Existing payment-method setup surface, shared by its selector callers.
-/// The durable directory command remains explicitly pending.
-Future<void> showAccountingPaymentMethodPreview(
+/// Existing payment-method setup surface, shared by directory and selector
+/// callers. A company workspace enables the existing Save action; callers that
+/// only have preview data keep the original non-saving preview.
+Future<CompanyPaymentMethod?> showAccountingPaymentMethodPreview(
   BuildContext context, {
   bool directory = false,
   String? initialName,
   bool cardPayment = false,
+  AccountingWorkspace? workspace,
+  CompanyPaymentMethod? existingMethod,
 }) async {
   final cardLabel = directory
       ? 'This Is A Credit Or Debit Card'
       : 'This Is A Credit Card';
-  await AccountingDialog.showFixed<Map<String, Object?>>(
+  CompanyPaymentMethod? savedMethod;
+  final result = await AccountingDialog.showFixed<Map<String, Object?>>(
     context: context,
     contentWidth: AccountingPopoutTokens.normalContentWidth,
     builder: (_) => FrontendFormDialog(
       contentWidth: AccountingPopoutTokens.normalContentWidth,
       previewConfirmationEnabled: false,
       initial: {'Name': initialName ?? '', cardLabel: cardPayment},
-      leadingContentBuilder: (context, values, reviewing) => Padding(
-        padding: const EdgeInsets.only(bottom: accountingContentInset),
-        child: accountingHelperText(
-          context,
-          'Saving payment methods is not connected yet.',
-        ),
-      ),
+      leadingContentBuilder: workspace == null
+          ? (context, values, reviewing) => Padding(
+              padding: const EdgeInsets.only(bottom: accountingContentInset),
+              child: accountingHelperText(
+                context,
+                'Saving payment methods is not connected yet.',
+              ),
+            )
+          : null,
       form: DesignForm(
         initialName == null ? 'New Payment Method' : 'Edit Payment Method',
         [
           const DesignField('Name', required: true),
           DesignField(cardLabel, checkbox: true),
         ],
-        description: 'Payment method setup preview. Saving payment methods is not connected yet.',
+        description: workspace == null
+            ? 'Payment method setup preview. Saving payment methods is not connected yet.'
+            : 'Payment method setup.',
         actionLabel: 'Save Payment Method',
       ),
+      onCommit: workspace == null
+          ? null
+          : (values) async {
+              savedMethod = workspace.savePaymentMethod(
+                CompanyPaymentMethod(
+                  id: existingMethod?.id ?? EntityId.random(),
+                  name: '${values['Name'] ?? ''}',
+                  cardPayment: values[cardLabel] == true,
+                  active: existingMethod?.active ?? true,
+                  revision: existingMethod?.revision ?? 0,
+                ),
+              );
+            },
     ),
   );
+  return result == null ? null : savedMethod;
 }
 
 bool _salesDocumentTaxFamily(DesignForm form) =>

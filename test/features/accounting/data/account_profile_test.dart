@@ -11,6 +11,8 @@ import 'package:audyt/core/storage/record_metadata.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/sqlite3.dart';
 
+import '../../../support/historical_sqlite_fixture.dart';
+
 void main() {
   test(
     'exact reporting/details and description survive restart and archive',
@@ -238,6 +240,7 @@ void main() {
       final original = (await workspace.database.getAccount(id))!;
       workspace.dispose();
       final sql = sqlite3.open(path);
+      dropCurrentPaymentMethodFixtureOwner(sql);
       sql.execute('ALTER TABLE accounts DROP COLUMN profile');
       sql.execute('PRAGMA user_version=63');
       sql.dispose();

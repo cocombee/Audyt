@@ -571,7 +571,7 @@ void main() {
       }
     }
     expect(target.taxRemittances(), isEmpty);
-    expect(LocalAccountingDatabase.schemaVersion, 64);
+    expect(LocalAccountingDatabase.schemaVersion, 66);
   });
   test('closed periods reject record/reversal atomically; linking existing closed-period books adds no posting', () async {
     final f = await setup();

@@ -16,6 +16,7 @@ import 'package:audyt/core/money/money.dart';
 import 'package:audyt/features/sales/domain/sales_line_item.dart';
 
 import '../domain/company_preferences.dart';
+import '../domain/company_payment_method.dart';
 import '../domain/company_tax_rate.dart';
 import '../application/accounting_workspace.dart';
 import '../../../../app/live_settings_catalog.dart';
@@ -468,6 +469,7 @@ class _RecordExpensePageState extends State<RecordExpensePage> {
   String? _payeeHoveredId;
 
   PaymentAccount? _paymentAccount;
+  CompanyPaymentMethod? _paymentMethod;
   String? get _category => _lines.first.category;
   set _category(String? value) => _lines.first.category = value;
   String? get _tax => _lines.first.tax;
@@ -485,6 +487,23 @@ class _RecordExpensePageState extends State<RecordExpensePage> {
   bool _isSaving = false;
   bool _retryClaimSubmit = false;
   bool get _isClaim => widget.claimContext != null;
+  AccountingWorkspace? get _paymentMethodWorkspace =>
+      _isClaim || widget.savedDraft?.claimSource != null
+      ? null
+      : widget.settingsWorkspace;
+  bool get _recurringPaymentMethodNeedsSelection {
+    final selected = _paymentMethod;
+    final workspace = _paymentMethodWorkspace;
+    if (widget.recurringSuggestion == null ||
+        selected == null ||
+        workspace == null) {
+      return false;
+    }
+    return !workspace.paymentMethods.any(
+      (method) => method.active && method.choice == selected.choice,
+    );
+  }
+
   bool _showValidationSummary = false;
   late String _currencyCode;
   CurrencyPresentation? _currencyPresentation;
@@ -575,6 +594,11 @@ class _RecordExpensePageState extends State<RecordExpensePage> {
       _taxMode = suggestion.taxMode;
     }
     if (suggestion != null) {
+      if (suggestion.claimSource == null) {
+        // Preserve the exact selected method revision from recurring and
+        // statement suggestions; a stale revision must be explicitly changed.
+        _paymentMethod = suggestion.paymentMethod;
+      }
       _amountController.text = formatAccountingMoneyInputText(
         suggestion.amount,
         _currencyPresentation?.currency.fractionDigits ?? 2,
@@ -604,6 +628,9 @@ class _RecordExpensePageState extends State<RecordExpensePage> {
       }
       if (widget.savedDraft != null) {
         final restored = RecordExpenseDraft.fromJson(suggestion.toJson());
+        if (restored.claimSource == null) {
+          _paymentMethod = restored.paymentMethod;
+        }
         _attachments = List.of(restored.attachments);
         _recurrence = restored.recurrence;
         _recurrenceEnabled = _recurrence != null;
@@ -756,6 +783,7 @@ class _RecordExpensePageState extends State<RecordExpensePage> {
     _billable,
     _payeeAutocompleteController?.text ?? _payeeValue,
     _paymentAccount?.id,
+    _paymentMethod?.toJson(),
     _currencyCode,
     _taxMode,
     _recurrenceEnabled,
@@ -977,11 +1005,13 @@ class _RecordExpensePageState extends State<RecordExpensePage> {
                 const SizedBox(height: accountingContentInset),
                 if (!_isClaim) ...[
                   _responsivePair(_buildPaymentMethodField(context), null),
-                  const SizedBox(height: accountingFieldLabelGap),
-                  accountingHelperText(
-                    context,
-                    'Payment-method choices and saving are not connected yet.',
-                  ),
+                  if (_paymentMethodWorkspace == null) ...[
+                    const SizedBox(height: accountingFieldLabelGap),
+                    accountingHelperText(
+                      context,
+                      'Payment-method choices and saving are not connected yet.',
+                    ),
+                  ],
                   const SizedBox(height: accountingContentInset),
                 ],
                 _buildCompactHeader(context, width),
@@ -1050,31 +1080,74 @@ class _RecordExpensePageState extends State<RecordExpensePage> {
   );
 
   Widget _buildPaymentMethodField(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) => Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        accountingFieldLabel(context, 'Payment Method', alignToField: true),
-        const SizedBox(height: accountingFieldLabelGap),
-        AccountingSelector<String>(
-          controlKey: const ValueKey('expense-field-payment-method'),
-          assignedWidth: constraints.maxWidth,
-          hintText: 'Select Payment Method',
-          value: null,
-          enabled: !_isSaving && !widget.readOnly,
-          options: [
-            AccountingSelectorOption(
-              value: '__add_payment_method__',
-              label: 'Add Payment Method',
-              key: const ValueKey('expense-add-payment-method'),
-              leading: const AccountingAddIcon(),
-              leadingWidth: AccountingDismissIcon.canvasSize,
-              onPressed: () => showAccountingPaymentMethodPreview(context),
-            ),
-          ],
-          onChanged: (_) {},
-        ),
-      ],
-    ),
+    builder: (context, constraints) {
+      final methods = _paymentMethodWorkspace?.paymentMethods ?? const [];
+      final currentMethod = _paymentMethod == null
+          ? null
+          : methods
+                .where((method) => method.choice == _paymentMethod!.choice)
+                .where((method) => method.active)
+                .firstOrNull;
+      final historical = _paymentMethod != null && currentMethod == null
+          ? _paymentMethod
+          : null;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          accountingFieldLabel(context, 'Payment Method', alignToField: true),
+          const SizedBox(height: accountingFieldLabelGap),
+          AccountingSelector<String>(
+            controlKey: const ValueKey('expense-field-payment-method'),
+            assignedWidth: constraints.maxWidth,
+            hintText: 'Select Payment Method',
+            value: historical?.choice ?? currentMethod?.choice,
+            enabled: !_isSaving && !widget.readOnly,
+            options: [
+              if (historical != null)
+                AccountingSelectorOption(
+                  value: historical.choice,
+                  label: historical.name,
+                  key: ValueKey(
+                    'expense-payment-method-history-${historical.choice}',
+                  ),
+                  enabled: false,
+                ),
+              for (final method in methods.where((method) => method.active))
+                AccountingSelectorOption(
+                  value: method.choice,
+                  label: method.name,
+                  key: ValueKey('expense-payment-method-${method.id.value}'),
+                ),
+              AccountingSelectorOption(
+                value: '__add_payment_method__',
+                label: 'Add Payment Method',
+                key: const ValueKey('expense-add-payment-method'),
+                leading: const AccountingAddIcon(),
+                leadingWidth: AccountingDismissIcon.canvasSize,
+                onPressed: () async {
+                  final saved = await showAccountingPaymentMethodPreview(
+                    context,
+                    workspace: _paymentMethodWorkspace,
+                  );
+                  if (saved != null && mounted) {
+                    setState(() => _paymentMethod = saved);
+                  }
+                },
+              ),
+            ],
+            onChanged: (choice) {
+              if (choice == null) return;
+              final selected = methods
+                  .where((method) => method.active && method.choice == choice)
+                  .firstOrNull;
+              if (selected != null) {
+                setState(() => _paymentMethod = selected);
+              }
+            },
+          ),
+        ],
+      );
+    },
   );
 
   Widget _buildDateField(BuildContext context) => _buildTextField(
@@ -3227,6 +3300,12 @@ class _RecordExpensePageState extends State<RecordExpensePage> {
     }
 
     if (_isSaving) return;
+    if (_recurringPaymentMethodNeedsSelection) {
+      setState(
+        () => _saveError = 'Select a current payment method before saving this recurring expense.',
+      );
+      return;
+    }
     if (widget.recurringSuggestion != null &&
         _lines.any((line) => line.tax == null)) {
       setState(
@@ -3313,6 +3392,9 @@ class _RecordExpensePageState extends State<RecordExpensePage> {
       paymentAccountId: (_isClaim || widget.savedDraft?.claimSource != null)
           ? null
           : _paymentAccount!.id,
+      paymentMethod: _isClaim || widget.savedDraft?.claimSource != null
+          ? null
+          : _paymentMethod,
       claimSource: widget.savedDraft?.claimSource == null
           ? null
           : ExpenseClaimSource.fromJson({

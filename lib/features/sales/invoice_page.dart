@@ -4,10 +4,13 @@ import '../accounting/presentation/recurring_transactions_dialog.dart';
 import '../accounting/domain/recurring_document_template.dart';
 import 'domain/estimate.dart';
 import '../../app/naming_setup.dart' show SetupKind;
+import '../../app/demo_company.dart' show DemoCompany;
 import '../../app/receipt_destination.dart';
 import '../../core/documents/receipt_document.dart';
 import '../../core/documents/generated_document.dart';
 import '../accounting/domain/customer.dart';
+import '../accounting/domain/company_payment_term.dart';
+import '../accounting/presentation/company_payment_term_selection.dart';
 import 'sales_document.dart';
 import 'generated_sales_document_service.dart';
 import 'generated_document_filing_notice.dart';
@@ -196,6 +199,34 @@ class _InvoicePageState extends State<InvoicePage> {
       (a) => activeAccountIds.contains(a.id) || savedAccountIds.contains(a.id),
     );
     final id = invoice?.id ?? EntityId.random();
+    final paymentTermTemplates = DemoCompany.active(context)
+        ? <CompanyPaymentTerm>[]
+        : workspace.paymentTerms.where((term) => term.active).toList();
+
+    CompanyPaymentTerm? selectedPaymentTerm(Map<String, Object?> values) {
+      final choice = '${values['Payment Terms'] ?? ''}';
+      if (!isCompanyPaymentTermChoice(choice)) return null;
+      final selected = paymentTermTemplates
+          .where((term) => companyPaymentTermChoice(term) == choice)
+          .firstOrNull;
+      if (selected == null) {
+        throw StateError('The selected company payment term is unavailable.');
+      }
+      final current = workspace.paymentTerms
+          .where((term) => term.id == selected.id)
+          .firstOrNull;
+      if (current == null ||
+          !current.active ||
+          current.revision != selected.revision ||
+          jsonEncode(current.rule.toJson()) !=
+              jsonEncode(selected.rule.toJson())) {
+        throw StateError(
+          'The selected company payment term changed. Reopen the invoice.',
+        );
+      }
+      return selected;
+    }
+
     DesignForm currentForm() => invoiceForm(
       {
         for (final c in customerChoices)
@@ -213,6 +244,7 @@ class _InvoicePageState extends State<InvoicePage> {
       },
       preferences: workspace.preferences,
       existing: invoice,
+      paymentTermTemplates: paymentTermTemplates,
       counterpartyCurrencies: {
         for (final c in customerChoices) c.id.value: c.currency.code,
       },
@@ -255,6 +287,7 @@ class _InvoicePageState extends State<InvoicePage> {
       final draft = invoiceFromForm(
         values,
         existing: invoice,
+        paymentTermTemplates: paymentTermTemplates,
         taxCodes: workspace.taxRates,
         catalogueItems: workspace.catalogueItems,
         catalogueCategories: workspace.catalogueCategories,
@@ -372,34 +405,37 @@ class _InvoicePageState extends State<InvoicePage> {
               },
         reviewDocumentsBuilder: (values) async {
           final (draft, customer, _) = await resolveDocument(values);
+          selectedPaymentTerm(values);
           final manual = draft.attachments
               .where((a) => !a.isGenerated)
               .toList();
           if (manual.isNotEmpty) return manual;
-          return [
-            await const SalesDocumentRenderer().render(
-              SalesDocumentSnapshot.invoice(
-                businessId: editorCompany,
-                invoice: draft,
-                customer: customer,
-                preferences: workspace.preferences,
-              ),
-              filename: 'Invoice.pdf',
-              previouslySaved:
-                  (values['_reviewedDocuments'] as List?)
-                      ?.cast<ReceiptAttachment>() ??
-                  draft.attachments,
+          final rendered = await const SalesDocumentRenderer().render(
+            SalesDocumentSnapshot.invoice(
+              businessId: editorCompany,
+              invoice: draft,
+              customer: customer,
+              preferences: workspace.preferences,
             ),
-          ];
+            filename: 'Invoice.pdf',
+            previouslySaved:
+                (values['_reviewedDocuments'] as List?)
+                    ?.cast<ReceiptAttachment>() ??
+                draft.attachments,
+          );
+          selectedPaymentTerm(values);
+          return [rendered];
         },
         onCommit: (values) async {
           final (draft, customer, categoryCode) = await resolveDocument(values);
+          selectedPaymentTerm(values);
           final filename = await documentDestinationFilename(
             kind: SetupKind.invoice,
             date: draft.issueDate,
             categoryCode: categoryCode,
             mimeType: 'application/pdf',
           );
+          final selectedTerm = selectedPaymentTerm(values);
           await const GeneratedSalesDocumentService().saveInvoice(
             workspace: workspace,
             invoice: draft,
@@ -413,6 +449,7 @@ class _InvoicePageState extends State<InvoicePage> {
                 (values['_reviewedDocuments'] as List?)
                     ?.cast<ReceiptAttachment>() ??
                 const [],
+            selectedPaymentTerm: selectedTerm,
           );
         },
       ),

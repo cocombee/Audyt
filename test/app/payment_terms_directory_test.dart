@@ -101,7 +101,7 @@ void main() {
     });
     for (final demo in [false, true]) {
       testWidgets(
-        'actual Settings Terms no-write journey demo=$demo at $width',
+        'actual Settings Terms guarded cancellation demo=$demo at $width',
         (t) async {
           await prepare(t, width);
           final w = await AccountingWorkspace.open(':memory:');
@@ -153,10 +153,7 @@ void main() {
             expect(find.text('Net 15'), findsNothing);
             await fillSearch(t, '');
           } else {
-            expect(
-              find.text('The maintained terms list is not connected yet.'),
-              findsOneWidget,
-            );
+            expect(find.text('No terms have been saved yet.'), findsOneWidget);
           }
           await tap(t, key('terms-new'));
           expect(find.byType(FrontendFormDialog), findsOneWidget);
@@ -220,7 +217,7 @@ void main() {
           expect(find.text('5'), findsOneWidget);
           expect(
             t.widget<ButtonStyleButton>(key('design-review')).onPressed,
-            isNull,
+            demo ? isNull : isNotNull,
           );
           await capture(
             t,

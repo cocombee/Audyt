@@ -5,6 +5,9 @@ import '../../../app/accounting_theme.dart';
 import '../../../app/accounting_icons.dart';
 import '../../../app/frontend_review.dart';
 import '../../../app/responsive.dart';
+import '../../../core/ids/entity_id.dart';
+import '../application/accounting_workspace.dart';
+import '../domain/company_payment_term.dart';
 import '../domain/payment_terms.dart';
 
 /// Geometry fixtures only. Names never determine contractual timing or defaults.
@@ -23,10 +26,12 @@ class PaymentTermDirectoryPreviewEntry {
 Future<void> showPaymentTermsDirectoryPreview(
   BuildContext context, {
   bool demo = false,
+  AccountingWorkspace? workspace,
 }) => AccountingDialog.showFixed<void>(
   context: context,
   contentWidth: AccountingPopoutTokens.normalContentWidth,
   builder: (_) => PaymentTermsDirectoryDialog(
+    workspace: demo ? null : workspace,
     entries: demo
         ? [
             PaymentTermDirectoryPreviewEntry(
@@ -45,26 +50,32 @@ Future<void> showPaymentTermsDirectoryPreview(
   ),
 );
 
-DesignForm _termForm(Map<String, Object?> values) => DesignForm(
-  'New Term',
-  [
-    const DesignField('Name', required: true),
-    const DesignField(
-      'Due Rule',
-      required: true,
-      choiceLabels: {'fixed': 'Days After Issue', 'monthly': 'Day Of Month'},
-    ),
-    if (values['Due Rule'] == 'monthly') ...[
-      const DesignField('Monthly Due Day', required: true),
-      const DesignField('Rollover Within Days', required: true),
-    ] else
-      const DesignField('Due In Days', required: true),
-  ],
-  description: 'Term setup preview. Saving terms is not connected yet.',
-  actionLabel: 'Save Term',
-);
+DesignForm _termForm(Map<String, Object?> values, {required bool preview}) =>
+    DesignForm(
+      'New Term',
+      [
+        const DesignField('Name', required: true),
+        const DesignField(
+          'Due Rule',
+          required: true,
+          choiceLabels: {
+            'fixed': 'Days After Issue',
+            'monthly': 'Day Of Month',
+          },
+        ),
+        if (values['Due Rule'] == 'monthly') ...[
+          const DesignField('Monthly Due Day', required: true),
+          const DesignField('Rollover Within Days', required: true),
+        ] else
+          const DesignField('Due In Days', required: true),
+      ],
+      description: preview
+          ? 'Term setup preview. Saving terms is not connected yet.'
+          : 'Set up a named payment term for this company.',
+      actionLabel: 'Save Term',
+    );
 
-List<(String, String)> _reviewTerm(Map<String, Object?> values) {
+({String name, PaymentTerms rule}) _validatedTerm(Map<String, Object?> values) {
   int wholeNumber(String label) {
     final text = '${values[label] ?? ''}'.trim();
     if (!RegExp(r'^\d+$').hasMatch(text)) {
@@ -75,14 +86,13 @@ List<(String, String)> _reviewTerm(Map<String, Object?> values) {
 
   final name = '${values['Name'] ?? ''}'.trim();
   if (name.isEmpty) throw const FormatException('Enter a term name.');
+  if (name.length > 200) {
+    throw const FormatException('Term name must be 200 characters or fewer.');
+  }
   final rule = values['Due Rule'];
   if (rule == 'fixed') {
     final days = wholeNumber('Due In Days');
-    return [
-      ('Name', name),
-      ('Due Rule', rule == 'fixed' ? 'Days After Issue' : 'Day Of Month'),
-      ('Due In Days', '$days'),
-    ];
+    return (name: name, rule: PaymentTerms.daysAfterIssue(days));
   }
   if (rule != 'monthly') {
     throw const FormatException('Choose a due rule.');
@@ -97,62 +107,103 @@ List<(String, String)> _reviewTerm(Map<String, Object?> values) {
       'Rollover Within Days must be between 0 and 31.',
     );
   }
+  return (
+    name: name,
+    rule: PaymentTerms.dayOfMonth(day, rolloverWithinDays: rollover),
+  );
+}
+
+List<(String, String)> _reviewTerm(Map<String, Object?> values) {
+  final term = _validatedTerm(values);
   return [
-    ('Name', name),
-    ('Due Rule', rule == 'fixed' ? 'Days After Issue' : 'Day Of Month'),
-    ('Monthly Due Day', '$day'),
-    ('Rollover Within Days', '$rollover'),
+    ('Name', term.name),
+    ('Due Rule', term.rule.formChoice),
+    if (term.rule.kind == PaymentTermKind.daysAfterIssue)
+      ('Due In Days', '${term.rule.days}')
+    else ...[
+      ('Monthly Due Day', '${term.rule.dayOfMonth}'),
+      ('Rollover Within Days', '${term.rule.rolloverWithinDays}'),
+    ],
   ];
 }
 
 /// Shares the accepted setup form, conditional ordinary fields and draft warning.
-/// Review never returns a saved master or changes a counterparty's terms.
-Future<void> showAccountingTermPreview(BuildContext context) =>
-    AccountingDialog.showFixed<void>(
-      context: context,
-      contentWidth: AccountingPopoutTokens.normalContentWidth,
-      builder: (_) => FrontendFormDialog(
-        contentWidth: AccountingPopoutTokens.normalContentWidth,
-        form: _termForm(const {'Due Rule': 'fixed'}),
-        initial: const {
-          'Name': '',
-          'Due Rule': 'fixed',
-          'Due In Days': '',
-          'Monthly Due Day': '',
-          'Rollover Within Days': '0',
-        },
-        valuesFormBuilder: _termForm,
-        previewConfirmationEnabled: false,
-        reviewInformationRowsBuilder: _reviewTerm,
-        leadingContentBuilder: (context, values, reviewing) => Padding(
-          padding: const EdgeInsets.only(bottom: accountingContentInset),
-          child: accountingHelperText(
-            context,
-            'Saving terms is not connected yet.',
-          ),
-        ),
-      ),
-    );
+/// Creating a term never selects it on a parent transaction.
+Future<void> showAccountingTermPreview(
+  BuildContext context, {
+  AccountingWorkspace? workspace,
+}) => AccountingDialog.showFixed<void>(
+  context: context,
+  contentWidth: AccountingPopoutTokens.normalContentWidth,
+  builder: (_) => FrontendFormDialog(
+    contentWidth: AccountingPopoutTokens.normalContentWidth,
+    form: _termForm(const {'Due Rule': 'fixed'}, preview: workspace == null),
+    initial: const {
+      'Name': '',
+      'Due Rule': 'fixed',
+      'Due In Days': '',
+      'Monthly Due Day': '',
+      'Rollover Within Days': '0',
+    },
+    valuesFormBuilder: (values) =>
+        _termForm(values, preview: workspace == null),
+    previewConfirmationEnabled: false,
+    reviewInformationRowsBuilder: _reviewTerm,
+    onCommit: workspace == null
+        ? null
+        : (values) async {
+            final term = _validatedTerm(values);
+            workspace.createPaymentTerm(
+              CompanyPaymentTerm(
+                id: EntityId.random(),
+                name: term.name,
+                rule: term.rule,
+                active: true,
+                revision: 0,
+              ),
+            );
+          },
+    leadingContentBuilder: workspace == null
+        ? (context, values, reviewing) => Padding(
+            padding: const EdgeInsets.only(bottom: accountingContentInset),
+            child: accountingHelperText(
+              context,
+              'Saving terms is not connected yet.',
+            ),
+          )
+        : null,
+  ),
+);
 
-/// Opt in only at reference-proven creation callers. A preview is never a
-/// selected term, and closing it leaves the parent's existing facts untouched.
+/// Opt in only at reference-proven creation callers. Inline creation does not
+/// select a transaction value; the caller may refresh choices after return.
 List<AccountingSelectorOption<String>> accountingTermSetupActions(
-  BuildContext context,
-) => [
+  BuildContext context, {
+  AccountingWorkspace? workspace,
+  VoidCallback? onReturn,
+}) => [
   AccountingSelectorOption(
     value: '__add_term__',
     label: 'Add Term',
     leading: const AccountingAddIcon(),
     leadingWidth: AccountingDismissIcon.canvasSize,
-    onPressed: () => showAccountingTermPreview(context),
+    onPressed: () async {
+      await showAccountingTermPreview(context, workspace: workspace);
+      onReturn?.call();
+    },
   ),
 ];
 
 /// The existing Settings master-list pattern. Unwired reports stay unavailable;
 /// their unseen fields and commands are not fabricated from another report.
 class PaymentTermsDirectoryDialog extends StatefulWidget {
-  const PaymentTermsDirectoryDialog({super.key, this.entries = const []});
+  const PaymentTermsDirectoryDialog({
+    super.key,
+    this.entries = const [],
+    this.workspace,
+  });
   final List<PaymentTermDirectoryPreviewEntry> entries;
+  final AccountingWorkspace? workspace;
 
   @override
   State<PaymentTermsDirectoryDialog> createState() =>
@@ -163,6 +214,19 @@ class _PaymentTermsDirectoryDialogState
     extends State<PaymentTermsDirectoryDialog> {
   bool _includeInactive = false;
   String _query = '';
+
+  List<PaymentTermDirectoryPreviewEntry> get _entries =>
+      widget.workspace == null
+      ? widget.entries
+      : [
+          for (final term in widget.workspace!.paymentTerms)
+            PaymentTermDirectoryPreviewEntry(
+              id: term.id.value,
+              name: term.name,
+              terms: term.rule,
+              active: term.active,
+            ),
+        ];
 
   Widget _toolbar() => LayoutBuilder(
     builder: (context, constraints) {
@@ -224,7 +288,10 @@ class _PaymentTermsDirectoryDialogState
             AccountingButton.primary(
               context,
               key: const ValueKey('terms-new'),
-              onPressed: () => showAccountingTermPreview(context),
+              onPressed: () => showAccountingTermPreview(
+                context,
+                workspace: widget.workspace,
+              ),
               child: const Text('New Term'),
             ),
           ],
@@ -247,7 +314,18 @@ class _PaymentTermsDirectoryDialogState
 
   @override
   Widget build(BuildContext context) {
-    final entries = widget.entries
+    if (widget.workspace != null) {
+      return ListenableBuilder(
+        listenable: widget.workspace!,
+        builder: (context, _) => _buildDirectory(context),
+      );
+    }
+    return _buildDirectory(context);
+  }
+
+  Widget _buildDirectory(BuildContext context) {
+    final source = _entries;
+    final entries = source
         .where(
           (entry) =>
               (_includeInactive || entry.active) &&
@@ -258,7 +336,9 @@ class _PaymentTermsDirectoryDialogState
       context,
       widthFamily: AccountingPopoutWidthFamily.normal,
       title: 'Terms',
-      description: 'Design preview · Terms are not saved. Existing due dates and defaults are unchanged.',
+      description: widget.workspace == null
+          ? 'Design preview · Terms are not saved. Existing due dates and defaults are unchanged.'
+          : 'Manage named payment terms for this company.',
       fixedContentWidth: AccountingPopoutTokens.normalContentWidth,
       maxContentWidth: AccountingPopoutTokens.normalContentWidth,
       content: Column(
@@ -267,7 +347,7 @@ class _PaymentTermsDirectoryDialogState
         children: [
           _toolbar(),
           const SizedBox(height: accountingContentInset),
-          if (widget.entries.isNotEmpty) ...[
+          if (source.isNotEmpty) ...[
             TextField(
               key: const ValueKey('terms-search'),
               style: AccountingTypography.controlValue(context),
@@ -282,9 +362,13 @@ class _PaymentTermsDirectoryDialogState
           if (entries.isEmpty)
             accountingHelperText(
               context,
-              widget.entries.isEmpty
-                  ? 'The maintained terms list is not connected yet.'
-                  : 'No matching terms in this preview.',
+              source.isEmpty
+                  ? widget.workspace == null
+                        ? 'The maintained terms list is not connected yet.'
+                        : 'No terms have been saved yet.'
+                  : widget.workspace == null
+                  ? 'No matching terms in this preview.'
+                  : 'No matching terms.',
             )
           else
             AccountingRecordList(

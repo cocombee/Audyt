@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'vendors_page.dart' show showAccountingVendorDialog;
 import '../../accounting/presentation/recurring_transactions_dialog.dart';
 import '../../accounting/domain/recurring_document_template.dart';
@@ -9,6 +11,7 @@ import '../../accounting/presentation/transaction_removal_controls.dart';
 
 import '../../../app/accounting_components.dart';
 import '../../../app/accounting_theme.dart';
+import '../../../app/demo_company.dart';
 import '../../../app/frontend_review.dart';
 import '../../../app/responsive.dart';
 import '../../../app/naming_setup.dart' show SetupKind;
@@ -18,6 +21,7 @@ import '../../../core/storage/record_metadata.dart';
 import '../../accounting/application/accounting_workspace.dart';
 import '../../accounting/data/accounting_database.dart';
 import '../../accounting/domain/account.dart';
+import '../../accounting/domain/company_payment_term.dart';
 import '../../accounting/domain/payment_terms.dart';
 import '../../accounting/presentation/payment_terms_directory_dialog.dart';
 import '../../accounting/presentation/attachment_preview_dialog.dart';
@@ -94,6 +98,42 @@ class _BillsPageState extends State<BillsPage> {
       return;
     }
     final id = existing?.id ?? EntityId.random();
+    final demo = DemoCompany.active(context);
+    var paymentTermTemplates = demo
+        ? <CompanyPaymentTerm>[]
+        : workspace.paymentTerms.where((term) => term.active).toList();
+    BuildContext? editorContext;
+    StateSetter? refreshEditor;
+
+    void refreshPaymentTermChoices() {
+      if (editorContext?.mounted != true || refreshEditor == null) return;
+      refreshEditor!(() {
+        paymentTermTemplates = demo
+            ? <CompanyPaymentTerm>[]
+            : workspace.paymentTerms.where((term) => term.active).toList();
+      });
+    }
+
+    void validateSelectedPaymentTerm(Map<String, Object?> values) {
+      final choice = '${values['Payment Terms'] ?? ''}';
+      final selected = paymentTermTemplates
+          .where((term) => billPaymentTermChoice(term) == choice)
+          .firstOrNull;
+      if (selected == null) return; // billFromForm rejects unknown opaque IDs.
+      final current = workspace.paymentTerms
+          .where((term) => term.id == selected.id)
+          .firstOrNull;
+      if (current == null ||
+          !current.active ||
+          current.revision != selected.revision ||
+          jsonEncode(current.rule.toJson()) !=
+              jsonEncode(selected.rule.toJson())) {
+        throw StateError(
+          'The selected company payment term changed. Reopen the bill.',
+        );
+      }
+    }
+
     final initial = existing == null
         ? <String, Object?>{
             'Date': formatAccountingInputDate(
@@ -146,6 +186,7 @@ class _BillsPageState extends State<BillsPage> {
           if (v.terms.kind == PaymentTermKind.custom)
             v.id.value: v.terms.customText!,
       },
+      paymentTermTemplates: paymentTermTemplates,
       defaultCurrencyCode: workspace.identity.currency,
       preferences: workspace.preferences,
       existing: existing,
@@ -176,117 +217,139 @@ class _BillsPageState extends State<BillsPage> {
       context: context,
       contentWidth: contentWidth,
       contentInset: accountingContentInset,
-      builder: (_) => FrontendFormDialog(
-        contentWidth: contentWidth,
-        form: form,
-        formBuilder: currentForm,
-        selectorActions: {'Payment Terms': accountingTermSetupActions(context)},
-        onAddCounterparty: () async {
-          final vendor = await showAccountingVendorDialog(context, workspace);
-          if (vendor == null) return null;
-          vendors[vendor.id] = vendor;
-          return vendor.id.value;
-        },
-        settingsWorkspace: workspace,
-        initial: initial,
-        attachmentSetupKind: SetupKind.expense,
-        attachmentCategoryCode: (lines) {
-          final ids = lines
-              .map((line) => line['Account'])
-              .whereType<String>()
-              .where((id) => id.isNotEmpty)
-              .toSet();
-          return ids.length == 1
-              ? accounts
-                        .where((a) => a.id.value == ids.single)
-                        .firstOrNull
-                        ?.code ??
-                    ''
-              : '';
-        },
-        lineDefaults: const {
-          'Quantity': '1',
-          'Discount': '0',
-          'Tax Rate (%)': '0',
-        },
-        reviewInformationRowsBuilder: (values) {
-          final vendor =
-              vendors[EntityId.parse(values['Counterparty'] as String)];
-          if (vendor == null) throw StateError('Choose an available vendor.');
-          final at = DateTime.now().toUtc();
-          final preview = billFromForm(
-            values,
-            metadata:
-                existing?.metadata.nextRevision(updatedAt: at) ??
-                RecordMetadata.initial(
-                  recordId: id,
-                  businessId: workspace.identity.businessId,
-                  originDeviceId: workspace.identity.deviceId,
-                  createdAt: at,
-                ),
-            vendor: vendor,
-            taxCodes: workspace.taxRates,
-            existing: existing,
-            purchaseAccountIds: accounts.map((a) => a.id.value).toSet(),
-          );
-          return [
-            ...billInformationRows(
-              preview,
-              accountNames: {
-                for (final a in allAccounts) a.id: '${a.code} · ${a.name}',
-              },
-            ),
-            if (preview.attachments.isNotEmpty)
-              (
-                'Supporting Documents',
-                preview.attachments.map((a) => a.filename).join(', '),
+      builder: (_) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          editorContext = dialogContext;
+          refreshEditor = setDialogState;
+          return FrontendFormDialog(
+            contentWidth: contentWidth,
+            form: form,
+            formBuilder: currentForm,
+            selectorActions: {
+              'Payment Terms': accountingTermSetupActions(
+                context,
+                workspace: demo ? null : workspace,
+                onReturn: refreshPaymentTermChoices,
               ),
-          ];
-        },
-        onCommit: (values) async {
-          final vendorId = EntityId.parse(values['Counterparty'] as String);
-          final vendor = vendors[vendorId];
-          if (vendor == null) {
-            throw StateError('The chosen vendor is unavailable.');
-          }
-          if (existing?.vendorSnapshot.id != vendorId) {
-            final currentVendor = workspace.database.readVendor(
-              workspace.identity.businessId,
-              vendorId,
-            );
-            if (currentVendor == null ||
-                currentVendor.metadata.revision != vendor.metadata.revision) {
-              throw StateError(
-                'Vendor defaults changed. Reopen the bill before saving.',
+            },
+            onAddCounterparty: () async {
+              final vendor = await showAccountingVendorDialog(
+                context,
+                workspace,
               );
-            }
-          }
-          final currentAccounts = await workspace.accounts();
-          final at = DateTime.now().toUtc();
-          final metadata =
-              existing?.metadata.nextRevision(updatedAt: at) ??
-              RecordMetadata.initial(
-                recordId: id,
-                businessId: workspace.identity.businessId,
-                originDeviceId: workspace.identity.deviceId,
-                createdAt: at,
+              if (vendor == null) return null;
+              vendors[vendor.id] = vendor;
+              return vendor.id.value;
+            },
+            settingsWorkspace: workspace,
+            initial: initial,
+            attachmentSetupKind: SetupKind.expense,
+            attachmentCategoryCode: (lines) {
+              final ids = lines
+                  .map((line) => line['Account'])
+                  .whereType<String>()
+                  .where((id) => id.isNotEmpty)
+                  .toSet();
+              return ids.length == 1
+                  ? accounts
+                            .where((a) => a.id.value == ids.single)
+                            .firstOrNull
+                            ?.code ??
+                        ''
+                  : '';
+            },
+            lineDefaults: const {
+              'Quantity': '1',
+              'Discount': '0',
+              'Tax Rate (%)': '0',
+            },
+            reviewInformationRowsBuilder: (values) {
+              validateSelectedPaymentTerm(values);
+              final vendor =
+                  vendors[EntityId.parse(values['Counterparty'] as String)];
+              if (vendor == null) {
+                throw StateError('Choose an available vendor.');
+              }
+              final at = DateTime.now().toUtc();
+              final preview = billFromForm(
+                values,
+                metadata:
+                    existing?.metadata.nextRevision(updatedAt: at) ??
+                    RecordMetadata.initial(
+                      recordId: id,
+                      businessId: workspace.identity.businessId,
+                      originDeviceId: workspace.identity.deviceId,
+                      createdAt: at,
+                    ),
+                vendor: vendor,
+                taxCodes: workspace.taxRates,
+                paymentTermTemplates: paymentTermTemplates,
+                existing: existing,
+                purchaseAccountIds: accounts.map((a) => a.id.value).toSet(),
               );
-          workspace.saveBillDraft(
-            billFromForm(
-              values,
-              metadata: metadata,
-              vendor: vendor,
-              taxCodes: workspace.taxRates,
-              existing: existing,
-              purchaseAccountIds: currentAccounts
-                  .map((a) => a.account)
-                  .where(_purchaseAccount)
-                  .map((a) => a.id.value)
-                  .toSet(),
-            ),
-            expectedRevision: existing?.metadata.revision ?? 0,
-            recurrence:
-                values['_documentRecurrence'] as DocumentRecurrenceRequest?,
+              return [
+                ...billInformationRows(
+                  preview,
+                  accountNames: {
+                    for (final a in allAccounts) a.id: '${a.code} · ${a.name}',
+                  },
+                ),
+                if (preview.attachments.isNotEmpty)
+                  (
+                    'Supporting Documents',
+                    preview.attachments.map((a) => a.filename).join(', '),
+                  ),
+              ];
+            },
+            onCommit: (values) async {
+              final vendorId = EntityId.parse(values['Counterparty'] as String);
+              final vendor = vendors[vendorId];
+              if (vendor == null) {
+                throw StateError('The chosen vendor is unavailable.');
+              }
+              if (existing?.vendorSnapshot.id != vendorId) {
+                final currentVendor = workspace.database.readVendor(
+                  workspace.identity.businessId,
+                  vendorId,
+                );
+                if (currentVendor == null ||
+                    currentVendor.metadata.revision !=
+                        vendor.metadata.revision) {
+                  throw StateError(
+                    'Vendor defaults changed. Reopen the bill before saving.',
+                  );
+                }
+              }
+              final currentAccounts = await workspace.accounts();
+              validateSelectedPaymentTerm(values);
+              final at = DateTime.now().toUtc();
+              final metadata =
+                  existing?.metadata.nextRevision(updatedAt: at) ??
+                  RecordMetadata.initial(
+                    recordId: id,
+                    businessId: workspace.identity.businessId,
+                    originDeviceId: workspace.identity.deviceId,
+                    createdAt: at,
+                  );
+              workspace.saveBillDraft(
+                billFromForm(
+                  values,
+                  metadata: metadata,
+                  vendor: vendor,
+                  taxCodes: workspace.taxRates,
+                  paymentTermTemplates: paymentTermTemplates,
+                  existing: existing,
+                  purchaseAccountIds: currentAccounts
+                      .map((a) => a.account)
+                      .where(_purchaseAccount)
+                      .map((a) => a.id.value)
+                      .toSet(),
+                ),
+                expectedRevision: existing?.metadata.revision ?? 0,
+                recurrence:
+                    values['_documentRecurrence'] as DocumentRecurrenceRequest?,
+              );
+            },
           );
         },
       ),

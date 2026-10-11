@@ -556,6 +556,7 @@ class _AccountingSettingsDialogState extends State<_AccountingSettingsDialog> {
                                       currencyCode:
                                           widget.workspace?.identity.currency ??
                                           'MYR',
+                                      workspace: widget.workspace,
                                     ),
                               )
                             : title == 'Terms'
@@ -569,6 +570,7 @@ class _AccountingSettingsDialogState extends State<_AccountingSettingsDialog> {
                                     showPaymentTermsDirectoryPreview(
                                       context,
                                       demo: widget.demo,
+                                      workspace: widget.workspace,
                                     ),
                               )
                             : title == 'Statements'

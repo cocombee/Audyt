@@ -1,6 +1,7 @@
 import 'expense_claim_source.dart';
 import 'recurrence_rule.dart';
 import 'company_tax_rate.dart';
+import 'company_payment_method.dart';
 import '../../sales/domain/invoice_tax.dart';
 
 import 'package:audyt/core/money/money.dart';
@@ -86,6 +87,7 @@ class RecordExpenseDraft {
     required this.payee,
     required this.paymentAccount,
     this.paymentAccountId,
+    this.paymentMethod,
     this.recurrence,
     required this.category,
     required this.tax,
@@ -112,6 +114,7 @@ class RecordExpenseDraft {
   final String payee;
   final String paymentAccount;
   final String? paymentAccountId;
+  final CompanyPaymentMethod? paymentMethod;
   final RecurrenceRule? recurrence;
   final String category;
   final String tax;
@@ -266,6 +269,7 @@ class RecordExpenseDraft {
     'payee': payee,
     'paymentAccount': paymentAccount,
     if (paymentAccountId != null) 'paymentAccountId': paymentAccountId,
+    if (paymentMethod != null) 'paymentMethod': paymentMethod!.toJson(),
     if (recurrence != null) 'recurrence': recurrence!.toJson(),
     'category': category,
     'tax': taxDescription,
@@ -330,6 +334,11 @@ class RecordExpenseDraft {
       payee: json['payee'] as String,
       paymentAccount: json['paymentAccount'] as String,
       paymentAccountId: json['paymentAccountId'] as String?,
+      paymentMethod: json['paymentMethod'] == null
+          ? null
+          : CompanyPaymentMethod.fromJson(
+              Map<String, dynamic>.from(json['paymentMethod'] as Map),
+            ),
       recurrence: json['recurrence'] == null
           ? null
           : RecurrenceRule.fromJson(

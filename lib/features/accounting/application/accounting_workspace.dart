@@ -7,6 +7,8 @@ import '../domain/company_preferences.dart';
 import '../domain/expense_revision.dart';
 import '../domain/company_tax_rate.dart';
 import '../domain/company_tax_agency.dart';
+import '../domain/company_payment_method.dart';
+import '../domain/company_payment_term.dart';
 import '../domain/tax_remittance.dart';
 import '../domain/recurring_document_template.dart';
 import '../domain/recurrence_rule.dart';
@@ -255,6 +257,37 @@ final class AccountingWorkspace extends ChangeNotifier {
     notifyListeners();
     return saved;
   }
+
+  List<CompanyPaymentMethod> get paymentMethods =>
+      database.readPaymentMethods(identity.businessId);
+
+  List<CompanyPaymentTerm> get paymentTerms =>
+      database.readPaymentTerms(identity.businessId);
+
+  CompanyPaymentTerm createPaymentTerm(CompanyPaymentTerm term) {
+    final saved = database.createPaymentTerm(
+      businessId: identity.businessId,
+      actorId: identity.ownerId,
+      term: term,
+      createdAt: DateTime.now().toUtc(),
+    );
+    notifyListeners();
+    return saved;
+  }
+
+  CompanyPaymentMethod savePaymentMethod(CompanyPaymentMethod method) {
+    final saved = database.savePaymentMethod(
+      businessId: identity.businessId,
+      actorId: identity.ownerId,
+      method: method,
+      savedAt: DateTime.now().toUtc(),
+    );
+    notifyListeners();
+    return saved;
+  }
+
+  List<CompanyPaymentMethod> paymentMethodHistory(EntityId id) =>
+      database.paymentMethodHistory(identity.businessId, id);
 
   List<CompanyTaxRate> get taxRates =>
       database.readTaxRates(identity.businessId);

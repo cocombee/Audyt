@@ -279,6 +279,12 @@ extension ExpenseRevisionPersistence on LocalAccountingDatabase {
       existing: before,
       historical: historical,
     );
+    _validateExpensePaymentMethodSnapshot(
+      businessId,
+      after,
+      existing: before,
+      historical: historical,
+    );
     _requireExpenseRevisionOriginals(before, after);
   }
 

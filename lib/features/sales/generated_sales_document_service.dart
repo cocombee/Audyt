@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart';
 
@@ -7,6 +9,7 @@ import '../../core/ids/entity_id.dart';
 import '../accounting/application/accounting_workspace.dart';
 import '../accounting/data/accounting_database.dart';
 import '../accounting/domain/customer.dart';
+import '../accounting/domain/company_payment_term.dart';
 import '../accounting/domain/recurring_document_template.dart';
 import 'domain/estimate.dart';
 import 'domain/invoice.dart';
@@ -101,6 +104,7 @@ final class GeneratedSalesDocumentService {
     required DateTime savedAt,
     Iterable<ReceiptAttachment> renderedForReview = const [],
     DocumentRecurrenceRequest? recurrence,
+    CompanyPaymentTerm? selectedPaymentTerm,
   }) async {
     final businessId = workspace.identity.businessId;
     final actorId = workspace.identity.ownerId;
@@ -124,6 +128,25 @@ final class GeneratedSalesDocumentService {
       ],
     );
     _requireSameWorkspace(workspace, businessId, actorId);
+    if (selectedPaymentTerm != null) {
+      final current = workspace.paymentTerms
+          .where((term) => term.id == selectedPaymentTerm.id)
+          .firstOrNull;
+      if (!selectedPaymentTerm.active ||
+          current == null ||
+          !current.active ||
+          current.revision != selectedPaymentTerm.revision ||
+          jsonEncode(current.rule.toJson()) !=
+              jsonEncode(selectedPaymentTerm.rule.toJson()) ||
+          jsonEncode(invoice.terms.toJson()) !=
+              jsonEncode(selectedPaymentTerm.rule.toJson()) ||
+          invoice.dueDate !=
+              selectedPaymentTerm.rule.dueDateFor(invoice.issueDate)) {
+        throw StateError(
+          'The selected company payment term changed. Reopen the invoice.',
+        );
+      }
+    }
     final revision = workspace.saveInvoiceDraft(
       invoice.withAttachments(_attachments(invoice.attachments, attachment)),
       expectedRevision: expectedRevision,
