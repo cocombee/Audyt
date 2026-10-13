@@ -49,7 +49,7 @@
   "mobile_tile": "Full bleed square; same symbol-to-tile proportion; no baked platform corners",
   "old_editable_source_removed": true,
   "sidebar": {
-    "status": "Approved for installation",
+    "status": "2px symbol adjustment prepared for preview",
     "font": "Rubik",
     "weight": 500,
     "font_runtime_asset": "assets/fonts/Rubik-Medium.ttf",
@@ -61,11 +61,15 @@
     "visible_logo_to_name_gap_before": 16,
     "visible_logo_to_name_gap": 8,
     "gap_reduction_percent": 50,
-    "alignment": "Capital A painted bottom aligns with the 25px symbol bottom; expanded sidebar toggle optical center aligns with lowercase u center; symbol begins at existing 24px left inset",
+    "alignment": "Symbol begins at existing 24px left inset, shifted 2px down from the prior capital A alignment; expander remains aligned with lowercase u at 0px upward offset",
     "launcher_icon_scope": "Sidebar refinement does not change approved launcher artwork",
     "wordmark_painted_height": 23,
     "approved_on": "2026-10-14",
     "toggle_optical_adjustment": 0.6,
-    "toggle_offset_above_u": 0
+    "toggle_offset_above_u": 0,
+    "symbol_offset_y": 2,
+    "collapsed_symbol_size": 25,
+    "collapsed_symbol_frame": 44,
+    "collapsed_symbol_alignment": "Centered with the 44px rail control axis"
   }
 }

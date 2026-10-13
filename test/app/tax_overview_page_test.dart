@@ -118,19 +118,29 @@ void main() {
               reason: label,
             );
           }
-          final header = tester.widget<AccountingPageHeader>(
-            find.byType(AccountingPageHeader),
-          );
-          for (final secondary in header.secondaryActions) {
-            final action = find.byWidget(secondary);
-            expect(
-              tester.getTopLeft(action).dy,
-              greaterThanOrEqualTo(
-                tester.getBottomLeft(titleRow).dy +
-                    accountingContentInset -
-                    0.1,
-              ),
-            );
+          for (final bar in tester.widgetList<AccountingPageFilterBar>(
+            find.byType(AccountingPageFilterBar),
+          )) {
+            for (final secondary in bar.actions) {
+              final action = find.byWidget(secondary);
+              expect(
+                tester.getTopLeft(action).dy,
+                greaterThanOrEqualTo(
+                  tester.getBottomLeft(titleRow).dy +
+                      accountingContentInset -
+                      0.1,
+                ),
+              );
+              final button = find
+                  .descendant(
+                    of: action,
+                    matching: find.byWidgetPredicate(
+                      (w) => w is ButtonStyleButton,
+                    ),
+                  )
+                  .first;
+              expect(tester.widget(button), isA<OutlinedButton>());
+            }
           }
           await captureUi(
             tester,

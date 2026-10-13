@@ -10,7 +10,6 @@ import '../accounting/presentation/transaction_removal_controls.dart';
 
 import '../../app/accounting_components.dart';
 import '../../app/accounting_theme.dart';
-import '../../app/responsive.dart';
 import '../../app/frontend_review.dart';
 import '../../app/naming_setup.dart' show SetupKind;
 import '../../app/receipt_destination.dart';
@@ -714,7 +713,21 @@ class _QuotationPageState extends State<QuotationPage> {
                 onPressed: () => _edit(),
                 child: const Text('Create Quotation'),
               ),
-              secondaryActions: [
+            ),
+            const SizedBox(height: accountingContentInset),
+            GeneratedDocumentFilingNotice(
+              workspace: workspace,
+              kind: GeneratedDocumentKind.quotation,
+            ),
+            if (_error != null)
+              AccountingAlert.build(
+                context,
+                title: 'Quotation',
+                description: _error!,
+                tone: AccountingAlertTone.critical,
+              ),
+            AccountingPageFilterBar(
+              actions: [
                 if (workspace
                         .removedTransactionPage(
                           TransactionRecordKind.quotation,
@@ -744,26 +757,8 @@ class _QuotationPageState extends State<QuotationPage> {
                   child: const Text('Recurring'),
                 ),
               ],
-            ),
-            const SizedBox(height: accountingContentInset),
-            GeneratedDocumentFilingNotice(
-              workspace: workspace,
-              kind: GeneratedDocumentKind.quotation,
-            ),
-            if (_error != null)
-              AccountingAlert.build(
-                context,
-                title: 'Quotation',
-                description: _error!,
-                tone: AccountingAlertTone.critical,
-              ),
-            AccountingRecordControls(
-              recordCount: controlCount,
-              child: AccountingControlFlow(
-                spacing: accountingContentInset,
-                runSpacing: AccountingPageControlScope.runGapOf(context),
-                crossAxisAlignment: WrapCrossAlignment.end,
-                children: [
+              children: [
+                if (showControls) ...[
                   SizedBox(
                     width: 280,
                     child: Column(
@@ -831,9 +826,9 @@ class _QuotationPageState extends State<QuotationPage> {
                       child: const Text('Clear'),
                     ),
                 ],
-              ),
+              ],
             ),
-            if (showControls) const SizedBox(height: accountingContentInset),
+            const SizedBox(height: accountingContentInset),
             if (page.records.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(

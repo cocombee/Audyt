@@ -1,3 +1,4 @@
+import 'package:audyt/app/responsive.dart';
 import 'package:audyt/app/accounting_icons.dart';
 
 import 'dart:io';
@@ -28,26 +29,34 @@ void main() {
           theme: AccountingTheme.light(),
           home: Scaffold(
             body: Builder(
-              builder: (context) => AccountingPageHeader(
-                routeLabel: 'Review',
-                title: 'Accounting Review',
-                description: 'Review records.',
-                action: AccountingButton.outline(
-                  context,
-                  key: const ValueKey('legacy-title-action'),
-                  onPressed: () {},
-                  leadingIcon: Icons.fact_check_outlined,
-                  child: const Text('Prepare Closing'),
+              builder: (context) => AccountingPageControlScope(
+                child: Column(
+                  children: [
+                    AccountingPageHeader(
+                      routeLabel: 'Review',
+                      title: 'Accounting Review',
+                      description: 'Review records.',
+                      action: AccountingButton.outline(
+                        context,
+                        key: const ValueKey('legacy-title-action'),
+                        onPressed: () {},
+                        leadingIcon: Icons.fact_check_outlined,
+                        child: const Text('Prepare Closing'),
+                      ),
+                    ),
+                    AccountingPageFilterBar(
+                      actions: [
+                        AccountingButton.outline(
+                          context,
+                          key: const ValueKey('secondary-icon-action'),
+                          onPressed: () {},
+                          leadingIcon: Icons.add_rounded,
+                          child: const Text('New Journal'),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                secondaryActions: [
-                  AccountingButton.outline(
-                    context,
-                    key: const ValueKey('secondary-icon-action'),
-                    onPressed: () {},
-                    leadingIcon: Icons.add_rounded,
-                    child: const Text('New Journal'),
-                  ),
-                ],
               ),
             ),
           ),

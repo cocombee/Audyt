@@ -120,30 +120,6 @@ class _PaymentVouchersPageState extends State<PaymentVouchersPage> {
               leadingIcon: Icons.add_rounded,
               child: const Text('New Voucher'),
             ),
-            secondaryActions: [
-              if (widget.workspace != null &&
-                  widget.workspace!
-                          .removedTransactionPage(
-                            TransactionRecordKind.paymentVoucher,
-                            limit: 1,
-                          )
-                          .total >
-                      0)
-                RemovedTransactionsButton(
-                  workspace: widget.workspace!,
-                  kind: TransactionRecordKind.paymentVoucher,
-                  onChanged: () {
-                    if (mounted) setState(() {});
-                  },
-                  onView: (record) => _openVoucher(
-                    widget.workspace!.database.readRetainedVoucher(
-                      widget.workspace!.identity.businessId,
-                      record.recordId,
-                    ),
-                    forceReadOnly: true,
-                  ),
-                ),
-            ],
           ),
           const SizedBox(height: accountingPageTitleOuterGap),
           if (_feedback != null)
@@ -169,12 +145,8 @@ class _PaymentVouchersPageState extends State<PaymentVouchersPage> {
             description: 'Confirm the source payment and bank review without another payment or expense posting.',
           ),
           const SizedBox(height: 20),
-          AccountingRecordControls(
-            recordCount: widget.store.all.length,
-            child: _buildFilter(context),
-          ),
-          if (AccountingRecordControlsPolicy.visible(widget.store.all.length))
-            const SizedBox(height: 16),
+          _buildFilter(context),
+          const SizedBox(height: 16),
           if (_visibleVouchers.isEmpty)
             _buildEmptyState(context)
           else
@@ -192,48 +164,73 @@ class _PaymentVouchersPageState extends State<PaymentVouchersPage> {
     );
   }
 
-  Widget _buildFilter(BuildContext context) => Wrap(
-    spacing: accountingContentInset,
-    runSpacing: AccountingPageControlScope.runGapOf(context),
-    crossAxisAlignment: WrapCrossAlignment.end,
+  Widget _buildFilter(BuildContext context) => AccountingPageFilterBar(
+    actions: [
+      if (widget.workspace != null &&
+          widget.workspace!
+                  .removedTransactionPage(
+                    TransactionRecordKind.paymentVoucher,
+                    limit: 1,
+                  )
+                  .total >
+              0)
+        RemovedTransactionsButton(
+          workspace: widget.workspace!,
+          kind: TransactionRecordKind.paymentVoucher,
+          onChanged: () {
+            if (mounted) setState(() {});
+          },
+          onView: (record) => _openVoucher(
+            widget.workspace!.database.readRetainedVoucher(
+              widget.workspace!.identity.businessId,
+              record.recordId,
+            ),
+            forceReadOnly: true,
+          ),
+        ),
+    ],
     children: [
-      AccountingRecordFilter(
-        label: 'Status',
-        options: PaymentVoucherStatus.values.map((s) => s.label),
-        value: _filter?.label,
-        controlKey: const ValueKey('payment-voucher-filter'),
-        onChanged: (value) => setState(
-          () => _filter = value == null
-              ? null
-              : PaymentVoucherStatus.values.firstWhere((s) => s.label == value),
+      if (AccountingRecordControlsPolicy.visible(widget.store.all.length)) ...[
+        AccountingRecordFilter(
+          label: 'Status',
+          options: PaymentVoucherStatus.values.map((s) => s.label),
+          value: _filter?.label,
+          controlKey: const ValueKey('payment-voucher-filter'),
+          onChanged: (value) => setState(
+            () => _filter = value == null
+                ? null
+                : PaymentVoucherStatus.values.firstWhere(
+                    (s) => s.label == value,
+                  ),
+          ),
         ),
-      ),
-      AccountingRecordFilter(
-        label: 'Payee',
-        options: widget.store.all.map((r) => r.payee),
-        value: _firstFilter,
-        controlKey: const ValueKey('payment-voucher-first-filter'),
-        onChanged: (value) => setState(() => _firstFilter = value),
-      ),
-      AccountingRecordFilter(
-        label: 'Account',
-        options: widget.store.all.map((r) => r.paymentAccount),
-        value: _secondFilter,
-        controlKey: const ValueKey('payment-voucher-second-filter'),
-        onChanged: (value) => setState(() => _secondFilter = value),
-      ),
-      if (_filter != null || _firstFilter != null || _secondFilter != null)
-        AccountingButton.outline(
-          context,
-          key: const ValueKey('payment-voucher-clear-filters'),
-          onPressed: () => setState(() {
-            _filter = null;
-            _firstFilter = null;
-            _secondFilter = null;
-          }),
-          leadingIcon: Icons.filter_alt_off_outlined,
-          child: const Text('Clear'),
+        AccountingRecordFilter(
+          label: 'Payee',
+          options: widget.store.all.map((r) => r.payee),
+          value: _firstFilter,
+          controlKey: const ValueKey('payment-voucher-first-filter'),
+          onChanged: (value) => setState(() => _firstFilter = value),
         ),
+        AccountingRecordFilter(
+          label: 'Account',
+          options: widget.store.all.map((r) => r.paymentAccount),
+          value: _secondFilter,
+          controlKey: const ValueKey('payment-voucher-second-filter'),
+          onChanged: (value) => setState(() => _secondFilter = value),
+        ),
+        if (_filter != null || _firstFilter != null || _secondFilter != null)
+          AccountingButton.outline(
+            context,
+            key: const ValueKey('payment-voucher-clear-filters'),
+            onPressed: () => setState(() {
+              _filter = null;
+              _firstFilter = null;
+              _secondFilter = null;
+            }),
+            leadingIcon: Icons.filter_alt_off_outlined,
+            child: const Text('Clear'),
+          ),
+      ],
     ],
   );
 

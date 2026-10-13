@@ -230,6 +230,7 @@ class _AccountingShellState extends State<AccountingShell> {
 
   static const _windowLayout = MethodChannel('audyt/window-layout');
   bool _sidebarCollapsed = false;
+  bool _sidebarResizing = false;
   bool _sidebarExpansionPending = false;
   bool _compactResizeExpansionStarted = false;
   double _compactResizeDragDistance = 0;
@@ -1614,123 +1615,168 @@ class _AccountingShellState extends State<AccountingShell> {
 
         return Scaffold(
           backgroundColor: tokens.background,
-          body: Stack(
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  SizedBox(
-                    key: ValueKey<String>(
-                      effectiveNavigationMode ==
-                              AccountingNavigationMode.compactRail
-                          ? 'accounting-navigation-compact-rail'
-                          : 'accounting-navigation-extended-rail',
-                    ),
-                    width: navigationWidth,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(child: navigation),
-                        _settingsFooter(
-                          compact:
-                              effectiveNavigationMode ==
-                              AccountingNavigationMode.compactRail,
+          body: TweenAnimationBuilder<double>(
+            tween: Tween<double>(end: navigationWidth),
+            duration:
+                MediaQuery.disableAnimationsOf(context) || _sidebarResizing
+                ? Duration.zero
+                : const Duration(milliseconds: 280),
+            curve: Curves.easeInOutCubic,
+            child: Column(
+              children: [
+                _GlobalTopBar(
+                  isHome: const {'home', 'users'}.contains(_currentFeature.id),
+                  searchResults: _searchResults,
+                  onSearchSelected: _handleGlobalSearchSelection,
+                  notifications: notifications,
+                  onNotificationSelected: (id) {
+                    final feature = FeatureRegistry.byId(id);
+                    if (feature != null) _selectFeature(feature);
+                  },
+                  onOpenSettings: _openSettings,
+                  submitRegistration: widget.submitRegistration,
+                  approvalStatus: widget.approvalStatus,
+                ),
+                Expanded(child: _currentPage(compact: false)),
+              ],
+            ),
+            builder: (context, visibleNavigationWidth, pageBody) => Stack(
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    SizedBox(
+                      key: const ValueKey('accounting-navigation-rail'),
+                      width: visibleNavigationWidth,
+                      child: ClipRect(
+                        child: OverflowBox(
+                          alignment: Alignment.topLeft,
+                          minWidth: navigationWidth,
+                          maxWidth: navigationWidth,
+                          child: AnimatedSwitcher(
+                            duration: MediaQuery.disableAnimationsOf(context)
+                                ? Duration.zero
+                                : const Duration(milliseconds: 180),
+                            layoutBuilder: (current, previous) => Stack(
+                              alignment: Alignment.topLeft,
+                              children: [
+                                for (final child in previous)
+                                  ExcludeSemantics(
+                                    child: IgnorePointer(
+                                      child: OverflowBox(
+                                        alignment: Alignment.topLeft,
+                                        minWidth: 0,
+                                        maxWidth: AccountingResponsive
+                                            .extendedRailResizableMaxWidth,
+                                        child: child,
+                                      ),
+                                    ),
+                                  ),
+                                ?current,
+                              ],
+                            ),
+                            child: SizedBox(
+                              key: ValueKey<String>(
+                                effectiveNavigationMode ==
+                                        AccountingNavigationMode.compactRail
+                                    ? 'accounting-navigation-compact-rail'
+                                    : 'accounting-navigation-extended-rail',
+                              ),
+                              width: navigationWidth,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Expanded(child: navigation),
+                                  _settingsFooter(
+                                    compact:
+                                        effectiveNavigationMode ==
+                                        AccountingNavigationMode.compactRail,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                  SizedBox(
-                    key: const ValueKey('accounting-navigation-divider-line'),
-                    width: AccountingResponsive.navigationDividerWidth,
-                    child: ColoredBox(color: tokens.sidebarBorder),
-                  ),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        _GlobalTopBar(
-                          isHome: const {
-                            'home',
-                            'users',
-                          }.contains(_currentFeature.id),
-                          searchResults: _searchResults,
-                          onSearchSelected: _handleGlobalSearchSelection,
-                          notifications: notifications,
-                          onNotificationSelected: (id) {
-                            final feature = FeatureRegistry.byId(id);
-                            if (feature != null) _selectFeature(feature);
-                          },
-                          onOpenSettings: _openSettings,
-                          submitRegistration: widget.submitRegistration,
-                          approvalStatus: widget.approvalStatus,
-                        ),
-                        Expanded(child: _currentPage(compact: false)),
-                      ],
+                    SizedBox(
+                      key: const ValueKey('accounting-navigation-divider-line'),
+                      width: AccountingResponsive.navigationDividerWidth,
+                      child: ColoredBox(color: tokens.sidebarBorder),
                     ),
-                  ),
-                ],
-              ),
-              Positioned(
-                left:
-                    navigationWidth -
-                    (AccountingResponsive.navigationDividerDragWidth -
-                            AccountingResponsive.navigationDividerWidth) /
-                        2,
-                top: 0,
-                bottom: 0,
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.resizeColumn,
-                  child: GestureDetector(
-                    key: const ValueKey('accounting-navigation-resize-border'),
-                    behavior: HitTestBehavior.opaque,
-                    onHorizontalDragStart: (_) {
-                      _compactResizeDragDistance = 0;
-                      _compactResizeExpansionStarted = false;
-                    },
-                    onHorizontalDragUpdate: (details) {
-                      if (effectiveNavigationMode ==
-                          AccountingNavigationMode.compactRail) {
-                        _compactResizeDragDistance += details.delta.dx;
-                        if (_compactResizeDragDistance > 0 &&
-                            !_compactResizeExpansionStarted) {
-                          _compactResizeExpansionStarted = true;
-                          _expandSidebar(constraints.maxWidth);
+                    Expanded(child: pageBody!),
+                  ],
+                ),
+                Positioned(
+                  left:
+                      visibleNavigationWidth -
+                      (AccountingResponsive.navigationDividerDragWidth -
+                              AccountingResponsive.navigationDividerWidth) /
+                          2,
+                  top: 0,
+                  bottom: 0,
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.resizeColumn,
+                    child: GestureDetector(
+                      key: const ValueKey(
+                        'accounting-navigation-resize-border',
+                      ),
+                      behavior: HitTestBehavior.opaque,
+                      onHorizontalDragStart: (_) {
+                        setState(() => _sidebarResizing = true);
+                        _compactResizeDragDistance = 0;
+                        _compactResizeExpansionStarted = false;
+                      },
+                      onHorizontalDragCancel: () =>
+                          setState(() => _sidebarResizing = false),
+                      onHorizontalDragUpdate: (details) {
+                        if (effectiveNavigationMode ==
+                            AccountingNavigationMode.compactRail) {
+                          _compactResizeDragDistance += details.delta.dx;
+                          if (_compactResizeDragDistance > 0 &&
+                              !_compactResizeExpansionStarted) {
+                            _compactResizeExpansionStarted = true;
+                            _expandSidebar(constraints.maxWidth);
+                          }
+                          return;
                         }
-                        return;
-                      }
-                      final currentWidth =
-                          AccountingResponsive.extendedRailWidthFor(
-                            constraints.maxWidth,
-                            mainContentMinWidth: effectiveMainContentMinWidth,
-                            preferredWidth: _preferredSidebarWidth,
-                          );
-                      final requestedWidth = currentWidth + details.delta.dx;
-                      setState(() {
-                        if (requestedWidth <
-                            AccountingResponsive.extendedRailMinWidth) {
-                          _sidebarCollapsed = true;
-                        } else {
-                          _preferredSidebarWidth = requestedWidth.clamp(
-                            AccountingResponsive.extendedRailMinWidth,
-                            AccountingResponsive.extendedRailResizableMaxWidth,
-                          );
+                        final currentWidth =
+                            AccountingResponsive.extendedRailWidthFor(
+                              constraints.maxWidth,
+                              mainContentMinWidth: effectiveMainContentMinWidth,
+                              preferredWidth: _preferredSidebarWidth,
+                            );
+                        final requestedWidth = currentWidth + details.delta.dx;
+                        setState(() {
+                          if (requestedWidth <
+                              AccountingResponsive.extendedRailMinWidth) {
+                            _sidebarCollapsed = true;
+                          } else {
+                            _preferredSidebarWidth = requestedWidth.clamp(
+                              AccountingResponsive.extendedRailMinWidth,
+                              AccountingResponsive
+                                  .extendedRailResizableMaxWidth,
+                            );
+                          }
+                        });
+                      },
+                      onHorizontalDragEnd: (_) {
+                        setState(() => _sidebarResizing = false);
+                        if (effectiveNavigationMode ==
+                            AccountingNavigationMode.extendedRail) {
+                          _saveSidebarWidth();
                         }
-                      });
-                    },
-                    onHorizontalDragEnd: (_) {
-                      if (effectiveNavigationMode ==
-                          AccountingNavigationMode.extendedRail) {
-                        _saveSidebarWidth();
-                      }
-                      _compactResizeDragDistance = 0;
-                      _compactResizeExpansionStarted = false;
-                    },
-                    child: const SizedBox(
-                      width: AccountingResponsive.navigationDividerDragWidth,
+                        _compactResizeDragDistance = 0;
+                        _compactResizeExpansionStarted = false;
+                      },
+                      child: const SizedBox(
+                        width: AccountingResponsive.navigationDividerDragWidth,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
@@ -2416,18 +2462,21 @@ class _NavigationPanel extends StatelessWidget {
           key: const ValueKey('accounting-brand'),
           crossAxisAlignment: CrossAxisAlignment.center,
           children: <Widget>[
-            SizedBox.square(
-              key: const ValueKey('accounting-brand-icon-box'),
-              dimension: 25,
-              child: Center(
-                child: SvgPicture.asset(
-                  'assets/branding/Audyt Logo.svg',
-                  width: 25,
-                  height: 25,
-                  excludeFromSemantics: true,
-                  colorFilter: ColorFilter.mode(
-                    tokens.sidebarPrimary,
-                    BlendMode.srcIn,
+            Transform.translate(
+              offset: const Offset(0, 2),
+              child: SizedBox.square(
+                key: const ValueKey('accounting-brand-icon-box'),
+                dimension: 25,
+                child: Center(
+                  child: SvgPicture.asset(
+                    'assets/branding/Audyt Logo.svg',
+                    width: 25,
+                    height: 25,
+                    excludeFromSemantics: true,
+                    colorFilter: ColorFilter.mode(
+                      tokens.sidebarPrimary,
+                      BlendMode.srcIn,
+                    ),
                   ),
                 ),
               ),

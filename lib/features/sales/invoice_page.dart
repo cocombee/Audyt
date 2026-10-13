@@ -15,8 +15,6 @@ import 'sales_document.dart';
 import 'generated_sales_document_service.dart';
 import 'generated_document_filing_notice.dart';
 
-import 'package:audyt/app/responsive.dart';
-
 import 'dart:typed_data';
 import 'dart:convert';
 
@@ -727,7 +725,14 @@ class _InvoicePageState extends State<InvoicePage> {
                 child: const Text('Create Invoice'),
                 onPressed: () => _edit(context),
               ),
-              secondaryActions: [
+            ),
+            const SizedBox(height: accountingContentInset),
+            GeneratedDocumentFilingNotice(
+              workspace: workspace,
+              kind: GeneratedDocumentKind.invoice,
+            ),
+            AccountingPageFilterBar(
+              actions: [
                 AccountingButton.outline(
                   context,
                   key: const ValueKey('open-recurring-transactions'),
@@ -736,18 +741,8 @@ class _InvoicePageState extends State<InvoicePage> {
                   child: const Text('Recurring'),
                 ),
               ],
-            ),
-            const SizedBox(height: accountingContentInset),
-            GeneratedDocumentFilingNotice(
-              workspace: workspace,
-              kind: GeneratedDocumentKind.invoice,
-            ),
-            if (hasInvoices)
-              AccountingControlFlow(
-                spacing: accountingContentInset,
-                runSpacing: AccountingPageControlScope.runGapOf(context),
-                crossAxisAlignment: WrapCrossAlignment.end,
-                children: [
+              children: [
+                if (hasInvoices) ...[
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 280),
                     child: Column(
@@ -798,8 +793,9 @@ class _InvoicePageState extends State<InvoicePage> {
                     onChanged: (value) => setState(() => _currency = value),
                   ),
                 ],
-              ),
-            if (hasInvoices) const SizedBox(height: 16),
+              ],
+            ),
+            const SizedBox(height: 16),
             if (drafts.isEmpty && posted.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(

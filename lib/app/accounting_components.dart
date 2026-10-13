@@ -105,10 +105,12 @@ class AccountingButtonGroup extends StatelessWidget {
     required this.child,
     this.compact = true,
     this.headerAction = false,
+    this.pageFilterAction = false,
   });
   final Widget child;
   final bool compact;
   final bool headerAction;
+  final bool pageFilterAction;
   static bool isCompact(BuildContext context) =>
       context
           .dependOnInheritedWidgetOfExactType<_ButtonGroupScope>()
@@ -119,6 +121,12 @@ class AccountingButtonGroup extends StatelessWidget {
           .dependOnInheritedWidgetOfExactType<_ButtonGroupScope>()
           ?.headerAction ??
       false;
+  static bool isPageFilterAction(BuildContext context) =>
+      AccountingPageControlScope.active(context) &&
+      (context
+              .dependOnInheritedWidgetOfExactType<_ButtonGroupScope>()
+              ?.pageFilterAction ??
+          false);
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -135,6 +143,7 @@ class AccountingButtonGroup extends StatelessWidget {
     return _ButtonGroupScope(
       compact: compact,
       headerAction: headerAction,
+      pageFilterAction: pageFilterAction,
       child: Theme(
         data: theme.copyWith(
           filledButtonTheme: FilledButtonThemeData(
@@ -158,12 +167,16 @@ class _ButtonGroupScope extends InheritedWidget {
     required super.child,
     required this.compact,
     required this.headerAction,
+    required this.pageFilterAction,
   });
   final bool compact;
   final bool headerAction;
+  final bool pageFilterAction;
   @override
   bool updateShouldNotify(_ButtonGroupScope oldWidget) =>
-      compact != oldWidget.compact || headerAction != oldWidget.headerAction;
+      compact != oldWidget.compact ||
+      headerAction != oldWidget.headerAction ||
+      pageFilterAction != oldWidget.pageFilterAction;
 }
 
 /// Shared shadcn-style button factories. The returned Material button owns the
@@ -595,11 +608,16 @@ final class AccountingButton {
       onPressed: onPressed,
       builder: (context) {
         final headerAction = AccountingButtonGroup.isHeaderAction(context);
+        final pageFilterAction = AccountingButtonGroup.isPageFilterAction(
+          context,
+        );
         // Page/tab title actions own their existing primary face and text-only
         // content. This scope never changes ordinary toolbar or popout actions.
         final resolvedVariant =
             headerAction && variant != AccountingButtonVariant.destructive
             ? AccountingButtonVariant.primary
+            : pageFilterAction && variant != AccountingButtonVariant.destructive
+            ? AccountingButtonVariant.outline
             : variant;
         final small = AccountingButtonSizeScope.isSmall(context);
         final compact = AccountingButtonGroup.isCompact(context);

@@ -1,3 +1,18 @@
+Page/tab filter-action contract (14 October 2026, explicit user correction):
+Secondary page actions belong after their related filters in the same content-fit,
+bottom-aligned row: Expenses Recurring follows Payee; Bills, Invoices and Quotations
+Recurring follows their filter group; Tax Agencies follows Status; tax linking and
+Refresh follow Run Report. AccountingPageFilterBar owns the 20px peer gap and the
+existing page wrap gap, with neutral outlined secondary buttons at field height.
+Keep the trailing related field and its actions together as a wrapping group; when that pair fits, never leave Recurring alone on the following line.
+Actions remain available when low record counts hide filters. The header retains
+only its principal green action. Preserve keys, callbacks, conditional availability
+and content-fit widths; never stretch page/tab buttons. Ordinary popout planners,
+popout pages, custom transaction forms and table geometry keep their separate
+owners. The collapsed sidebar uses the approved 25px SVG mark, matching expanded
+branding, inside its existing 44px selector hit target.
+Future all-card smoothing and dark mode: [architecture plan](docs/Appearance%20And%20Motion/Plan.md).
+
 Initial Expense linked-payment credit review (11 October 2026; planned): reuse the existing Expense revision journal-match validator inside atomic initial approval whenever the ordinary saved Expense has an explicit company-scoped payment ledger link. Recheck current saved payment selection at commit; full credit must reach that ledger. Null/unlinked legacy intakes retain existing user-authored Journal approval, without name inference. No Claim path, category-to-GL mapping, UI/token, schema, automatic posting or backend change. Meaningful SQLite atomic rejection/restart tests and required gate/freeze/build/install remain pending; native financial approval requires user hand-off. See Expense Initial Payment Credit Review/Implementation Plan.json.
 
 Invoice Terms selection working batch (11 October 2026; planned, not installed): connect only the existing Invoice Terms selector to active maintained company terms through optional inputs on its shared form; Quotation defaults empty and unchanged. Reuse the tested opaque choice/unique label owner from Bill without changing Bill behavior. Named selection snapshots exact fixed/monthly rule and derives date, excluding hidden prior Custom text/date. Guard current company term identity/activity/revision/rule at Review and after awaited PDF rendering immediately before durable Invoice Save Draft. Reopen remains generic historical PaymentTerms; no catalog identity/name persistence. No Invoice Add Term, profile/default precedence, schema, posting, token or geometry changes. Focused/full gate, frozen build/install and actual native checks remain pending. Bill Terms installed functional checks now passed (inline cancel/save/refresh, fixed/monthly due dates, normal restart; all77 other tables/all prior rows unchanged); full design/goal acceptance remains pending. See Invoice Terms Selection Wiring Review/Implementation Plan.json and Bill Terms Selection Wiring Review/Native Functional Verification.json.

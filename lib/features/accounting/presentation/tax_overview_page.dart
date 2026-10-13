@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../app/accounting_components.dart';
 import '../../../app/accounting_theme.dart';
-import '../../../app/responsive.dart';
 import '../../../core/dates/accounting_date.dart';
 import '../application/accounting_workspace.dart';
 import '../data/accounting_database.dart';
@@ -388,13 +387,20 @@ class _TaxOverviewPageState extends State<TaxOverviewPage> {
                     onPressed: _busy ? null : () => _editTaxPayment(),
                     child: const Text('Record Tax Payment'),
                   )
-                : AccountingButton.secondary(
-                    context,
-                    key: const ValueKey('tax-overview-refresh'),
-                    onPressed: _busy ? null : _load,
-                    child: const Text('Refresh'),
-                  ),
-            secondaryActions: [
+                : null,
+          ),
+          const SizedBox(height: accountingPageTitleOuterGap),
+          if (error != null) ...[
+            AccountingAlert.build(
+              context,
+              title: 'Tax Activity Could Not Be Run',
+              description: error,
+              destructive: true,
+            ),
+            const SizedBox(height: accountingContentInset),
+          ],
+          AccountingPageFilterBar(
+            actions: [
               if (widget.taxPaymentsProposal) ...[
                 AccountingButton.secondary(
                   context,
@@ -409,22 +415,15 @@ class _TaxOverviewPageState extends State<TaxOverviewPage> {
                   child: const Text('Refresh'),
                 ),
               ],
+
+              if (!widget.taxPaymentsProposal)
+                AccountingButton.outline(
+                  context,
+                  key: const ValueKey('tax-overview-refresh'),
+                  onPressed: _busy ? null : _load,
+                  child: const Text('Refresh'),
+                ),
             ],
-          ),
-          const SizedBox(height: accountingPageTitleOuterGap),
-          if (error != null) ...[
-            AccountingAlert.build(
-              context,
-              title: 'Tax Activity Could Not Be Run',
-              description: error,
-              destructive: true,
-            ),
-            const SizedBox(height: accountingContentInset),
-          ],
-          Wrap(
-            spacing: accountingContentInset,
-            runSpacing: AccountingPageControlScope.runGapOf(context),
-            crossAxisAlignment: WrapCrossAlignment.end,
             children: [
               for (final field in [
                 ('From', _from, 'tax-overview-from'),

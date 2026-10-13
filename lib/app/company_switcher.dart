@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import 'accounting_components.dart';
 import 'accounting_theme.dart';
@@ -276,10 +277,18 @@ class _CompanySelectorState extends State<CompanySelector> {
                           ),
                           width: accountingControlHeight,
                           height: accountingControlHeight,
-                          decoration: BoxDecoration(
-                            color: tokens.sidebarPrimary,
-                            borderRadius: BorderRadius.circular(
-                              accountingControlRadius,
+                          alignment: Alignment.center,
+                          child: SvgPicture.asset(
+                            'assets/branding/Audyt Logo.svg',
+                            key: const ValueKey(
+                              'accounting-compact-brand-symbol',
+                            ),
+                            width: 25,
+                            height: 25,
+                            excludeFromSemantics: true,
+                            colorFilter: ColorFilter.mode(
+                              tokens.sidebarPrimary,
+                              BlendMode.srcIn,
                             ),
                           ),
                         ),

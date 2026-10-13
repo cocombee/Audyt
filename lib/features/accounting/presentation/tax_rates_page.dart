@@ -247,31 +247,33 @@ class _TaxRatesPageState extends State<TaxRatesPage> {
                 onPressed: edit,
                 child: const Text('Add Tax Rate'),
               ),
-              secondaryActions: [
-                if (widget.taxAgencyProposal)
-                  AccountingButton.secondary(
-                    context,
-                    key: const ValueKey('tax-agencies-open'),
-                    onPressed: () => showDialog<void>(
-                      context: context,
-                      builder: (_) =>
-                          TaxAgenciesDialog(workspace: widget.workspace),
-                    ),
-                    child: const Text('Tax Agencies'),
-                  ),
-              ],
             ),
             const SizedBox(height: accountingPageTitleOuterGap),
-            AccountingRecordControls(
-              recordCount: all.length,
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: accountingContentInset),
-                child: AccountingRecordFilter(
-                  label: 'Status',
-                  options: const ['Active', 'Inactive'],
-                  value: status,
-                  onChanged: (v) => setState(() => status = v),
-                ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: accountingContentInset),
+              child: AccountingPageFilterBar(
+                actions: [
+                  if (widget.taxAgencyProposal)
+                    AccountingButton.secondary(
+                      context,
+                      key: const ValueKey('tax-agencies-open'),
+                      onPressed: () => showDialog<void>(
+                        context: context,
+                        builder: (_) =>
+                            TaxAgenciesDialog(workspace: widget.workspace),
+                      ),
+                      child: const Text('Tax Agencies'),
+                    ),
+                ],
+                children: [
+                  if (controls)
+                    AccountingRecordFilter(
+                      label: 'Status',
+                      options: const ['Active', 'Inactive'],
+                      value: status,
+                      onChanged: (v) => setState(() => status = v),
+                    ),
+                ],
               ),
             ),
             AccountingRecordList(

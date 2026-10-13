@@ -165,7 +165,6 @@ class AccountingPageHeader extends StatelessWidget {
     required this.description,
     super.key,
     this.action,
-    this.secondaryActions = const [],
     this.titleKey,
     this.eyebrow,
   });
@@ -174,7 +173,6 @@ class AccountingPageHeader extends StatelessWidget {
   final String title;
   final String description;
   final Widget? action;
-  final List<Widget> secondaryActions;
   final String? titleKey;
   final String? eyebrow;
 
@@ -243,19 +241,49 @@ class AccountingPageHeader extends StatelessWidget {
                 key: const ValueKey('accounting-page-title-row'),
                 child: headerBody,
               ),
-              if (secondaryActions.isNotEmpty) ...[
-                const SizedBox(height: accountingContentInset),
-                AccountingControlFlow(
-                  spacing: accountingContentInset,
-                  children: secondaryActions,
-                ),
-              ],
             ],
           ),
         );
       },
     );
   }
+}
+
+/// Page/tab filters and their secondary actions share one content-fit flow.
+/// Popup planners and custom transaction forms retain their separate owners.
+class AccountingPageFilterBar extends StatelessWidget {
+  const AccountingPageFilterBar({
+    super.key,
+    this.children = const [],
+    this.actions = const [],
+  });
+
+  final List<Widget> children;
+  final List<Widget> actions;
+
+  @override
+  Widget build(BuildContext context) => AccountingControlFlow(
+    spacing: accountingContentInset,
+    runSpacing: AccountingPageControlScope.runGapOf(context),
+    crossAxisAlignment: WrapCrossAlignment.end,
+    children: [
+      if (actions.isEmpty)
+        ...children
+      else ...[
+        if (children.isNotEmpty) ...children.take(children.length - 1),
+        AccountingControlFlow(
+          spacing: accountingContentInset,
+          runSpacing: AccountingPageControlScope.runGapOf(context),
+          crossAxisAlignment: WrapCrossAlignment.end,
+          children: [
+            if (children.isNotEmpty) children.last,
+            for (final action in actions)
+              AccountingButtonGroup(pageFilterAction: true, child: action),
+          ],
+        ),
+      ],
+    ],
+  );
 }
 
 /// Measures the existing header action group before choosing its established

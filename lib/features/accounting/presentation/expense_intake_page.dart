@@ -1,4 +1,3 @@
-import '../../../../app/responsive.dart';
 import 'attachment_preview_dialog.dart';
 import 'record_expense_page.dart';
 import '../domain/payee.dart';
@@ -158,45 +157,78 @@ class _ExpenseIntakePageState extends State<ExpenseIntakePage> {
     _load();
   }
 
-  Widget _filters(BuildContext context) => Wrap(
-    spacing: accountingContentInset,
-    runSpacing: AccountingPageControlScope.runGapOf(context),
-    crossAxisAlignment: WrapCrossAlignment.end,
-    children: [
-      AccountingRecordFilter(
-        label: 'Status',
-        options: const ['Posted', 'Needs Review'],
-        value: _statusFilter,
-        controlKey: const ValueKey('expense-status-filter'),
-        onChanged: (value) => _filter(() => _statusFilter = value),
+  Widget _filters(BuildContext context) => AccountingPageFilterBar(
+    actions: [
+      AccountingButton.outline(
+        context,
+        key: const ValueKey('expense-open-recurring'),
+        onPressed: _showRecurring,
+        child: const Text('Recurring'),
       ),
-      AccountingRecordFilter(
-        label: 'Category',
-        options: _categories,
-        value: _categoryFilter,
-        controlKey: const ValueKey('expense-category-filter'),
-        onChanged: (value) => _filter(() => _categoryFilter = value),
-      ),
-      AccountingRecordFilter(
-        label: 'Payee',
-        options: _payees,
-        value: _payeeFilter,
-        controlKey: const ValueKey('expense-payee-filter'),
-        onChanged: (value) => _filter(() => _payeeFilter = value),
-      ),
-      if (_statusFilter != null ||
-          _categoryFilter != null ||
-          _payeeFilter != null)
+
+      if (_removedCount > 0 || _showRemoved) ...[
         AccountingButton.outline(
           context,
-          key: const ValueKey('expense-clear-filters'),
-          onPressed: () => _filter(() {
-            _statusFilter = null;
-            _categoryFilter = null;
-            _payeeFilter = null;
-          }),
-          child: const Text('Clear'),
+          key: const ValueKey('expense-toggle-removed'),
+          onPressed: _changingId != null
+              ? null
+              : () => _filter(() {
+                  _showRemoved = !_showRemoved;
+                  _statusFilter = null;
+                  _categoryFilter = null;
+                  _payeeFilter = null;
+                }),
+          child: Text(
+            _showRemoved
+                ? 'Active Expenses'
+                : 'Removed Expenses ($_removedCount)',
+          ),
         ),
+      ],
+    ],
+    children: [
+      if (AccountingRecordControlsPolicy.visible(_controlCount) &&
+          _expenses != null &&
+          (_categories.isNotEmpty ||
+              _payees.isNotEmpty ||
+              _statusFilter != null ||
+              _categoryFilter != null ||
+              _payeeFilter != null)) ...[
+        AccountingRecordFilter(
+          label: 'Status',
+          options: const ['Posted', 'Needs Review'],
+          value: _statusFilter,
+          controlKey: const ValueKey('expense-status-filter'),
+          onChanged: (value) => _filter(() => _statusFilter = value),
+        ),
+        AccountingRecordFilter(
+          label: 'Category',
+          options: _categories,
+          value: _categoryFilter,
+          controlKey: const ValueKey('expense-category-filter'),
+          onChanged: (value) => _filter(() => _categoryFilter = value),
+        ),
+        AccountingRecordFilter(
+          label: 'Payee',
+          options: _payees,
+          value: _payeeFilter,
+          controlKey: const ValueKey('expense-payee-filter'),
+          onChanged: (value) => _filter(() => _payeeFilter = value),
+        ),
+        if (_statusFilter != null ||
+            _categoryFilter != null ||
+            _payeeFilter != null)
+          AccountingButton.outline(
+            context,
+            key: const ValueKey('expense-clear-filters'),
+            onPressed: () => _filter(() {
+              _statusFilter = null;
+              _categoryFilter = null;
+              _payeeFilter = null;
+            }),
+            child: const Text('Clear'),
+          ),
+      ],
     ],
   );
   @override
@@ -1020,40 +1052,10 @@ class _ExpenseIntakePageState extends State<ExpenseIntakePage> {
             leadingIcon: Icons.add_rounded,
             child: const Text('Record Expense'),
           ),
-          secondaryActions: [
-            AccountingButton.outline(
-              context,
-              key: const ValueKey('expense-open-recurring'),
-              onPressed: _showRecurring,
-              child: const Text('Recurring'),
-            ),
-          ],
         ),
         const SizedBox(height: accountingContentInset),
-        if (_removedCount > 0 || _showRemoved) ...[
-          AccountingControlFlow(
-            children: [
-              AccountingButton.outline(
-                context,
-                key: const ValueKey('expense-toggle-removed'),
-                onPressed: _changingId != null
-                    ? null
-                    : () => _filter(() {
-                        _showRemoved = !_showRemoved;
-                        _statusFilter = null;
-                        _categoryFilter = null;
-                        _payeeFilter = null;
-                      }),
-                child: Text(
-                  _showRemoved
-                      ? 'Active Expenses'
-                      : 'Removed Expenses ($_removedCount)',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: accountingContentInset),
-        ],
+        _filters(context),
+        const SizedBox(height: 16),
         if (AccountingRecordControlsPolicy.visible(_controlCount) &&
             _expenses != null &&
             (_categories.isNotEmpty ||
@@ -1061,8 +1063,6 @@ class _ExpenseIntakePageState extends State<ExpenseIntakePage> {
                 _statusFilter != null ||
                 _categoryFilter != null ||
                 _payeeFilter != null)) ...[
-          _filters(context),
-          const SizedBox(height: 16),
           if (_total == 0)
             const Padding(
               padding: EdgeInsets.symmetric(

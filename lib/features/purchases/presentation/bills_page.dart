@@ -13,7 +13,6 @@ import '../../../app/accounting_components.dart';
 import '../../../app/accounting_theme.dart';
 import '../../../app/demo_company.dart';
 import '../../../app/frontend_review.dart';
-import '../../../app/responsive.dart';
 import '../../../app/naming_setup.dart' show SetupKind;
 import '../../../core/dates/accounting_date.dart';
 import '../../../core/ids/entity_id.dart';
@@ -676,7 +675,19 @@ class _BillsPageState extends State<BillsPage> {
                 onPressed: () => _edit(),
                 child: const Text('Record Bill'),
               ),
-              secondaryActions: [
+            ),
+            const SizedBox(height: accountingContentInset),
+            if (_error != null) ...[
+              AccountingAlert.build(
+                context,
+                title: 'Bill',
+                description: _error!,
+                tone: AccountingAlertTone.critical,
+              ),
+              const SizedBox(height: accountingContentInset),
+            ],
+            AccountingPageFilterBar(
+              actions: [
                 if (workspace
                         .removedTransactionPage(
                           TransactionRecordKind.bill,
@@ -706,24 +717,8 @@ class _BillsPageState extends State<BillsPage> {
                   child: const Text('Recurring'),
                 ),
               ],
-            ),
-            const SizedBox(height: accountingContentInset),
-            if (_error != null) ...[
-              AccountingAlert.build(
-                context,
-                title: 'Bill',
-                description: _error!,
-                tone: AccountingAlertTone.critical,
-              ),
-              const SizedBox(height: accountingContentInset),
-            ],
-            AccountingRecordControls(
-              recordCount: controlCount,
-              child: AccountingControlFlow(
-                spacing: accountingContentInset,
-                runSpacing: AccountingPageControlScope.runGapOf(context),
-                crossAxisAlignment: WrapCrossAlignment.end,
-                children: [
+              children: [
+                if (showControls) ...[
                   SizedBox(
                     width: 280,
                     child: Column(
@@ -769,9 +764,9 @@ class _BillsPageState extends State<BillsPage> {
                       child: const Text('Clear'),
                     ),
                 ],
-              ),
+              ],
             ),
-            if (showControls) const SizedBox(height: accountingContentInset),
+            const SizedBox(height: accountingContentInset),
             if (page.records.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(

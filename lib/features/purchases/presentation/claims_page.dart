@@ -169,41 +169,6 @@ class _ClaimsPageState extends State<ClaimsPage> {
               leadingIcon: Icons.add_rounded,
               child: const Text('New Claim'),
             ),
-            secondaryActions: [
-              if (widget.workspace != null &&
-                  widget.workspace!
-                          .removedTransactionPage(
-                            TransactionRecordKind.claim,
-                            limit: 1,
-                          )
-                          .total >
-                      0)
-                RemovedTransactionsButton(
-                  workspace: widget.workspace!,
-                  kind: TransactionRecordKind.claim,
-                  onChanged: () {
-                    if (mounted) setState(() {});
-                  },
-                  onView: (record) => _openEditor(
-                    widget.workspace!.database.readRetainedClaim(
-                      widget.workspace!.identity.businessId,
-                      EntityId.parse(record.recordId),
-                    ),
-                    forceReadOnly: true,
-                  ),
-                ),
-              if (widget.workspace != null)
-                AccountingButton.ghost(
-                  context,
-                  key: const ValueKey('claims-balances'),
-                  onPressed: () => showDialog<void>(
-                    context: context,
-                    builder: (_) =>
-                        ClaimantStatementsDialog(workspace: widget.workspace!),
-                  ),
-                  child: const Text('Claimant Balances'),
-                ),
-            ],
           ),
           const SizedBox(height: accountingPageTitleOuterGap),
           if (_feedback != null)
@@ -231,10 +196,7 @@ class _ClaimsPageState extends State<ClaimsPage> {
               tone: AccountingAlertTone.warning,
               bottomGap: accountingContentInset,
             ),
-          AccountingRecordControls(
-            recordCount: widget.store.all.length,
-            child: _buildFilter(context),
-          ),
+          _buildFilter(context),
           if (_selectingClaims &&
               _selectedClaims.isNotEmpty &&
               !_canPaySelection)
@@ -245,8 +207,7 @@ class _ClaimsPageState extends State<ClaimsPage> {
                 style: AccountingTypography.helper(context),
               ),
             ),
-          if (AccountingRecordControlsPolicy.visible(widget.store.all.length))
-            const SizedBox(height: 16),
+          const SizedBox(height: 16),
           if (_visibleClaims.isEmpty)
             _buildEmptyState(context)
           else
@@ -264,80 +225,112 @@ class _ClaimsPageState extends State<ClaimsPage> {
     );
   }
 
-  Widget _buildFilter(BuildContext context) => Wrap(
-    spacing: accountingContentInset,
-    runSpacing: AccountingPageControlScope.runGapOf(context),
-    crossAxisAlignment: WrapCrossAlignment.end,
+  Widget _buildFilter(BuildContext context) => AccountingPageFilterBar(
+    actions: [
+      if (widget.workspace != null &&
+          widget.workspace!
+                  .removedTransactionPage(TransactionRecordKind.claim, limit: 1)
+                  .total >
+              0)
+        RemovedTransactionsButton(
+          workspace: widget.workspace!,
+          kind: TransactionRecordKind.claim,
+          onChanged: () {
+            if (mounted) setState(() {});
+          },
+          onView: (record) => _openEditor(
+            widget.workspace!.database.readRetainedClaim(
+              widget.workspace!.identity.businessId,
+              EntityId.parse(record.recordId),
+            ),
+            forceReadOnly: true,
+          ),
+        ),
+      if (widget.workspace != null)
+        AccountingButton.ghost(
+          context,
+          key: const ValueKey('claims-balances'),
+          onPressed: () => showDialog<void>(
+            context: context,
+            builder: (_) =>
+                ClaimantStatementsDialog(workspace: widget.workspace!),
+          ),
+          child: const Text('Claimant Balances'),
+        ),
+    ],
     children: [
-      AccountingRecordFilter(
-        label: 'Status',
-        options: ClaimStatus.values.map((s) => s.label),
-        value: _filter?.label,
-        controlKey: const ValueKey('claims-filter'),
-        onChanged: (value) => setState(
-          () => _filter = value == null
-              ? null
-              : ClaimStatus.values.firstWhere((s) => s.label == value),
+      if (AccountingRecordControlsPolicy.visible(widget.store.all.length)) ...[
+        AccountingRecordFilter(
+          label: 'Status',
+          options: ClaimStatus.values.map((s) => s.label),
+          value: _filter?.label,
+          controlKey: const ValueKey('claims-filter'),
+          onChanged: (value) => setState(
+            () => _filter = value == null
+                ? null
+                : ClaimStatus.values.firstWhere((s) => s.label == value),
+          ),
         ),
-      ),
-      AccountingRecordFilter(
-        label: 'Claimant',
-        options: widget.store.all.map((r) => r.claimantName),
-        value: _firstFilter,
-        controlKey: const ValueKey('claims-first-filter'),
-        onChanged: (value) => setState(() => _firstFilter = value),
-      ),
-      AccountingRecordFilter(
-        label: 'Category',
-        options: widget.store.all.map(
-          (r) => _currentExpense(r)?.category ?? r.category,
+        AccountingRecordFilter(
+          label: 'Claimant',
+          options: widget.store.all.map((r) => r.claimantName),
+          value: _firstFilter,
+          controlKey: const ValueKey('claims-first-filter'),
+          onChanged: (value) => setState(() => _firstFilter = value),
         ),
-        value: _secondFilter,
-        controlKey: const ValueKey('claims-second-filter'),
-        onChanged: (value) => setState(() => _secondFilter = value),
-      ),
-      if (_filter != null || _firstFilter != null || _secondFilter != null)
+        AccountingRecordFilter(
+          label: 'Category',
+          options: widget.store.all.map(
+            (r) => _currentExpense(r)?.category ?? r.category,
+          ),
+          value: _secondFilter,
+          controlKey: const ValueKey('claims-second-filter'),
+          onChanged: (value) => setState(() => _secondFilter = value),
+        ),
+        if (_filter != null || _firstFilter != null || _secondFilter != null)
+          AccountingButton.outline(
+            context,
+            key: const ValueKey('claims-clear-filters'),
+            onPressed: () => setState(() {
+              _filter = null;
+              _firstFilter = null;
+              _secondFilter = null;
+            }),
+            leadingIcon: Icons.filter_alt_off_outlined,
+            child: const Text('Clear'),
+          ),
         AccountingButton.outline(
           context,
-          key: const ValueKey('claims-clear-filters'),
-          onPressed: () => setState(() {
-            _filter = null;
-            _firstFilter = null;
-            _secondFilter = null;
-          }),
-          leadingIcon: Icons.filter_alt_off_outlined,
-          child: const Text('Clear'),
-        ),
-      AccountingButton.outline(
-        context,
-        key: const ValueKey('claims-select-payment'),
-        onPressed: _payingBatch
-            ? null
-            : () => setState(() {
-                _selectingClaims = !_selectingClaims;
-                _selectedClaims.clear();
-              }),
-        child: Text(_selectingClaims ? 'Cancel' : 'Select'),
-      ),
-      if (_selectingClaims) ...[
-        AccountingButton.outline(
-          context,
-          key: const ValueKey('claims-select-matching'),
+          key: const ValueKey('claims-select-payment'),
           onPressed: _payingBatch
               ? null
-              : () => setState(
-                  () => _selectedClaims.addAll(_visibleClaims.map((c) => c.id)),
-                ),
-          child: const Text('Select All Matching Claims'),
+              : () => setState(() {
+                  _selectingClaims = !_selectingClaims;
+                  _selectedClaims.clear();
+                }),
+          child: Text(_selectingClaims ? 'Cancel' : 'Select'),
         ),
-        AccountingButton.primary(
-          context,
-          key: const ValueKey('claims-pay-selected'),
-          onPressed: _payingBatch || !_canPaySelection
-              ? null
-              : _paySelectedClaims,
-          child: Text('Record Payment (${_selectedClaims.length})'),
-        ),
+        if (_selectingClaims) ...[
+          AccountingButton.outline(
+            context,
+            key: const ValueKey('claims-select-matching'),
+            onPressed: _payingBatch
+                ? null
+                : () => setState(
+                    () =>
+                        _selectedClaims.addAll(_visibleClaims.map((c) => c.id)),
+                  ),
+            child: const Text('Select All Matching Claims'),
+          ),
+          AccountingButton.primary(
+            context,
+            key: const ValueKey('claims-pay-selected'),
+            onPressed: _payingBatch || !_canPaySelection
+                ? null
+                : _paySelectedClaims,
+            child: Text('Record Payment (${_selectedClaims.length})'),
+          ),
+        ],
       ],
     ],
   );

@@ -419,7 +419,7 @@ void main() {
       AccountingResponsive.extendedRailResizableMaxWidth,
     );
     await tester.binding.setSurfaceSize(const Size(1100, 900));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(
       tester.getSize(rail).width,
       lessThanOrEqualTo(AccountingResponsive.extendedRailResizableMaxWidth),
@@ -743,7 +743,7 @@ void main() {
       );
 
       await tester.binding.setSurfaceSize(const Size(600, 720));
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       final compactRail = find.byKey(
         const ValueKey('accounting-navigation-compact-rail'),
@@ -806,7 +806,7 @@ void main() {
       expect(find.byTooltip('Expand Accounting Navigation'), findsNothing);
 
       await tester.binding.setSurfaceSize(const Size(600, 720));
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       expect(
         find.byKey(const ValueKey('accounting-navigation-compact-rail')),

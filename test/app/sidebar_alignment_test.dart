@@ -17,8 +17,9 @@ void main() {
     await (FontLoader(
       'Inter',
     )..addFont(rootBundle.load('assets/fonts/Inter-Variable.woff2'))).load();
-    await (FontLoader('Rubik')
-      ..addFont(rootBundle.load('assets/fonts/Rubik-Medium.ttf'))).load();
+    await (FontLoader(
+      'Rubik',
+    )..addFont(rootBundle.load('assets/fonts/Rubik-Medium.ttf'))).load();
   });
 
   testWidgets('expanded company selector keeps labels before the chevron', (
@@ -96,10 +97,13 @@ void main() {
     final brandName = find.text('Audyt');
     final nameFrame = tester.getRect(brandName);
     final nameParagraph = tester.renderObject<RenderParagraph>(brandName);
-    final nameBaseline = nameFrame.top +
+    final nameBaseline =
+        nameFrame.top +
         nameParagraph.getDryBaseline(
-          nameParagraph.constraints, TextBaseline.alphabetic)!;
-    expect(nameBaseline, closeTo(brandLogo.bottom, 1));
+          nameParagraph.constraints,
+          TextBaseline.alphabetic,
+        )!;
+    expect(nameBaseline, closeTo(brandLogo.bottom - 2, 1));
     expect(find.byKey(const ValueKey('accounting-brand-mark')), findsNothing);
     expect(expenseIcon.left, closeTo(logo.left, 0.1));
     expect(companyFrame.right - chevron.right, closeTo(20, 0.1));
@@ -309,7 +313,13 @@ void main() {
     expect(navRect.left - rail.left, 24);
     expect(rail.right - navRect.right, 24);
     expect(icon.size, const Size(20, 20));
-    expect(brand.center.dy, closeTo(expandedBrand.center.dy, 0.1));
+    final compactSymbol = tester.getRect(
+      find.byKey(const ValueKey('accounting-compact-brand-symbol')),
+    );
+    expect(compactSymbol.size, const Size(25, 25));
+    expect(compactSymbol.center, brand.center);
+    expect(compactSymbol.center.dx, navRect.center.dx);
+    expect(brand.center.dy, closeTo(expandedBrand.center.dy - 2, 0.1));
     expect(tester.widget<InkWell>(nav).hoverColor, accountingNeutralHighlight);
     final expand = find.byKey(const ValueKey('expand-accounting-navigation'));
     expect(tester.getSize(expand), const Size(44, 44));
