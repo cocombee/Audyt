@@ -17,6 +17,8 @@ void main() {
     await (FontLoader(
       'Inter',
     )..addFont(rootBundle.load('assets/fonts/Inter-Variable.woff2'))).load();
+    await (FontLoader('Rubik')
+      ..addFont(rootBundle.load('assets/fonts/Rubik-Medium.ttf'))).load();
   });
 
   testWidgets('expanded company selector keeps labels before the chevron', (
@@ -91,6 +93,13 @@ void main() {
     expect(expenseFrame.right, closeTo(companyFrame.right, 0.1));
     expect(logo.left - companyFrame.left, closeTo(20, 0.1));
     expect(brandLogo.left, closeTo(companyFrame.left, 0.1));
+    final brandName = find.text('Audyt');
+    final nameFrame = tester.getRect(brandName);
+    final nameParagraph = tester.renderObject<RenderParagraph>(brandName);
+    final nameBaseline = nameFrame.top +
+        nameParagraph.getDryBaseline(
+          nameParagraph.constraints, TextBaseline.alphabetic)!;
+    expect(nameBaseline, closeTo(brandLogo.bottom, 1));
     expect(find.byKey(const ValueKey('accounting-brand-mark')), findsNothing);
     expect(expenseIcon.left, closeTo(logo.left, 0.1));
     expect(companyFrame.right - chevron.right, closeTo(20, 0.1));

@@ -2397,12 +2397,16 @@ class _NavigationPanel extends StatelessWidget {
     final tokens = AccountingTheme.of(context);
     final theme = Theme.of(context);
     // Rubik 500's Audyt outlines span 900 units on its 1000-unit em.
-    const brandFontSize = 25 / 0.9;
-    // Align the painted glyphs, excluding the font's bearings and leading.
-    const brandTextOffset = Offset(
-      -brandFontSize * 0.014,
-      -brandFontSize * 0.0585,
+    const brandFontSize = 23 / 0.9;
+    // Optical A baseline correction measured from the actual Rubik render.
+    const brandBaseline = 25 - 2 / 3;
+    // Align the expander to the u outline center, then its measured ink balance.
+    const brandToggleOffset = Offset(
+      0,
+      25 / 2 - brandFontSize * 0.255 - 1 / 3 + 0.6,
     );
+    // Exclude the first glyph's side bearing from the visible 8px gap.
+    const brandTextOffset = Offset(-brandFontSize * 0.014, 0);
     return Semantics(
       header: true,
       label: 'Audyt',
@@ -2434,19 +2438,31 @@ class _NavigationPanel extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
-                  Transform.translate(
-                    offset: brandTextOffset,
-                    child: Text(
-                      'Audyt',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        color: tokens.sidebarForeground,
-                        fontFamily: 'Rubik',
-                        fontSize: brandFontSize,
-                        fontWeight: FontWeight.w500,
-                        height: 1,
-                        leadingDistribution: TextLeadingDistribution.even,
+                  SizedBox(
+                    height: 25,
+                    child: OverflowBox(
+                      alignment: Alignment.topLeft,
+                      minHeight: 0,
+                      maxHeight: double.infinity,
+                      child: Baseline(
+                        baseline: brandBaseline,
+                        baselineType: TextBaseline.alphabetic,
+                        child: Transform.translate(
+                          offset: brandTextOffset,
+                          child: Text(
+                            'Audyt',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              color: tokens.sidebarForeground,
+                              fontFamily: 'Rubik',
+                              fontSize: brandFontSize,
+                              fontWeight: FontWeight.w500,
+                              height: 1,
+                              leadingDistribution: TextLeadingDistribution.even,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -2454,11 +2470,14 @@ class _NavigationPanel extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 6),
-            _navigationToggleButton(
-              context,
-              key: const ValueKey('collapse-accounting-navigation'),
-              label: 'Collapse navigation',
-              compact: false,
+            Transform.translate(
+              offset: brandToggleOffset,
+              child: _navigationToggleButton(
+                context,
+                key: const ValueKey('collapse-accounting-navigation'),
+                label: 'Collapse navigation',
+                compact: false,
+              ),
             ),
           ],
         ),
