@@ -2405,13 +2405,20 @@ class _NavigationPanel extends StatelessWidget {
           key: const ValueKey('accounting-brand'),
           crossAxisAlignment: CrossAxisAlignment.center,
           children: <Widget>[
-            Container(
+            SizedBox.square(
               key: const ValueKey('accounting-brand-icon-box'),
-              width: accountingControlHeight,
-              height: accountingControlHeight,
-              decoration: BoxDecoration(
-                color: tokens.sidebarPrimary,
-                borderRadius: BorderRadius.circular(accountingControlRadius),
+              dimension: accountingControlHeight,
+              child: Center(
+                child: SvgPicture.asset(
+                  'assets/branding/Audyt Logo.svg',
+                  width: 32,
+                  height: 32,
+                  excludeFromSemantics: true,
+                  colorFilter: ColorFilter.mode(
+                    tokens.sidebarPrimary,
+                    BlendMode.srcIn,
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: 10),
@@ -2426,6 +2433,8 @@ class _NavigationPanel extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleLarge?.copyWith(
                       color: tokens.sidebarForeground,
+                      fontFamily: 'Rubik',
+                      fontSize: 28,
                       fontWeight: FontWeight.w600,
                     ),
                   ),

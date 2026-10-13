@@ -1,0 +1,51 @@
+{
+  "approved_on": "2026-10-14",
+  "symbol_master": "Audyt Logo.svg",
+  "symbol_master_sha256": "29aeb2d11f2b34d604f02355aa200deaef55f7ff826c86d1a67ea05e80b96103",
+  "brand_name": "Audyt",
+  "brand_font": "Rubik",
+  "brand_weight": 600,
+  "font_upstream": {
+    "family": "Rubik",
+    "source": "https://github.com/google/fonts/tree/main/ofl/rubik",
+    "files": [
+      {
+        "name": "METADATA.pb",
+        "git_blob_sha": "2ad6ac8f33447102519c86577de2d01d8c4509bf",
+        "sha256": "2e81cc9a038e89bcf9a14cd4e2d4513c1b5959e8b9189b835d4ecf4af11968a6"
+      },
+      {
+        "name": "OFL.txt",
+        "git_blob_sha": "03af63b533942ef3bb9919f81138fde8824d4554",
+        "sha256": "472cbe7c25441df63e9c7864b43eb3c0f4b3df950c66a76224e6cfe1eae843fb"
+      },
+      {
+        "name": "Rubik[wght].ttf",
+        "git_blob_sha": "a59aeb632df494345a542697c357f608875481b0",
+        "sha256": "1b3a7437ba2af80e465e773ed60c5036d1ba6ace492d89046dbcf18fb31e4e88"
+      }
+    ]
+  },
+  "font_runtime_asset": "assets/fonts/Rubik-SemiBold.ttf",
+  "font_runtime_sha256": "4129031f12d6c67782cdbe3154cc54b1d65ad6d04d9a4824b6898451cb4df0f1",
+  "font_scope": "Audyt brand label only; application UI remains Inter",
+  "primary_green": "#23AF83",
+  "gradient_bottom": "#1E9872",
+  "launcher_original_symbol_width": 520,
+  "launcher_approved_symbol_width": 468,
+  "launcher_linear_reduction_percent": 10,
+  "macos_canvas": 1024,
+  "macos_tile": {
+    "x": 100,
+    "y": 100,
+    "size": 824,
+    "radius": 184
+  },
+  "macos_symbol": {
+    "x": 278,
+    "y": 278,
+    "size": 468
+  },
+  "mobile_tile": "Full bleed square; same symbol-to-tile proportion; no baked platform corners",
+  "old_editable_source_removed": true
+}
