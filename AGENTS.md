@@ -1,3 +1,5 @@
+Latest logo sizing (14 October 2026): sidebar SVG is26px in both states; keep its established alignment, gap and44px compact target. App launcher white symbol grows10% from468 to514.8 units on the1024px canvas, centered on its existing green gradient tile. Preserve the SVG master. Show revised previews before installation.
+
 Page/tab filter-action contract (14 October 2026, explicit user correction):
 Secondary page actions belong after their related filters in the same content-fit,
 bottom-aligned row: Expenses Recurring follows Payee; Bills, Invoices and Quotations

@@ -20,3 +20,5 @@ Latest user refinement: Rubik Medium 500, a 25px sidebar symbol and 23px visible
 Latest 14 October correction: shift only the expanded header’s green SVG symbol down 2px relative to the approved baseline composition. The live Rubik500 name, 8px gap and 0px-upward expander position stay fixed. The collapsed rail now displays the same 25px SVG mark at the existing left inset within the retained44px selector hit target. These corrections require a new preview before installation.
 
 Collapsed preview correction: center the25px visible SVG in the existing44px hit target, matching the expander and navigation icon centerline. Expanded branding keeps its left anchor.
+
+Latest sizing clarification: sidebar symbol26px in expanded and compact modes, retaining the established alignment,8px gap,2px down offset and Rubik500 name. App launcher white symbol grows10% from468 to514.8 units on the1024-unit canvas, centered at512,512. The mobile derivative retains its corresponding symbol-to-tile proportion. Preserve the original SVG master and the green gradient tile. The user approved installation of this preview and pushing the latest changes on14 October2026.

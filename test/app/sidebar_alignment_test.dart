@@ -103,7 +103,7 @@ void main() {
           nameParagraph.constraints,
           TextBaseline.alphabetic,
         )!;
-    expect(nameBaseline, closeTo(brandLogo.bottom - 2, 1));
+    expect(nameBaseline, closeTo(brandLogo.center.dy + 12.5 - 2, 1));
     expect(find.byKey(const ValueKey('accounting-brand-mark')), findsNothing);
     expect(expenseIcon.left, closeTo(logo.left, 0.1));
     expect(companyFrame.right - chevron.right, closeTo(20, 0.1));
@@ -305,8 +305,8 @@ void main() {
           .first,
     );
     expect(rail.width, AccountingResponsive.compactRailWidth);
-    expect(expandedBrand.width, closeTo(25, 0.1));
-    expect(expandedBrand.height, closeTo(25, 0.1));
+    expect(expandedBrand.width, closeTo(26, 0.1));
+    expect(expandedBrand.height, closeTo(26, 0.1));
     expect(brand.size, const Size(44, 44));
     expect(navRect.size, brand.size);
     expect(brand.left - rail.left, 24);
@@ -316,7 +316,7 @@ void main() {
     final compactSymbol = tester.getRect(
       find.byKey(const ValueKey('accounting-compact-brand-symbol')),
     );
-    expect(compactSymbol.size, const Size(25, 25));
+    expect(compactSymbol.size, const Size(26, 26));
     expect(compactSymbol.center, brand.center);
     expect(compactSymbol.center.dx, navRect.center.dx);
     expect(brand.center.dy, closeTo(expandedBrand.center.dy - 2, 0.1));

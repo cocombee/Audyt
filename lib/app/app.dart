@@ -2466,12 +2466,12 @@ class _NavigationPanel extends StatelessWidget {
               offset: const Offset(0, 2),
               child: SizedBox.square(
                 key: const ValueKey('accounting-brand-icon-box'),
-                dimension: 25,
+                dimension: 26,
                 child: Center(
                   child: SvgPicture.asset(
                     'assets/branding/Audyt Logo.svg',
-                    width: 25,
-                    height: 25,
+                    width: 26,
+                    height: 26,
                     excludeFromSemantics: true,
                     colorFilter: ColorFilter.mode(
                       tokens.sidebarPrimary,

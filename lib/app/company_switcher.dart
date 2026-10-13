@@ -283,8 +283,8 @@ class _CompanySelectorState extends State<CompanySelector> {
                             key: const ValueKey(
                               'accounting-compact-brand-symbol',
                             ),
-                            width: 25,
-                            height: 25,
+                            width: 26,
+                            height: 26,
                             excludeFromSemantics: true,
                             colorFilter: ColorFilter.mode(
                               tokens.sidebarPrimary,

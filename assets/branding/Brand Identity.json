@@ -32,8 +32,8 @@
   "primary_green": "#23AF83",
   "gradient_bottom": "#1E9872",
   "launcher_original_symbol_width": 520,
-  "launcher_approved_symbol_width": 468,
-  "launcher_linear_reduction_percent": 10,
+  "launcher_approved_symbol_width": 514.8,
+  "launcher_linear_reduction_percent": 1,
   "macos_canvas": 1024,
   "macos_tile": {
     "x": 100,
@@ -42,20 +42,20 @@
     "radius": 184
   },
   "macos_symbol": {
-    "x": 278,
-    "y": 278,
-    "size": 468
+    "x": 254.6,
+    "y": 254.6,
+    "size": 514.8
   },
   "mobile_tile": "Full bleed square; same symbol-to-tile proportion; no baked platform corners",
   "old_editable_source_removed": true,
   "sidebar": {
-    "status": "2px symbol adjustment prepared for preview",
+    "status": "26px sidebar symbol approved for installation",
     "font": "Rubik",
     "weight": 500,
     "font_runtime_asset": "assets/fonts/Rubik-Medium.ttf",
     "font_runtime_sha256": "e0ec34389bca830e31437a65380b3bb81679694410cc4d63d3f6831d3ede08e7",
     "logo_size_before": 32,
-    "logo_size": 25,
+    "logo_size": 26,
     "font_size_before": 28,
     "font_size": 25.555555555555554,
     "visible_logo_to_name_gap_before": 16,
@@ -68,8 +68,9 @@
     "toggle_optical_adjustment": 0.6,
     "toggle_offset_above_u": 0,
     "symbol_offset_y": 2,
-    "collapsed_symbol_size": 25,
+    "collapsed_symbol_size": 26,
     "collapsed_symbol_frame": 44,
     "collapsed_symbol_alignment": "Centered with the 44px rail control axis"
-  }
+  },
+  "launcher_latest_enlargement_percent": 10
 }
