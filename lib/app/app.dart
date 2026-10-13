@@ -2396,6 +2396,13 @@ class _NavigationPanel extends StatelessWidget {
   Widget _buildBrandBlock(BuildContext context) {
     final tokens = AccountingTheme.of(context);
     final theme = Theme.of(context);
+    // Rubik 500's Audyt outlines span 900 units on its 1000-unit em.
+    const brandFontSize = 25 / 0.9;
+    // Align the painted glyphs, excluding the font's bearings and leading.
+    const brandTextOffset = Offset(
+      -brandFontSize * 0.014,
+      -brandFontSize * 0.0585,
+    );
     return Semantics(
       header: true,
       label: 'Audyt',
@@ -2407,12 +2414,12 @@ class _NavigationPanel extends StatelessWidget {
           children: <Widget>[
             SizedBox.square(
               key: const ValueKey('accounting-brand-icon-box'),
-              dimension: accountingControlHeight,
+              dimension: 25,
               child: Center(
                 child: SvgPicture.asset(
                   'assets/branding/Audyt Logo.svg',
-                  width: 32,
-                  height: 32,
+                  width: 25,
+                  height: 25,
                   excludeFromSemantics: true,
                   colorFilter: ColorFilter.mode(
                     tokens.sidebarPrimary,
@@ -2421,21 +2428,26 @@ class _NavigationPanel extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
-                  Text(
-                    'Audyt',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      color: tokens.sidebarForeground,
-                      fontFamily: 'Rubik',
-                      fontSize: 28,
-                      fontWeight: FontWeight.w600,
+                  Transform.translate(
+                    offset: brandTextOffset,
+                    child: Text(
+                      'Audyt',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: tokens.sidebarForeground,
+                        fontFamily: 'Rubik',
+                        fontSize: brandFontSize,
+                        fontWeight: FontWeight.w500,
+                        height: 1,
+                        leadingDistribution: TextLeadingDistribution.even,
+                      ),
                     ),
                   ),
                 ],

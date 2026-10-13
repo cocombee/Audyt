@@ -4,7 +4,7 @@
   "symbol_master_sha256": "29aeb2d11f2b34d604f02355aa200deaef55f7ff826c86d1a67ea05e80b96103",
   "brand_name": "Audyt",
   "brand_font": "Rubik",
-  "brand_weight": 600,
+  "brand_weight": 500,
   "font_upstream": {
     "family": "Rubik",
     "source": "https://github.com/google/fonts/tree/main/ofl/rubik",
@@ -26,8 +26,8 @@
       }
     ]
   },
-  "font_runtime_asset": "assets/fonts/Rubik-SemiBold.ttf",
-  "font_runtime_sha256": "4129031f12d6c67782cdbe3154cc54b1d65ad6d04d9a4824b6898451cb4df0f1",
+  "font_runtime_asset": "assets/fonts/Rubik-Medium.ttf",
+  "font_runtime_sha256": "e0ec34389bca830e31437a65380b3bb81679694410cc4d63d3f6831d3ede08e7",
   "font_scope": "Audyt brand label only; application UI remains Inter",
   "primary_green": "#23AF83",
   "gradient_bottom": "#1E9872",
@@ -47,5 +47,23 @@
     "size": 468
   },
   "mobile_tile": "Full bleed square; same symbol-to-tile proportion; no baked platform corners",
-  "old_editable_source_removed": true
+  "old_editable_source_removed": true,
+  "sidebar": {
+    "status": "approved for installation",
+    "font": "Rubik",
+    "weight": 500,
+    "font_runtime_asset": "assets/fonts/Rubik-Medium.ttf",
+    "font_runtime_sha256": "e0ec34389bca830e31437a65380b3bb81679694410cc4d63d3f6831d3ede08e7",
+    "logo_size_before": 32,
+    "logo_size": 25,
+    "font_size_before": 28,
+    "font_size": 27.77777777777778,
+    "visible_logo_to_name_gap_before": 16,
+    "visible_logo_to_name_gap": 8,
+    "gap_reduction_percent": 50,
+    "alignment": "25px visible symbol and wordmark outlines share a vertical center; symbol begins at existing 24px sidebar left inset",
+    "launcher_icon_scope": "Sidebar refinement does not change approved launcher artwork",
+    "wordmark_painted_height": 25,
+    "approved_on": "2026-10-14"
+  }
 }

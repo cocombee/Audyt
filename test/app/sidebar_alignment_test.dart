@@ -98,7 +98,7 @@ void main() {
     final textAxis = tester
         .getRect(find.descendant(of: expenses, matching: find.text('Expenses')))
         .left;
-    for (final text in ['Audyt', 'Home']) {
+    for (final text in ['Home']) {
       expect(
         tester.getRect(find.text(text)).left,
         closeTo(textAxis, 0.1),
@@ -292,14 +292,15 @@ void main() {
           .first,
     );
     expect(rail.width, AccountingResponsive.compactRailWidth);
-    expect(expandedBrand.size, brand.size);
+    expect(expandedBrand.width, closeTo(25, 0.1));
+    expect(expandedBrand.height, closeTo(25, 0.1));
     expect(brand.size, const Size(44, 44));
     expect(navRect.size, brand.size);
     expect(brand.left - rail.left, 24);
     expect(navRect.left - rail.left, 24);
     expect(rail.right - navRect.right, 24);
     expect(icon.size, const Size(20, 20));
-    expect(brand.top, expandedBrand.top);
+    expect(brand.center.dy, closeTo(expandedBrand.center.dy, 0.1));
     expect(tester.widget<InkWell>(nav).hoverColor, accountingNeutralHighlight);
     final expand = find.byKey(const ValueKey('expand-accounting-navigation'));
     expect(tester.getSize(expand), const Size(44, 44));
