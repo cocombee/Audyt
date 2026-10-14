@@ -3,7 +3,7 @@
 set -euo pipefail
 readonly wiring_project="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly wiring_flutter="${AUDYT_FLUTTER_BIN:-/Users/mrkokom/Development/flutter/bin/flutter}"
-readonly wiring_cmake='/Users/mrkokom/My Drive (cocombees@gmail.com)/Codex/Apps/Audyt/Toolchain/cmake/data/bin'
+readonly wiring_cmake='/Users/mrkokom/Library/CloudStorage/GoogleDrive-cocombees@gmail.com/My Drive/Codex/Apps/Audyt/Toolchain/cmake/data/bin'
 # Keep the hook environment stable when the caller already supplies CMake.
 case "$PATH" in
   "$wiring_cmake"|"$wiring_cmake":*) ;;
